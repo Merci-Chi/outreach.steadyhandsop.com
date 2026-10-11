@@ -167,7 +167,7 @@
         showRecoveryForm();
         return;
       }
-      if (data.session) location.replace('index.html');
+      if (data.session) location.replace('onboarding.html');
     }).catch(e => {
       console.error('Session check:', e);
     });
@@ -240,7 +240,7 @@
 
         currentMessage.textContent = 'Password updated. Signing you in...';
         history.replaceState({}, '', 'login.html');
-        setTimeout(() => location.replace('index.html'), 500);
+        setTimeout(() => location.replace('onboarding.html'), 500);
       } catch (error) {
         console.error('Password update failed:', error);
         currentMessage.textContent = error?.message || 'Unable to update password. Please request a new reset link.';
@@ -276,7 +276,7 @@
         }
       } catch {}
 
-      location.replace('index.html');
+      location.replace('onboarding.html');
     } catch (error) {
       console.error('Sign-in failed:', error);
       message.textContent = 'Unable to sign in. Check your email and password.';

@@ -663,7 +663,12 @@ function setupOutreach() {
 
   let activeFilter = crmSearchState?.mainFilter || 'All';
 
-  let selectedCard = originalOrder.find(card => card.dataset.crmId === window.steadyHandsForcedCRMId) || (selectedLeadTop?.querySelector('.lead-card') || null);
+  // Keep the explicitly chosen lead across page changes and reloads.
+  const savedLeadId = (() => { try { return sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || ''; } catch { return ''; } })();
+  let selectedCard = originalOrder.find(card => card.dataset.crmId === window.steadyHandsForcedCRMId)
+    || originalOrder.find(card => card.dataset.crmId === savedLeadId)
+    || (selectedLeadTop?.querySelector('.lead-card') || null);
+
   window.steadyHandsForcedCRMId = null;
 
   let leadSort = 'hours';
@@ -1200,6 +1205,12 @@ function setupOutreach() {
         selected.classList.add('selected-lead');
         selectedLeadTop.replaceChildren(selected);
         selectedCard = selected;
+        if (selected.dataset.crmId) {
+          try { sessionStorage.setItem('steadyhands-selected-outreach-crm-id', String(selected.dataset.crmId)); } catch {}
+          document.body.classList.remove('sh-no-selected-lead');
+          const empty = document.getElementById('shNoLead');
+          if (empty) empty.hidden = true;
+        }
       }
       following.forEach((card, index) => {
         card.style.display = '';
@@ -1713,6 +1724,7 @@ function setupOutreach() {
         throw new Error('Random lead could not be loaded.');
       }
 
+      sessionStorage.setItem('steadyhands-selected-outreach-crm-id', String(picked.crm_id));
       sessionStorage.setItem(
         'steadyhands-global-random-lead',
         JSON.stringify({
@@ -2795,7 +2807,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
 
       <button class="call-btn" type="button" data-select-lead ${phone ? '' : 'disabled'}><i data-lucide="check-circle-2"></i> ${phone ? 'Select Lead' : 'No Phone Number'}</button>
 
-      <div class="quick-actions"><button class="quick-btn" type="button"><i data-lucide="shuffle"></i>Random</button><button class="quick-btn" type="button"><i data-lucide="play"></i>Next</button><button class="quick-btn calendar-btn" type="button"><i data-lucide="calendar-plus"></i>Add to Calendar</button></div>
+      <div class="quick-actions"><button class="quick-btn" type="button"><i data-lucide="shuffle"></i>Next Random Lead</button><button class="quick-btn calendar-btn" type="button"><i data-lucide="calendar-plus"></i>Add to Calendar</button></div>
 
     </div>`;
 

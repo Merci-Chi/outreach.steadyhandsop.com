@@ -1,0 +1,67 @@
+/* Batch 3: visual polish of Outreach only. No CRM / search / calling logic changes. */
+body.page-outreach { --outreach-accent:#1976d2; }
+body.page-outreach .content { min-width:0; }
+body.page-outreach :is(#selectedLeadTop,#crmLeadCards,.outreach-controls) { min-width:0; }
+body.page-outreach #selectedLeadTop .lead-card.selected-lead {
+  position:relative;
+  border:1px solid rgba(29,112,198,.25);
+  box-shadow:0 12px 30px rgba(15,44,81,.11);
+  border-radius:19px;
+}
+body.page-outreach #selectedLeadTop .lead-card.selected-lead::before {
+  content:'';position:absolute;left:0;top:20px;bottom:20px;width:3px;
+  border-radius:0 5px 5px 0;background:var(--outreach-accent);
+}
+body.page-outreach #selectedLeadTop .lead-details { min-width:0; }
+body.page-outreach #selectedLeadTop :is(.lead-title,.notes,.preview-links,.contact-line) { min-width:0;overflow-wrap:anywhere; }
+body.page-outreach #crmLeadCards .lead-card:not(.selected-lead) {
+  border-radius:16px;
+  border:1px solid rgba(57,91,129,.13);
+  box-shadow:0 4px 15px rgba(15,44,81,.055);
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+@media(hover:hover) {
+  body.page-outreach #crmLeadCards .lead-card:not(.selected-lead):hover {
+    border-color:rgba(29,112,198,.45);
+    box-shadow:0 8px 22px rgba(15,44,81,.11);
+  }
+}
+body.page-outreach #crmLeadCards .lead-card:not(.selected-lead) :is(.lead-head,.lead-title,.contact-line,.compact-lead-meta) {min-width:0;}
+body.page-outreach #crmLeadCards .lead-card:not(.selected-lead) :is(.lead-title h2,.contact-line span,.search-match-reason) {overflow-wrap:anywhere;}
+body.page-outreach .outreach-controls {
+  border-radius:17px;
+  padding:12px;
+  background:rgba(131,166,200,.06);
+  border:1px solid rgba(77,124,169,.13);
+}
+body.page-outreach .outreach-controls .crm-toolbar { min-width:0; }
+body.page-outreach #crmSearch {
+  min-width:0;border-radius:12px;
+  font-size:16px; /* prevent iOS input-focus zoom */
+}
+body.page-outreach #crmSearch:focus-visible,
+body.page-outreach :is(#crmMainFilter,#crmTagFilter,#crmReload):focus-visible,
+body.page-outreach .lead-card :is(button,a):focus-visible {
+  outline:2px solid var(--outreach-accent);outline-offset:2px;
+}
+body.page-outreach .outreach-controls :is(#crmMainFilter,#crmTagFilter,#crmReload) { min-height:42px; }
+body.page-outreach #crmLeadCards .lead-card .star-button,
+body.page-outreach #selectedLeadTop .lead-card .star-button {min-width:40px;min-height:40px;}
+body.page-outreach .search-match-reason {max-width:100%;overflow-wrap:anywhere;}
+body.page-outreach .lead-card :is(.preview-links,.contact-line,.tag-row) {flex-wrap:wrap;}
+body.page-outreach .lead-card :is(button,a) {touch-action:manipulation;}
+/* Small-screen cards must fit without moving the whole page horizontally. */
+@media(max-width:599px) {
+  body.page-outreach .content { padding-left:12px;padding-right:12px; }
+  body.page-outreach .outreach-controls {padding:10px;}
+  body.page-outreach #selectedLeadTop .lead-card.selected-lead {padding:15px;}
+  body.page-outreach #crmLeadCards .lead-card:not(.selected-lead) {margin-bottom:10px;}
+  body.page-outreach .outreach-controls .filter-row {gap:8px;}
+  body.page-outreach .outreach-controls .filter-row .pill {max-width:100%;white-space:normal;text-align:left;}
+}
+/* Respect the existing user theme instead of forcing light cards. */
+html[data-theme="dark"] body.page-outreach .outreach-controls {background:rgba(26,53,84,.38);border-color:#31445d;}
+html[data-theme="dark"] body.page-outreach #selectedLeadTop .lead-card.selected-lead {border-color:#365777;box-shadow:0 12px 28px rgba(0,0,0,.25);}
+html[data-theme="dark"] body.page-outreach #crmLeadCards .lead-card:not(.selected-lead) {border-color:#2b415a;box-shadow:0 5px 17px rgba(0,0,0,.2);}
+html[data-theme="dark"] body.page-outreach {--outreach-accent:#77b9ff;}
+@media(prefers-reduced-motion:reduce) {body.page-outreach #crmLeadCards .lead-card:not(.selected-lead){transition:none;}}

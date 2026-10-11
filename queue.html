@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#102945"><title>Queue | Steady Hands</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="sidebar.css"><link rel="stylesheet" href="queue.css?v=popup-v1"><script src="https://unpkg.com/lucide@latest"></script><script src="theme.js"></script><script src="sidebar.js?v=queues-b1" defer></script></head><body class="page-queue"><div class="app"><header class="topbar"><div class="topbar-row"><h1>Queue</h1></div></header><main class="queue-page"><div class="queue-heading"><div><h2>My Queues</h2><p>Create and organize multiple calling lists. Only one queue can be active.</p></div><button class="q-primary" id="qCreate"><i data-lucide="plus"></i> Create Queue</button></div><p id="qMessage" class="q-message" role="status" aria-live="polite">Connecting to CRM…</p><div id="qList" class="q-grid"></div><div id="qEditorOverlay" class="q-modal-overlay" hidden>
+  <section id="qEditor" class="q-modal" role="dialog" aria-modal="true" aria-labelledby="qEditorTitle" tabindex="-1">
+    <header class="q-modal-head">
+      <div class="q-modal-heading"><span class="q-modal-eyebrow"><i data-lucide="list-plus"></i> QUEUE BUILDER</span><h2 id="qEditorTitle">Create Queue</h2><p>Organize the prospects you want to call.</p></div>
+      <button id="qClose" class="q-modal-close" type="button" aria-label="Close queue editor"><i data-lucide="x"></i></button>
+    </header>
+    <form id="qForm" class="q-modal-form">
+      <div class="q-modal-body">
+        <section class="q-form-section"><div class="q-section-title"><span>1</span><div><h3>Queue details</h3><p>Give your calling list a name and choose its source.</p></div></div>
+          <label>Queue name<input id="qName" maxlength="80" required placeholder="e.g. Landscaping prospects" autocomplete="off" /></label>
+          <label>Queue type<select id="qType"><option value="filtered">Filtered CRM leads</option><option value="custom">Custom / handpicked leads</option><option value="callback">Callbacks and follow-ups</option><option value="starred">Starred leads (my list)</option></select></label>
+        </section>
+        <section class="q-form-section"><div class="q-section-title"><span>2</span><div><h3>Choose your prospects</h3><p>Set the criteria and size of this queue.</p></div></div>
+          <div class="q-fields"><label>Business type or search term<input id="qBusiness" placeholder="e.g. landscaping" /></label><label>Maximum entries<select id="qLimit"><option>10</option><option selected>25</option><option>50</option><option>100</option></select></label></div>
+          <div class="q-option-box"><label>Website preview preference<select id="qPreviewMode"><option value="only">Only leads with a preview</option><option value="prefer">Prioritize preview leads</option><option value="all">Include leads without a preview</option></select></label><input id="qNoPreview" type="checkbox" hidden /><label class="q-check"><input id="qExcludeCalled" type="checkbox" /> Exclude previously contacted leads</label></div>
+        </section>
+        <section class="q-form-section"><div class="q-section-title"><span>3</span><div><h3>Calling order</h3><p>Decide how prospects appear in your list.</p></div></div>
+          <label>Sort leads<select id="qSort"><option value="random">Random (saved order)</option><option value="az">Alphabetical A–Z</option><option value="za">Alphabetical Z–A</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="manual">Manual order</option></select></label>
+          <p class="q-help"><i data-lucide="shield-check"></i> Do Not Call, Not Interested, and Sold leads are excluded from automatic queue creation. CRM access permissions still apply.</p>
+        </section>
+      </div>
+      <footer class="q-modal-footer"><button type="button" id="qCancel" class="q-modal-cancel">Cancel</button><button class="q-primary q-modal-save" type="submit"><i data-lucide="check"></i> Save Queue</button></footer>
+    </form>
+  </section>
+</div><section id="qDetail" class="q-detail" hidden><div class="q-detail-head"><div><h2 id="qDetailName"></h2><p id="qDetailMeta"></p></div><button id="qDetailClose">Close</button></div><div class="q-search"><input id="qLeadSearch" type="search" placeholder="Find CRM business or phone to add" aria-label="Search CRM leads"/><button id="qSearchButton">Find Leads</button></div><div id="qResults" class="q-results"></div><h3>Queue entries</h3><div id="qItems" class="q-items"></div></section></main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="auth-guard.js"></script><script src="queue.js?v=reliable-v1" defer></script></body></html>

@@ -11,22 +11,31 @@
   <meta name="apple-mobile-web-app-title" content="Outreach" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="192x192" href="images/icon-192.png" />
-  <title>Activity</title>
+  <title>Performance</title>
   <link rel="stylesheet" href="styles.css?v=20261009-activity-skeletons" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
+  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+  <link rel="stylesheet" href="performance.css?v=20261011-batch2" />
+  <script src="sidebar.js?v=20261011-performance" defer></script>
+<link rel="stylesheet" href="linked-sales-batch7.css?v=1" />
 </head>
 <body class="page-activity">
 <div class="app">
   <header class="topbar">
     <div class="topbar-row">
-      <h1>Activity</h1>
+      <h1>Performance</h1>
     </div>
   </header>
 
   <main class="content" id="activityContent">
 
+
+    <section class="card sh-linked-sales" aria-labelledby="linkedSalesHeading">
+      <div class="sh-linked-head"><div><h3 id="linkedSalesHeading">Customer sale progress</h3><p>Track the customer milestones associated with your sales. Your existing call history stays unchanged.</p></div><a href="sales.html">View Sales Pipeline <i data-lucide="arrow-up-right"></i></a></div>
+      <div id="linkedSales_activity" class="sh-linked-content" role="status" aria-live="polite">Checking linked sales…</div>
+    </section>
     <div class="activity-skeleton" role="status" aria-label="Loading activity" aria-busy="true">
       <div class="activity-skeleton-stats" aria-hidden="true">
         <div class="activity-skeleton-stat"><span class="activity-sk activity-sk-icon"></span><span class="activity-sk activity-sk-number"></span><span class="activity-sk activity-sk-label"></span></div><div class="activity-skeleton-stat"><span class="activity-sk activity-sk-icon"></span><span class="activity-sk activity-sk-number"></span><span class="activity-sk activity-sk-label"></span></div><div class="activity-skeleton-stat"><span class="activity-sk activity-sk-icon"></span><span class="activity-sk activity-sk-number"></span><span class="activity-sk activity-sk-label"></span></div>
@@ -47,18 +56,13 @@
     </div>
   </main>
 
-  <nav class="bottom-nav">
-    <a class="nav-item" href="index.html"><i data-lucide="phone"></i><span>Outreach</span></a>
-    <a class="nav-item" href="skills.html"><i data-lucide="chart-no-axes-column-increasing"></i><span>Skills</span></a>
-    <a class="nav-item" href="earnings.html"><i data-lucide="circle-dollar-sign"></i><span>Earnings</span></a>
-    <a class="nav-item active" href="activity.html"><i data-lucide="history"></i><span>Activity</span></a>
-    <a class="nav-item" href="account.html"><i data-lucide="user-round"></i><span>Account</span></a>
-  </nav>
+  
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261005-dark-mode"></script>
-<script src="user-data.js?v=20261005-recent-calls"></script>
+<script src="user-data.js?v=20261011-performance"></script>
 <script src="app.js?v=20261001-activity2"></script>
+<script src="linked-sales-batch7.js?v=1" defer></script>
 </body>
 </html>

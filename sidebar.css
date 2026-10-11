@@ -1,0 +1,127 @@
+/* Batch 1: shared responsive menu, deliberately scoped to sh-* classes. */
+.sh-sidebar{position:fixed;z-index:1100;inset:0 auto 0 0;width:248px;background:#10253b;color:#eef5ff;display:flex;flex-direction:column;box-shadow:12px 0 35px rgba(0,0,0,.14);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;transition:transform .24s ease,width .24s ease;}
+.sh-sidebar-brand{display:flex;align-items:center;gap:11px;padding:23px 13px 22px;white-space:nowrap;font-size:16px;font-weight:800;}
+.sh-sidebar-brand img{width:34px;height:34px;border-radius:9px;object-fit:contain;flex-shrink:0;}
+.sh-sidebar-brand span{flex:1;overflow:hidden;}
+.sh-sidebar-collapse{border:0;background:transparent;color:#c8d8eb;padding:6px;border-radius:8px;cursor:pointer;display:grid;place-items:center;}
+.sh-sidebar-collapse svg,.sh-sidebar-toggle svg{width:22px;height:22px;}
+.sh-sidebar-links{display:flex;flex-direction:column;gap:6px;padding:0 12px;flex:1;}
+.sh-sidebar-link{display:flex;align-items:center;gap:12px;padding:14px 14px;min-height:48px;border-radius:12px;font-size:13px;font-weight:700;color:#c0d0e1;text-decoration:none;white-space:nowrap;}
+.sh-sidebar-link svg{width:20px;height:20px;flex:none;}
+.sh-sidebar-link.active{background:#214a76;color:#fff;}
+.sh-sidebar-link:hover,.sh-sidebar-link:focus-visible{background:#1c3e62;color:#fff;}
+.sh-sidebar-foot{margin-top:auto;border-top:1px solid #30465d;padding:19px 24px;display:flex;align-items:center;gap:12px;font-size:12px;color:#b9ccdc;white-space:nowrap;}
+.sh-sidebar-foot svg{width:20px;height:20px;flex-shrink:0;}
+.sh-sidebar-toggle{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;margin-right:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);color:#fff;border-radius:11px;cursor:pointer;}
+.sh-sidebar-backdrop{display:none;position:fixed;inset:0;z-index:1090;border:0;background:rgba(3,14,27,.62);}
+body:has(.sh-sidebar) .bottom-nav{display:none!important;}
+body:has(.sh-sidebar) .app{padding-bottom:24px;}
+body:has(.sh-sidebar) .content{max-width:100%;}
+@media(min-width:900px){
+ body:has(.sh-sidebar) .app{width:calc(100% - 248px);max-width:none;margin-left:248px;padding-left:0!important;border-radius:0;min-height:100dvh;overflow:visible;transition:margin-left .24s ease,width .24s ease;}
+ body.sh-sidebar-collapsed .app{width:calc(100% - 76px);margin-left:76px;}
+ body:has(.sh-sidebar) .content{width:100%;max-width:1440px;}
+ body.sh-sidebar-collapsed .sh-sidebar{width:76px;}
+ body.sh-sidebar-collapsed .sh-sidebar-brand{padding:23px 18px 22px;flex-wrap:wrap;justify-content:center;}
+ body.sh-sidebar-collapsed .sh-sidebar-brand span,body.sh-sidebar-collapsed .sh-sidebar-link span,body.sh-sidebar-collapsed .sh-sidebar-foot span{display:none;}
+ body.sh-sidebar-collapsed .sh-sidebar-links{padding:0 9px;}
+ body.sh-sidebar-collapsed .sh-sidebar-link{justify-content:center;padding:14px 0;}
+ body.sh-sidebar-collapsed .sh-sidebar-foot{justify-content:center;padding:20px 0;}
+ body.sh-sidebar-collapsed .sh-sidebar-collapse{margin:auto;}
+ body:has(.sh-sidebar) .call-topbar{position:relative;}
+}
+@media(max-width:899px){
+ .sh-sidebar{transform:translateX(-105%);width:min(290px,85vw);}
+ body.sh-menu-open .sh-sidebar{transform:translateX(0);}
+ body.sh-menu-open .sh-sidebar-backdrop{display:block;}
+ body.sh-menu-open{overflow:hidden;}
+ body:has(.sh-sidebar) .app{width:100%;max-width:100%;margin:0;padding-left:0!important;padding-bottom:24px;border-radius:0;}
+ body:has(.sh-sidebar) .topbar-row{display:flex;align-items:center;}
+ body:has(.sh-sidebar) .call-topbar{display:flex;align-items:center;}
+ .sh-sidebar-toggle{flex-shrink:0;}
+}
+html[data-theme="dark"] .sh-sidebar{background:#091727;border-right:1px solid #253a56;}
+@media(prefers-reduced-motion:reduce){.sh-sidebar,body:has(.sh-sidebar) .app{transition:none;}}
+
+
+/* Batch 2 — independent scroll regions and safe viewport sizing. */
+html:has(.sh-sidebar), body:has(.sh-sidebar) {
+  max-width:100%;
+  min-width:0;
+  overflow-x:clip;
+}
+body:has(.sh-sidebar), body:has(.sh-sidebar) * { box-sizing:border-box; }
+.sh-sidebar { height:100vh; height:100dvh; overscroll-behavior-y:contain; }
+body:has(.sh-sidebar) .app,
+body:has(.sh-sidebar) .content,
+body:has(.sh-sidebar) main { min-width:0; }
+body:has(.sh-sidebar) :is(img,video,iframe,canvas) { max-width:100%; }
+body:has(.sh-sidebar) :is(.content,.crm-leads,.lead-list,.settings-section,.activity-list) { overflow-wrap:anywhere; }
+body:has(.sh-sidebar) :is(.topbar-row,.call-topbar) { min-width:0; }
+body:has(.sh-sidebar) .sh-sidebar-toggle { position:relative;z-index:1; }
+@media(min-width:900px){
+  html:has(.sh-sidebar),body:has(.sh-sidebar){height:100%;overflow:hidden;}
+  body:has(.sh-sidebar) .app{
+    position:relative;
+    height:100vh;height:100dvh;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-gutter:stable;
+  }
+  body:has(.sh-sidebar) .sh-sidebar { overflow-y:auto; }
+}
+@media(max-width:899px){
+  body:has(.sh-sidebar){min-height:100dvh;}
+  body:has(.sh-sidebar) .app{overflow-x:clip;min-height:100dvh;}
+  body.sh-menu-open{overflow:hidden;touch-action:none;}
+  body.sh-menu-open .sh-sidebar{touch-action:pan-y;}
+  body.sh-menu-open .sh-sidebar-backdrop{touch-action:none;}
+}
+@media(max-height:500px) and (max-width:899px){
+  .sh-sidebar-brand{padding-top:10px;padding-bottom:10px;}
+  .sh-sidebar-link{padding-top:8px;padding-bottom:8px;min-height:40px;}
+}
+/* Popup containers scroll instead of clipping controls on short screens. */
+:is(.app-modal-overlay,.cc-overlay,.post-call-overlay,.calendar-sheet-overlay,
+.call-keypad-overlay,.call-tool-overlay,.settings-sheet-overlay,
+.activity-transcript-overlay,.device-notification-popup-overlay) {
+  max-height:100vh;max-height:100dvh;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+}
+:is(.app-modal,.cc-sheet,.post-call-sheet,.calendar-sheet,.call-keypad-sheet,
+.call-tool-sheet,.settings-sheet,.activity-transcript-sheet,
+.device-notification-popup) {
+  min-height:0;
+  max-height:calc(100vh - 24px);
+  max-height:calc(100dvh - 24px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  scroll-padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));
+}
+@media(max-width:699px){
+  :is(.app-modal,.cc-sheet,.post-call-sheet,.calendar-sheet,.call-keypad-sheet,
+  .call-tool-sheet,.settings-sheet,.activity-transcript-sheet,
+  .device-notification-popup){
+    max-height:calc(100vh - 12px);
+    max-height:calc(100dvh - 12px);
+  }
+}
+:is(.app-modal-head,.call-tool-head,.calendar-sheet-head,.activity-transcript-head,.call-keypad-head) {
+  position:sticky;top:0;z-index:2;
+}
+/* Keep tap targets comfortable and animation optional. */
+.sh-sidebar-link,.sh-sidebar-toggle,.sh-sidebar-collapse { -webkit-tap-highlight-color:transparent; }
+.sh-sidebar-link:focus-visible,.sh-sidebar-toggle:focus-visible,.sh-sidebar-collapse:focus-visible {
+  outline:2px solid #8bd1ff;outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce){
+  .sh-sidebar,.sh-sidebar-backdrop,.sh-sidebar-link{transition:none!important;animation:none!important;}
+}

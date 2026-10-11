@@ -1,0 +1,23 @@
+/* Batch 7: supporting linked sales views; existing earnings and activity cards are unchanged. */
+.sh-linked-sales{margin:18px 0;padding:18px!important;min-width:0}
+.sh-linked-head{display:flex;justify-content:space-between;gap:14px;align-items:start;flex-wrap:wrap;margin-bottom:14px}
+.sh-linked-head h3{font-size:17px;margin:0 0 6px;color:var(--text,#18314c)}
+.sh-linked-head p{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#6b7b91);max-width:590px}
+.sh-linked-head a{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:750;color:var(--accent,#2174d1);text-decoration:none;white-space:nowrap}
+.sh-linked-head a svg{width:15px;height:15px}
+.sh-linked-content{display:grid;gap:9px;min-width:0}
+.sh-linked-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line,#e0e8f1);border-radius:12px;text-decoration:none;color:var(--text,#18314c);min-width:0}
+.sh-linked-row:focus-visible{outline:2px solid #2d89ff;outline-offset:2px}
+.sh-linked-row:hover{background:var(--page,#f3f7fc)}
+.sh-linked-row strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.sh-linked-row small{display:block;margin-top:4px;font-size:11px;color:var(--muted,#718299)}
+.sh-linked-status{font-size:11px;font-weight:800;padding:5px 9px;border-radius:99px;white-space:nowrap;background:#fff2d8;color:#925600}
+.sh-linked-status.confirmed{background:#dff5e8;color:#146c42}
+.sh-linked-status.cancelled{background:#fbe5e6;color:#a7343e}
+.sh-linked-state{font-size:13px;color:var(--muted,#6c7a8a);margin:0;padding:8px 0}
+html[data-theme=dark] .sh-linked-head h3,html[data-theme=dark] .sh-linked-row{color:#e9f2ff}
+html[data-theme=dark] .sh-linked-row{border-color:#344961}
+html[data-theme=dark] .sh-linked-row:hover{background:#162941}
+html[data-theme=dark] .sh-linked-status{background:#42341b;color:#ffe3a0}
+html[data-theme=dark] .sh-linked-status.confirmed{background:#173c34;color:#a4f5c7}
+html[data-theme=dark] .sh-linked-status.cancelled{background:#462b32;color:#ffbcc4}

@@ -17,6 +17,12 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
+  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+  <link rel="stylesheet" href="sale-start.css?v=2" />
+  <link rel="stylesheet" href="call-compact.css?v=20261011-icon-circle-rebuild" />
+  <link rel="stylesheet" href="external-call.css?v=20261011-1" />
+  <script src="sidebar.js?v=batch9-menu-fix-1" defer></script>
+<link rel="stylesheet" href="first-login.css?v=1" />
 </head>
 <body class="page-call">
 <div class="app call-app">
@@ -27,6 +33,13 @@
   </header>
 
   <main class="call-content">
+    <section class="calling-mode-selector" aria-label="Calling method">
+      <div class="calling-mode-title"><strong>Calling method</strong><span>Choose how you contact this business</span></div>
+      <div class="calling-mode-options" role="group" aria-label="Choose calling method">
+        <button type="button" id="regularPhoneMode" class="calling-mode-choice" aria-pressed="false"><i data-lucide="smartphone"></i> Regular Phone</button>
+        <button type="button" id="appPhoneMode" class="calling-mode-choice" aria-pressed="true"><i data-lucide="headset"></i> Call Through App</button>
+      </div>
+    </section>
     <section class="call-identity">
       <div class="call-avatar"><i data-lucide="user-round"></i></div>
       <div class="call-number" id="callNumber">(000) 000-0000</div>
@@ -42,6 +55,17 @@
       <button class="call-action-card" data-call-action="Templates"><span class="call-action-icon"><i data-lucide="messages-square"></i></span><span>Templates</span></button>
       <button class="call-action-card" data-call-action="Quick Info"><span class="call-action-icon"><i data-lucide="circle-dollar-sign"></i></span><span>Quick Info</span></button>
     </section>
+    <button class="sh-start-sale" id="shStartSale" type="button"><i data-lucide="handshake"></i><span>Start Sale / Track Customer</span><i data-lucide="arrow-right"></i></button>
+    <section id="regularPhonePanel" class="regular-phone-panel" hidden aria-label="Regular phone calling">
+      <div class="regular-phone-header"><i data-lucide="smartphone"></i><div><strong>Call using your phone</strong><p>Calls made outside this app cannot be automatically verified or transcribed.</p></div></div>
+      <div class="regular-phone-number" id="regularPhoneNumber"></div>
+      <div class="regular-phone-actions">
+        <a id="externalDialerLink" class="regular-phone-dial" href="tel:"><i data-lucide="phone-outgoing"></i> Open Phone Dialer</a>
+        <button id="externalCopyNumber" type="button" class="regular-phone-secondary"><i data-lucide="copy"></i> Copy Number</button>
+      </div>
+      <button id="externalLogCall" class="regular-phone-log" type="button"><i data-lucide="clipboard-check"></i> Log Call / Record Outcome</button>
+      <p class="regular-phone-disclaimer">Opening the dialer or copying the number does not log a call. Tap Log Call when you're ready to record what happened.</p>
+    </section>
     <section class="call-controls">
       <button class="call-control small" id="muteBtn"><i data-lucide="mic"></i><span>Mute</span></button>
       <button class="call-control small" id="keypadBtn"><i data-lucide="grid-3x3"></i><span>Keypad</span></button>
@@ -50,6 +74,8 @@
       <button class="call-control small" id="speakerBtn"><i data-lucide="volume-2"></i><span>Speaker</span></button>
     </section>
     <section class="starter-script-card" id="starterScriptCard">
+      <button class="call-script-toggle" type="button" aria-expanded="false" aria-controls="callScriptBody"><i data-lucide="book-open"></i><span>Starter Script</span><i data-lucide="chevron-down"></i></button>
+      <div class="call-script-body" id="callScriptBody">
       <div class="starter-script-head">
         <div>
           <span>Starter Script</span>
@@ -64,6 +90,7 @@
         <button class="starter-script-tab" type="button" data-script="spanish">Spanish</button>
       </div>
       <p class="starter-script-text" id="starterScriptText"></p>
+      </div>
     </section>
 
     <section class="call-transcript-section" id="transcriptSection">
@@ -93,6 +120,17 @@
   </main>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.querySelector('.call-script-toggle');
+  const card = document.getElementById('starterScriptCard');
+  if(!btn || !card) return;
+  btn.addEventListener('click', function(){
+    const open = card.classList.toggle('script-expanded');
+    btn.setAttribute('aria-expanded',String(open));
+  });
+});
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261005-dark-mode"></script>
 <script src="user-data.js?v=20261005-call-diagnostics"></script>
@@ -108,6 +146,65 @@
   const previewUrl = params.get('preview') || '';
   const crmId = params.get('crm_id') || '';
   const storedTimezone = params.get('timezone') || '';
+  const externalModeFromUrl = params.get('mode');
+  let externalCallLog = false;
+  const externalPreferenceKey = 'steadyhands-default-calling-method-v1';
+  let callingMethod = externalModeFromUrl === 'external' ? 'external' : externalModeFromUrl === 'app' ? 'app' : (localStorage.getItem(externalPreferenceKey) === 'external' ? 'external' : 'app');
+  function setCallingMethod(method){
+    if(['calling','ringing','connected'].includes(callState)){
+      alert('Finish the current app call before switching calling methods.');
+      return;
+    }
+    callingMethod = method === 'external' ? 'external' : 'app';
+    if(localStorage.getItem(externalPreferenceKey) !== 'ask') localStorage.setItem(externalPreferenceKey, callingMethod);
+    document.body.classList.toggle('regular-phone-mode', callingMethod === 'external');
+    const externalPanel = document.getElementById('regularPhonePanel');
+    if(externalPanel) externalPanel.hidden = callingMethod !== 'external';
+    ['regularPhoneMode','appPhoneMode'].forEach(id=>{
+      const button = document.getElementById(id);
+      if(button) button.setAttribute('aria-pressed', String(id === (callingMethod === 'external' ? 'regularPhoneMode':'appPhoneMode')));
+    });
+  }
+  // The user chooses one calling method once per login/session, not for each lead.
+  if(!externalModeFromUrl && localStorage.getItem(externalPreferenceKey) === 'ask') {
+    const sessionKey = 'steadyhands-session-call-method';
+    const chosen = sessionStorage.getItem(sessionKey);
+    if(chosen === 'external' || chosen === 'app') {
+      callingMethod = chosen;
+    } else {
+      setTimeout(() => {
+        const selection = document.createElement('div');
+        selection.className = 'call-choice-overlay';
+        selection.innerHTML = `<div class="call-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="callChoiceTitle"><h2 id="callChoiceTitle">How are you calling today?</h2><p>Choose your calling method for this session. You can change it later.</p><button type="button" data-method="external">Regular Phone</button><button type="button" data-method="app">Call Through App</button></div>`;
+        document.body.appendChild(selection);
+        selection.querySelectorAll('[data-method]').forEach(btn => btn.addEventListener('click', () => {
+          const chosenMethod = btn.dataset.method;
+          sessionStorage.setItem(sessionKey, chosenMethod);
+          setCallingMethod(chosenMethod);
+          selection.remove();
+        }));
+      }, 50);
+    }
+  }
+  document.getElementById('regularPhoneMode')?.addEventListener('click', ()=>setCallingMethod('external'));
+  document.getElementById('appPhoneMode')?.addEventListener('click', ()=>setCallingMethod('app'));
+  document.getElementById('regularPhoneNumber').textContent = number;
+  const dialNumber = number.replace(/[^+0-9]/g,'');
+  document.getElementById('externalDialerLink').href = dialNumber ? 'tel:' + dialNumber : '#';
+  document.getElementById('externalCopyNumber')?.addEventListener('click', async ()=>{
+    try { await navigator.clipboard.writeText(number); }
+    catch { prompt('Copy phone number:',number); }
+  });
+  document.getElementById('externalLogCall')?.addEventListener('click', ()=>{
+    if(questionnaireOpen) return;
+    externalCallLog = true;
+    connectedSeconds = 0;
+    callConnectedAt = null;
+    callEndedAt = Date.now();
+    currentCallSid = '';
+    openPostCallFlow();
+  });
+
 
   const header = document.getElementById('callCompanyHeader');
   const companyEl = document.getElementById('callCompany');
@@ -178,6 +275,7 @@
   });
 
   let callState = 'idle';
+  setCallingMethod(callingMethod);
   let connectedSeconds = 0;
   let timerTick = null;
   let stateTimers = [];
@@ -468,7 +566,7 @@
     mainCallButton.classList.toggle('hangup', active);
     mainCallButton.setAttribute('aria-label', active ? 'End call' : 'Start call');
     mainCallButton.innerHTML = active
-      ? '<i data-lucide="phone-off"></i><span>End Call</span>'
+      ? '<i data-lucide="phone"></i><span>End Call</span>'
       : '<i data-lucide="phone"></i><span>Start Call</span>';
     lucide.createIcons();
   }
@@ -591,6 +689,7 @@
   }
 
   mainCallButton?.addEventListener('click', async () => {
+    if(callingMethod === 'external') return;
     if(questionnaireOpen) return;
 
     if (leadBlockedNotInterested || await refreshNotInterestedStatus()) {
@@ -1788,10 +1887,10 @@
 
         const savedActivity = await window.callcenterRecordCall?.({
           crmId,
-          duration: connectedSeconds,
-          outcome: finalOutcome,
-          callSid: currentCallSid,
-          connectedAt: callConnectedAt,
+          duration: externalCallLog ? 0 : connectedSeconds,
+          outcome: externalCallLog ? 'External Phone (self-reported) • ' + finalOutcome : finalOutcome,
+          callSid: externalCallLog ? '' : currentCallSid,
+          connectedAt: externalCallLog ? null : callConnectedAt,
           endedAt: callEndedAt || Date.now()
         });
 
@@ -1817,6 +1916,7 @@
         }
 
         await releaseLeadAfterCall();
+        externalCallLog = false;
         overlay.remove();
         questionnaireOpen = false;
         setState('ended');
@@ -1839,5 +1939,6 @@
   lucide.createIcons();
 })();
 </script>
+<script src="sale-start.js?v=2" defer></script>
 </body>
 </html>

@@ -1,0 +1,72 @@
+/* Batch 12: Leads page shell. Matches the shared app topbar and sidebar.
+   Only page shell is restyled here; do not alter CRM cards/search logic. */
+body.page-leads .topbar {
+  background: #102945;
+  color: #fff;
+}
+body.page-leads .topbar .topbar-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+body.page-leads .sh-leads-heading { min-width: 0; }
+body.page-leads .sh-leads-heading h1 {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 800;
+}
+body.page-leads .sh-leads-heading p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: rgba(255,255,255,.78);
+}
+/* The old second page heading was designed for the former two-pane Outreach.
+   It is redundant with the shared header and pushes the toolbar down. */
+body.page-leads main.content > .desktop-queue-heading,
+body.page-leads main.content > .desktop-workspace-heading {display:none!important;}
+body.page-leads main.content {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:18px!important;
+  max-width:1200px!important;
+  width:100%!important;
+  margin:0 auto!important;
+  padding:24px 22px 96px!important;
+  box-sizing:border-box!important;
+}
+body.page-leads main.content > .outreach-controls,
+body.page-leads main.content > #crmStatus,
+body.page-leads main.content > #crmLeadCards {
+  position:relative!important;
+  inset:auto!important;
+  grid-area:auto!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  transform:none!important;
+}
+/* Simple stable shell for the existing toolbar, without redesigning its controls yet. */
+body.page-leads main.content > .outreach-controls {
+  border-radius:20px!important;
+  background:var(--card,#fff)!important;
+  box-shadow:0 10px 28px rgba(10,28,54,.055)!important;
+}
+body.page-leads main.content > #crmLeadCards {
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:14px!important;
+}
+@media(max-width:899px) {
+  body.page-leads main.content {padding:16px 12px 100px!important;gap:12px!important;}
+  body.page-leads .sh-leads-heading p{font-size:12px;}
+}
+html[data-theme="dark"] body.page-leads main.content > .outreach-controls {
+  background:var(--card,#10243b)!important;
+}

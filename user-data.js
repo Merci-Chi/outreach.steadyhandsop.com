@@ -1107,7 +1107,7 @@
   }
 
   async function loadActivity(session, ownProfile) {
-    if (document.title !== 'Activity') return;
+    if (!['Activity','Performance'].includes(document.title)) return;
 
     const c = client();
     const main = document.getElementById('activityContent');
@@ -1260,6 +1260,32 @@
       return { cls:'noanswer', icon:'phone', label:text.length > 18 ? 'Called' : text };
     };
 
+    // Productivity summary uses the SAME account-scoped call activity as the history below.
+    // Dates shown in local browser time; older rows may be capped by the 1,000-row query.
+    const now = new Date();
+    const since7 = new Date(now); since7.setDate(since7.getDate()-6); since7.setHours(0,0,0,0);
+    const weekRows = activities.filter(row => { const d = new Date(row.created_at); return !Number.isNaN(d.getTime()) && d >= since7; });
+    const contacted = weekRows.filter(row => !/didn.t call/i.test(String(row.outcome||'')));
+    const positive = contacted.filter(row => /interested|follow.?up|call.?back|requested (text|email)|sale|sold|closed/i.test(String(row.outcome||'')) && !/not interested/i.test(String(row.outcome||'')));
+    const avgSeconds = contacted.length ? Math.round(contacted.reduce((sum,row)=>sum+(Number(row.duration_seconds)||0),0)/contacted.length) : 0;
+    const dailyCounts = Array.from({length:7},(_,index)=>{
+      const day = new Date(since7); day.setDate(day.getDate()+index);
+      const next = new Date(day); next.setDate(next.getDate()+1);
+      return { label:day.toLocaleDateString([], {weekday:'short'}), count:contacted.filter(row=>{const d=new Date(row.created_at);return d>=day&&d<next;}).length };
+    });
+    const dailyMax = Math.max(1,...dailyCounts.map(day=>day.count));
+    const perfSummary = `<section class="sh-performance-panel" aria-label="Weekly productivity">
+      <div class="sh-performance-heading"><div><h2>My Performance</h2><p>Last 7 days · ${selectedUserId===session.user.id?'Your':'Selected teammate’s'} recorded call activity</p></div><a href="sales.html">Sales Targets <i data-lucide="arrow-up-right"></i></a></div>
+      <div class="sh-performance-metrics">
+        <div class="sh-performance-metric"><span>Calls Logged</span><strong>${contacted.length}</strong><small>Manually logged and app calls</small></div>
+        <div class="sh-performance-metric"><span>Positive Outcomes</span><strong>${positive.length}</strong><small>Based on logged outcomes</small></div>
+        <div class="sh-performance-metric"><span>Positive Outcome Rate</span><strong>${contacted.length?Math.round(100*positive.length/contacted.length):0}%</strong><small>Not a verified close rate</small></div>
+        <div class="sh-performance-metric"><span>Avg. Logged Duration</span><strong>${formatDuration(avgSeconds)}</strong><small>Based on recorded durations</small></div>
+      </div>
+      <div class="sh-performance-chart"><div class="sh-performance-chart-title"><strong>Call Activity</strong><span>Last 7 days</span></div><div class="sh-performance-bars" role="img" aria-label="Calls logged by day: ${dailyCounts.map(x=>x.label+' '+x.count).join(', ')}">${dailyCounts.map(day=>`<div class="sh-performance-bar-cell"><span>${day.count}</span><div class="sh-performance-bar-track"><div class="sh-performance-bar" style="height:${Math.max(day.count?7:0,Math.round(100*day.count/dailyMax))}%"></div></div><small>${day.label}</small></div>`).join('')}</div></div>
+      <p class="sh-performance-disclaimer">Stats use your most recent 1,000 logged records. Regular-phone outcomes are self-reported; confirmed sales and commissions remain on Sales and Earnings.</p>
+    </section>`;
+
     const recentRows = activities.slice(0, 30);
 
     const followups = ownedCallbacks.map(lead => ({
@@ -1325,7 +1351,8 @@
     }).join('') : '<div class="activity-empty">No upcoming call backs.</div>';
 
     main.innerHTML = `
-      ${isManager && requestedUserId ? '<a href="activity.html" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:900;color:#2579cf;margin:2px 2px 12px"><i data-lucide="chevron-left" style="width:15px;height:15px"></i> My Activity</a>' : ''}
+      ${perfSummary}
+      ${isManager && requestedUserId ? '<a href="activity.html" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:900;color:#2579cf;margin:2px 2px 12px"><i data-lucide="chevron-left" style="width:15px;height:15px"></i> My Performance</a>' : ''}
 
       <div class="activity-stats">
         <div class="activity-stat">

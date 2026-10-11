@@ -1,0 +1,111 @@
+/* Batch 9: UI separation only. Existing CRM functionality remains in app.js. */
+body.page-outreach:not(.page-leads) .desktop-queue-heading,
+body.page-outreach:not(.page-leads) .outreach-controls,
+body.page-outreach:not(.page-leads) #crmLeadCards {display:none!important}
+body.page-outreach:not(.page-leads) .desktop-workspace-heading {display:block!important}
+body.page-outreach:not(.page-leads) .content {display:flex!important;flex-direction:column!important;align-items:stretch!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;max-width:900px!important;margin:0 auto!important;width:100%!important;overflow-x:hidden!important}
+body.page-outreach:not(.page-leads) #selectedLeadTop {display:block!important;position:relative!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:0!important;max-height:none!important;overflow:visible!important;grid-area:auto!important;transform:none!important}
+body.page-outreach:not(.page-leads) #selectedLeadTop:empty{display:none!important}
+body.page-outreach:not(.page-leads) #crmStatus:not([style*="display: none"]){max-width:100%}
+body.page-outreach:not(.page-leads) #shNoLead:not([hidden]){display:block!important}
+.sh-change-lead{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;min-height:44px;padding:10px 16px;border-radius:12px;background:#174b7a;color:#fff;text-decoration:none;font-size:13px;font-weight:800}
+.sh-change-lead svg{width:17px;height:17px}
+body.page-leads .desktop-workspace-heading,body.page-leads #selectedLeadTop{display:none!important}
+body.page-leads .desktop-queue-heading{display:block!important}
+body.page-leads .content{display:flex!important;flex-direction:column!important;max-width:1100px!important;width:100%!important;margin:0 auto!important;grid-template-columns:minmax(0,1fr)!important;overflow-x:hidden!important}
+body.page-leads #crmLeadCards{width:100%!important;max-width:100%!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:12px!important;max-height:none!important;overflow:visible!important;grid-area:auto!important}
+body.page-leads #crmLeadCards .lead-card{width:100%;max-width:100%}
+body.page-leads .outreach-controls{display:block!important;width:100%;max-width:100%;grid-area:auto!important;position:static!important}
+.sh-select-outreach{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:10px 14px;border-radius:11px;background:#1677e8;border:0;color:#fff;font-weight:800;cursor:pointer;margin:10px 0;width:100%}
+.sh-select-outreach:focus-visible,.sh-change-lead:focus-visible{outline:3px solid #85c9ff;outline-offset:3px}
+body.page-leads #crmLeadCards .lead-details{display:block}
+body.page-leads #crmLeadCards .quick-actions{display:none}
+body.page-leads #crmLeadCards .call-btn{display:none}
+body.page-leads #crmLeadCards .lead-card{cursor:default!important}
+@media(max-width:899px){body.page-leads .content,body.page-outreach:not(.page-leads) .content{padding-left:12px!important;padding-right:12px!important;min-width:0!important}}
+
+body.sh-no-selected-lead #selectedLeadTop{display:none!important}
+body.page-leads #selectedLeadTop{display:none!important}
+body.page-leads #selectedLeadTop:empty{display:none!important}
+
+
+/* Batch 9 layout correction: override original two-column Outreach desktop grid. */
+body.page-leads .app {min-width:0!important;overflow-x:clip!important;}
+body.page-leads main.content {
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  gap:16px!important;
+  position:relative!important;
+  width:min(1100px,100%)!important;
+  max-width:1100px!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0 auto!important;
+  padding:24px 22px 120px!important;
+  overflow:visible!important;
+  grid-template-areas:none!important;
+}
+body.page-leads main.content > :is(.desktop-queue-heading,.outreach-controls,#crmStatus,#crmLeadCards) {
+  box-sizing:border-box!important;
+  position:relative!important;
+  inset:auto!important;
+  top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;
+  grid-area:auto!important;grid-column:auto!important;grid-row:auto!important;
+  align-self:stretch!important;
+  order:initial!important;
+  float:none!important;
+  clear:both!important;
+  transform:none!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  overflow:visible!important;
+}
+body.page-leads main.content > .desktop-workspace-heading,
+body.page-leads #selectedLeadTop {display:none!important;}
+body.page-leads .desktop-queue-heading{order:0!important;}
+body.page-leads .outreach-controls{order:1!important;z-index:1!important;display:block!important;flex:0 0 auto!important;padding:12px!important;background:var(--card,#fff);border:1px solid var(--line,#e0e7f0);border-radius:16px;}
+body.page-leads #crmStatus{order:2!important;flex:0 0 auto!important;}
+body.page-leads #crmLeadCards{order:3!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:0!important;}
+body.page-leads #crmLeadCards > :is(.lead-card,.lead-sort-control,.skeleton-lead) {
+  position:relative!important;
+  inset:auto!important;
+  float:none!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0!important;
+  transform:none!important;
+}
+body.page-leads #crmLeadCards .lead-card{
+  box-sizing:border-box!important;
+  padding:16px!important;
+  border-radius:16px!important;
+  overflow:visible!important;
+}
+body.page-leads #crmLeadCards .lead-card .lead-head{min-height:0!important;height:auto!important;}
+body.page-leads #crmLeadCards .lead-card .lead-details{display:block!important;}
+body.page-leads #crmLeadCards .lead-card .compact-lead-meta{display:none!important;}
+body.page-leads .outreach-controls-live{display:flex!important;flex-direction:column!important;gap:10px!important;}
+body.page-leads .outreach-controls .crm-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr) 44px!important;gap:10px!important;}
+body.page-leads .outreach-controls .filter-row{position:relative!important;inset:auto!important;display:flex!important;gap:8px!important;flex-wrap:wrap!important;}
+body.page-leads .outreach-controls #crmSearch{min-width:0!important;}
+body.page-leads .outreach-controls #crmLiveTotals{white-space:normal!important;}
+@media(min-width:900px){
+  body.page-leads .app{height:100dvh;overflow-y:auto!important;overflow-x:hidden!important;}
+}
+@media(max-width:899px){
+  body.page-leads main.content{padding:14px 12px 100px!important;gap:12px!important;}
+  body.page-leads .outreach-controls{padding:10px!important;}
+}

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#102945" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Outreach" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" sizes="192x192" href="images/icon-192.png" />
+  <title>Leads | Steady Hands</title>
+
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="styles.css?v=20261009-filters-sources-v1" />
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="app-update.js" defer></script>
+  <script src="theme.js?v=20261005-account-theme"></script>
+  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+<link rel="stylesheet" href="leads-batch9.css?v=9-layout-fix2" />
+  <link rel="stylesheet" href="leads-batch12.css?v=12-shell" />
+  <script src="sidebar.js?v=batch9-menu-fix-1" defer></script>
+</head>
+<body class="page-outreach page-leads">
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="sh-leads-heading">
+        <h1>Leads</h1>
+        <p>Browse and manage CRM leads</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="content outreach-loading">
+    <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
+      <div>
+        <span class="desktop-kicker">OUTREACH</span>
+        <h2>CRM Leads</h2>
+        <p>Search, filter, and choose who to contact next.</p>
+      </div>
+    </div>
+
+    <div class="desktop-outreach-heading desktop-workspace-heading" aria-hidden="true">
+      <div>
+        <span class="desktop-kicker">CALL WORKSPACE</span>
+        <h2>Selected Lead</h2>
+        <p>Everything you need for the next call, in one view.</p>
+      </div>
+    </div>
+
+    <div id="selectedLeadTop" class="crm-leads selected-lead-top" aria-live="polite">
+      <div class="skeleton-lead skeleton-expanded selected-lead-skeleton" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+        <div class="sk-shape sk-line"></div>
+        <div class="sk-chips"><span class="sk-shape"></span><span class="sk-shape"></span></div>
+        <div class="sk-shape sk-preview"></div>
+        <div class="sk-shape sk-note"></div>
+        <div class="sk-shape sk-call"></div>
+        <div class="sk-chips sk-bottom"><span class="sk-shape"></span><span class="sk-shape"></span><span class="sk-shape"></span></div>
+      </div>
+    </div>
+
+    <div class="outreach-controls">
+      <div class="outreach-controls-skeleton" aria-hidden="true">
+        <div class="sk-shape sk-search-bar"></div>
+        <div class="sk-shape sk-refresh-button"></div>
+        <div class="sk-filter-row">
+          <span class="sk-shape sk-filter-pill"></span>
+          <span class="sk-shape sk-filter-pill sk-filter-pill-wide"></span>
+        </div>
+      </div>
+
+      <div class="outreach-controls-live">
+        <div class="crm-toolbar">
+          <input
+            type="search"
+            id="crmSearch"
+            aria-label="Search all leads"
+            placeholder="Search name, company, phone, email, notes…"
+            autocomplete="off"
+          />
+          <button id="crmReload" type="button" title="Refresh">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </div>
+
+        <div class="filter-row">
+          <button class="pill active outreach-filter-pill" id="crmMainFilter" type="button">
+            <i data-lucide="list-filter"></i>
+            <span id="crmMainFilterLabel">Filter: All</span>
+          </button>
+
+          <button class="pill tag-filter-pill" id="crmTagFilter" type="button">
+            <i data-lucide="tags"></i>
+            <span>Tags &amp; Sources</span>
+            <span class="tag-filter-count" id="crmTagFilterCount" hidden></span>
+          </button>
+          <span id="crmLiveTotals" aria-live="polite" hidden style="margin-left:auto;white-space:nowrap;font-size:12px;color:inherit;opacity:.75;">
+            Total CRM Leads: <strong id="crmTotalLeads" style="font-variant-numeric:tabular-nums;font-weight:700;">—</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <section class="crm-state card" id="crmStatus" aria-live="polite">
+      Connecting to CRM…
+    </section>
+
+    <div id="crmLeadCards" class="crm-leads" aria-live="polite">
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+    </div>
+  </main>
+
+  
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="auth-guard.js?v=20261005-dark-mode"></script>
+<script src="user-data.js?v=20261001-1930"></script>
+<script src="app.js?v=20261009-search-timeout-fix-v1"></script>
+<script src="leads-batch9.js?v=9" defer></script>
+</body>
+</html>

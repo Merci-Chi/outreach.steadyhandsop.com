@@ -19,16 +19,21 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
+  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+<link rel="stylesheet" href="queue.css?v=queue-b2" />
+<link rel="stylesheet" href="leads-batch9.css?v=9" />
+<link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
+  <script src="sidebar.js?v=batch2" defer></script>
 </head>
 <body class="page-outreach">
 <div class="app">
   <header class="topbar">
     <div class="topbar-row">
-      <h1>Outreach</h1>
+      <h1>Outreach</h1><div class="sh-tools" aria-label="Tasks and notifications"><button class="sh-tool-btn" id="shTasksOpen" type="button"><i data-lucide="list-checks"></i><span class="sh-tool-label">Tasks</span><span class="sh-tool-count" id="shTasksBadge" hidden>0</span></button><button class="sh-tool-btn" id="shNoticesOpen" type="button"><i data-lucide="bell"></i><span class="sh-tool-label">Notifications</span><span class="sh-tool-count" id="shNoticesBadge" hidden>0</span></button></div>
     </div>
   </header>
 
-  <main class="content outreach-loading">
+  <main class="content outreach-loading"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
     <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
       <div>
         <span class="desktop-kicker">OUTREACH</span>
@@ -45,7 +50,12 @@
       </div>
     </div>
 
-    <div id="selectedLeadTop" class="crm-leads selected-lead-top" aria-live="polite">
+    <div id="shNoLead" class="crm-state card sh-empty-workspace" hidden>No lead selected. Visit Leads to choose a prospect to contact. <a href="leads.html">Browse Leads</a></div>
+
+    <div class="sh-reference-toolbar"><div><strong>Call workspace for the selected lead</strong></div><a href="leads.html" class="sh-change-lead workspace-change-lead"><i data-lucide="users"></i> Change Lead</a></div>
+    <section class="outreach-workspace-layout">
+      <div class="workspace-main">
+        <div id="selectedLeadTop" class="crm-leads selected-lead-top" aria-live="polite">
       <div class="skeleton-lead skeleton-expanded selected-lead-skeleton" aria-hidden="true">
         <div class="sk-row">
           <div class="sk-shape sk-icon"></div>
@@ -63,7 +73,26 @@
         <div class="sk-shape sk-call"></div>
         <div class="sk-chips sk-bottom"><span class="sk-shape"></span><span class="sk-shape"></span><span class="sk-shape"></span></div>
       </div>
-    </div>
+        </div>
+      </div>
+      <aside class="workspace-side">
+        <section id="shCallInfo" class="workspace-card workspace-side-card" aria-live="polite">
+          <div class="workspace-card-head"><i data-lucide="phone"></i><h2>Call Information</h2></div>
+          <div class="workspace-side-empty">Select a lead to see calling details.</div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="outreach-lower-grid" aria-live="polite">
+      <section id="shRecentActivity" class="workspace-card">
+        <div class="workspace-card-head"><i data-lucide="history"></i><h2>Recent Activity</h2></div>
+        <div class="workspace-empty-copy">Select a lead to view recent outreach activity.</div>
+      </section>
+      <section id="shQuickNotes" class="workspace-card">
+        <div class="workspace-card-head"><i data-lucide="notebook-pen"></i><h2>Quick Notes</h2></div>
+        <div class="workspace-empty-copy">Select a lead to write a quick note.</div>
+      </section>
+    </section>
 
     <div class="outreach-controls">
       <div class="outreach-controls-skeleton" aria-hidden="true">
@@ -160,20 +189,19 @@
         <div class="sk-shape sk-phone"></div>
       </div>
     </div>
-  </main>
+  </main><div class="sh-tools-backdrop" id="shToolsBackdrop" hidden></div><aside class="sh-tools-panel" id="shToolsPanel" role="dialog" aria-modal="true" aria-label="Tasks and notifications" tabindex="-1" hidden><div class="sh-tools-head"><h2 id="shToolsTitle">My Tasks</h2><button id="shToolsClose" type="button" aria-label="Close">✕</button></div><div class="sh-tools-body" id="shToolsBody"></div></aside>
 
-  <nav class="bottom-nav">
-    <a class="nav-item active" href="index.html"><i data-lucide="phone"></i><span>Outreach</span></a>
-    <a class="nav-item" href="skills.html"><i data-lucide="chart-no-axes-column-increasing"></i><span>Skills</span></a>
-    <a class="nav-item" href="earnings.html"><i data-lucide="circle-dollar-sign"></i><span>Earnings</span></a>
-    <a class="nav-item" href="activity.html"><i data-lucide="history"></i><span>Activity</span></a>
-    <a class="nav-item" href="account.html"><i data-lucide="user-round"></i><span>Account</span></a>
-  </nav>
+  
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261005-dark-mode"></script>
 <script src="user-data.js?v=20261001-1930"></script>
-<script src="app.js?v=20261009-search-timeout-fix-v1"></script>
+<script src="app.js?v=20261011-selected-lead-v11"></script>
+<script src="leads-batch9.js?v=9" defer></script>
+<script src="queue-outreach.js?v=reliable-v1" defer></script>
+<script src="queue-star-sync.js?v=reliable-v1" defer></script>
+<script src="outreach-desktop-redesign.js?v=layout-fix-20261011" defer></script>
+<script src="outreach-tasks.js?v=1" defer></script>
 </body>
 </html>

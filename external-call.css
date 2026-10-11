@@ -1,0 +1,35 @@
+/* Regular phone option — scoped to the existing Call page */
+body.page-call .calling-mode-selector {display:flex;align-items:center;justify-content:space-between;gap:12px;grid-area:mode;min-width:0;padding:9px 14px;border-radius:14px;background:var(--card,#fff);border:1px solid var(--line,#e5eaf0)}
+body.page-call .calling-mode-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+body.page-call .calling-mode-title strong{font-size:13px}
+body.page-call .calling-mode-title span{font-size:11px;color:var(--muted,#738196)}
+body.page-call .calling-mode-options{display:flex;gap:7px;flex-wrap:wrap}
+body.page-call .calling-mode-choice{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;border:1px solid var(--line,#dbe3ed);background:var(--page,#f5f8fb);color:var(--text,#152c43);font-size:12px;font-weight:800;padding:9px 12px;cursor:pointer}
+body.page-call .calling-mode-choice[aria-pressed="true"]{background:#e5f1ff;color:#1457a2;border-color:#93bce8}
+body.page-call .calling-mode-choice svg{width:16px;height:16px;flex:none}
+body.page-call .regular-phone-panel{grid-area:external;min-width:0;display:grid;gap:13px;background:var(--card,#fff);border:1px solid var(--line,#dbe3ed);padding:17px;border-radius:17px;align-self:start}
+body.page-call .regular-phone-panel[hidden]{display:none!important}
+body.page-call .regular-phone-header{display:flex;align-items:flex-start;gap:10px}
+body.page-call .regular-phone-header>svg{width:24px;height:24px;color:#1e6fc2;flex:none}
+body.page-call .regular-phone-header strong{font-size:16px}
+body.page-call .regular-phone-header p,.regular-phone-disclaimer{margin:4px 0 0;font-size:12px;color:var(--muted,#738196);line-height:1.45}
+body.page-call .regular-phone-number{text-align:center;font-size:clamp(20px,2.1vw,29px);font-weight:900;overflow-wrap:anywhere}
+body.page-call .regular-phone-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+body.page-call .regular-phone-actions>*{display:flex;align-items:center;justify-content:center;gap:7px;min-height:45px;padding:9px 10px;border-radius:11px;font-weight:800;font-size:12px;text-align:center;cursor:pointer}
+body.page-call .regular-phone-actions svg,.regular-phone-log svg{width:18px;height:18px;flex:none}
+body.page-call .regular-phone-dial{background:#1870cc;color:white}
+body.page-call .regular-phone-secondary{background:var(--page,#f6f9fc);border:1px solid var(--line,#dbe3ed);color:var(--text,#152c43)}
+body.page-call .regular-phone-log{display:flex;justify-content:center;align-items:center;gap:8px;min-height:45px;background:#163f72;color:white;border:0;border-radius:11px;font-size:13px;font-weight:850;cursor:pointer}
+body.page-call.regular-phone-mode .call-controls,
+body.page-call.regular-phone-mode .call-transcript-section{display:none!important}
+@media(min-width:900px){
+  body.page-call .call-content{grid-template-rows:auto minmax(0,1fr) minmax(0,.9fr) auto auto auto!important;grid-template-areas:"mode mode" "identity transcript" "actions transcript" "sale transcript" "controls transcript" "script transcript"!important;overflow-y:auto!important;}
+  body.page-call.regular-phone-mode .call-content{grid-template-rows:auto auto auto auto auto!important;grid-template-areas:"mode mode" "identity external" "actions external" "sale external" "script external"!important;align-content:start;}
+}
+@media(max-width:899px){
+  body.page-call .calling-mode-selector{margin:10px 14px;flex-direction:column;align-items:stretch}
+  body.page-call .calling-mode-options>*{flex:1 1 145px}
+  body.page-call .regular-phone-panel{margin:10px 14px}
+}
+@media(max-width:450px){body.page-call .regular-phone-actions{grid-template-columns:1fr}}
+html[data-theme="dark"] body.page-call .calling-mode-choice[aria-pressed="true"]{background:#1d4d77;color:#e8f4ff;border-color:#427eaa}
