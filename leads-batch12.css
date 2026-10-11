@@ -70,3 +70,39 @@ body.page-leads main.content > #crmLeadCards {
 html[data-theme="dark"] body.page-leads main.content > .outreach-controls {
   background:var(--card,#10243b)!important;
 }
+
+
+/* Leads list: every result uses the compact card layout, even if marked selected. */
+body.page-leads #crmLeadCards .lead-card,
+body.page-leads #crmLeadCards .lead-card.selected-lead {
+  padding:12px 14px!important;
+  margin-bottom:0!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  box-shadow:0 3px 12px rgba(15,33,54,.055)!important;
+}
+body.page-leads #crmLeadCards .lead-card .lead-head {
+  min-height:0!important;
+  height:auto!important;
+  align-items:center!important;
+}
+body.page-leads #crmLeadCards .lead-card .lead-details {
+  display:none!important;
+}
+body.page-leads #crmLeadCards .lead-card .compact-lead-meta {
+  display:block!important;
+  margin-top:8px!important;
+}
+body.page-leads #crmLeadCards .lead-card .compact-call-row {
+  display:grid!important;
+  gap:5px!important;
+}
+body.page-leads #crmLeadCards .lead-card .compact-tag-row {
+  margin:0 0 6px!important;
+}
+body.page-leads #crmLeadCards .lead-card .sh-select-outreach {
+  min-height:36px;
+  margin:8px 0 0;
+  padding:8px 12px;
+}
