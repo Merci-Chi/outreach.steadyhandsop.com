@@ -2863,8 +2863,6 @@ async function crmFetchAllForPhoneSearch(client, selectedTags = [], selectedSour
       .from('crm')
       .select('id,company,name,phone,altphone,email,website,domain,notes,issue,concerns,origin,assigned,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,previewurl,sitekey,has_site_preview,state_code')
       .eq('assigned_user_id', window.steadyHandsOutreachUserId)
-      .is('lastcalled', null)
-      .neq('stage', 'notinterested')
       .range(from, from + PAGE_SIZE - 1);
 
     page = crmApplyCategoryFilters(page,selectedTags,selectedSources);
@@ -2981,8 +2979,6 @@ async function crmRunGlobalSearch() {
       .from('crm')
       .select('id,company,name,phone,altphone,email,website,domain,notes,issue,concerns,origin,assigned,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,previewurl,sitekey,has_site_preview,state_code')
       .eq('assigned_user_id', window.steadyHandsOutreachUserId)
-      .is('lastcalled', null)
-      .neq('stage', 'notinterested')
       .limit(100);
 
     if (query) {
@@ -3175,7 +3171,7 @@ async function loadApprovedPreviewCRM(options = {}) {
       throw new Error('Unable to verify employee access: ' + permissionError.message);
     }
     const canViewLeads = permission?.active === true &&
-      permission.role === 'SALES';
+      ['SALES', 'ADMIN'].includes(String(permission.role || '').trim().toUpperCase());
     if (!canViewLeads) {
       status.style.display = '';
       status.textContent = "You currently don't have access to view the leads. Please contact your administrator.";
@@ -3209,7 +3205,7 @@ async function loadApprovedPreviewCRM(options = {}) {
     console.error('Authentication check failed:', error);
     finishInitialOutreachLoad();
     status.style.display = '';
-    status.textContent = 'Unable to connect. Please try again.';
+    status.textContent = 'Unable to verify Outreach access: ' + String(error?.message || 'Please sign in again.');
     return;
   }
 
