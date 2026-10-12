@@ -15,7 +15,7 @@
 
   <link rel="stylesheet" href="styles.css?v=20261012-my-leads" />
   <link rel="stylesheet" href="sidebar.css?v=batch2" />
-  <link rel="stylesheet" href="my-leads.css?v=20261012-modal-fit-v5" />
+  <link rel="stylesheet" href="my-leads.css?v=20261012-readable-scroll-v2" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
@@ -85,9 +85,9 @@
 
       <section class="my-table-card">
         <div class="my-table-topbar">
-          <button type="button" class="table-filter-button" id="openFiltersBtn">
+          <button type="button" class="table-filter-button" id="openFiltersBtn" aria-label="Sort and filter leads" title="Sort and filter leads">
             <i data-lucide="sliders-horizontal"></i>
-            <span>Filters</span>
+            <span>Sort &amp; Filter</span>
             <span id="filterBadge" class="table-filter-count" hidden></span>
             <i data-lucide="chevron-down"></i>
           </button>
@@ -133,36 +133,31 @@
                   </button>
                 </th>
                 <th class="col-tags">
-                  <button type="button" class="header-pill filter-pill" id="headerTagsBtn">
+                  <button type="button" class="header-pill filter-pill" id="headerTagsBtn" aria-label="Filter tags" title="Filter tags">
                     <i data-lucide="tag"></i>
                     <span>Tags</span>
                     <i data-lucide="chevron-down"></i>
                   </button>
                 </th>
                 <th class="col-source">
-                  <button type="button" class="header-pill filter-pill" id="headerSourcesBtn">
+                  <button type="button" class="header-pill filter-pill" id="headerSourcesBtn" aria-label="Filter sources" title="Filter sources">
                     <i data-lucide="share-2"></i>
                     <span>Source</span>
                     <i data-lucide="chevron-down"></i>
                   </button>
                 </th>
                 <th class="col-stage">
-                  <button type="button" class="header-pill filter-pill" id="headerStageBtn" aria-haspopup="dialog" aria-controls="stageModal">
+                  <button type="button" class="header-pill filter-pill" id="headerStageBtn" aria-label="Filter stages" title="Filter stages" aria-haspopup="dialog" aria-controls="stageModal">
                     <i data-lucide="chart-column"></i>
                     <span>Stage</span>
                     <i data-lucide="chevron-down"></i>
-                  </button>
-                </th>
-                <th class="col-actions">
-                  <button type="button" class="header-pill header-actions" aria-label="Actions column">
-                    <i data-lucide="ellipsis"></i>
                   </button>
                 </th>
               </tr>
             </thead>
             <tbody id="myLeadsTableBody">
               <tr>
-                <td colspan="9" class="table-loading-row">Loading assigned leads…</td>
+                <td colspan="8" class="table-loading-row">Loading assigned leads…</td>
               </tr>
             </tbody>
           </table>
@@ -181,27 +176,22 @@
   <section class="ml-modal" id="filtersModal" hidden aria-hidden="true" aria-labelledby="filtersTitle">
     <div class="ml-modal-card">
       <div class="ml-modal-head">
-        <div>
-          <h2 id="filtersTitle">Filters</h2>
-          <p>Filter your assigned leads.</p>
-        </div>
-        <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
+        <div><h2 id="filtersTitle">Sort &amp; Filter</h2><p>Organize your assigned leads.</p></div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <div class="ml-modal-body filter-stack">
-        <div class="filter-group">
-          <label class="filter-label">Stage</label>
-          <p class="filter-help">Choose one or more stages, or use the Stage column header.</p>
-          <div id="stageOptionGrid" class="modal-chip-grid"></div>
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Currently applied</label>
-          <p class="filter-help" id="activeFilterSummary">No filters applied</p>
-        </div>
+      <div class="ml-modal-body ml-sort-filter-body">
+        <div class="ml-sort-section"><h3>Sort by</h3><div class="ml-sort-grid" id="leadSortChoices">
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="newest" checked><i data-lucide="arrow-down-wide-narrow"></i><span>Newest First</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="oldest"><i data-lucide="arrow-up-wide-narrow"></i><span>Oldest First</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="az"><i data-lucide="arrow-down-a-z"></i><span>Alphabetical A–Z</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="za"><i data-lucide="arrow-up-z-a"></i><span>Alphabetical Z–A</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="recent"><i data-lucide="clock-3"></i><span>Recently Contacted</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+          <label class="ml-sort-card"><input type="radio" name="leadSort" value="least"><i data-lucide="phone"></i><span>Least Recently Contacted</span><i class="ml-choice-check" data-lucide="check-circle-2"></i></label>
+        </div></div>
+        <div class="ml-sort-section"><h3>Contact status</h3><div class="ml-filter-radio-row"><label><input type="radio" name="leadContact" value="all" checked> All leads</label><label><input type="radio" name="leadContact" value="never"> Never contacted</label><label><input type="radio" name="leadContact" value="called"> Previously contacted</label></div></div>
+        <div class="ml-sort-section"><h3>Site preview</h3><div class="ml-filter-radio-row"><label><input type="radio" name="leadPreview" value="all" checked> All</label><label><input type="radio" name="leadPreview" value="yes"> Has site preview</label><label><input type="radio" name="leadPreview" value="no"> No site preview</label></div></div>
       </div>
-      <div class="ml-modal-foot">
-        <button type="button" class="modal-btn secondary" data-clear="all">Clear All</button>
-        <button type="button" class="modal-btn primary" data-apply-modal="filters">Apply Filters</button>
-      </div>
+      <div class="ml-modal-foot"><button type="button" class="modal-btn secondary" id="resetSortFilters">Reset</button><button type="button" class="modal-btn primary" id="applySortFilters">Apply Filters</button></div>
     </div>
   </section>
 
@@ -276,6 +266,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="auth-guard.js?v=20261005-dark-mode"></script>
   <script src="preview-resolver.js?v=20261012-unified"></script>
-<script src="my-leads.js?v=20261012-modal-fit-v5" defer></script>
+<script src="my-leads.js?v=20261012-queue-icons-v1" defer></script>
 </body>
 </html>

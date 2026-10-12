@@ -475,3 +475,173 @@ body.page-my-leads .ml-tag-color-total{font-weight:650;font-size:11px;color:#859
 body.page-my-leads .ml-tag-color-items{display:flex;flex-wrap:wrap;gap:9px 10px;min-width:0;}
 body.page-my-leads .ml-tag-color-items .modal-option{flex:0 1 auto;min-width:0;}
 html[data-theme="dark"] body.page-my-leads .ml-tag-color-heading{color:#d9e7fa;}
+
+/* Accessible lead action popup and consistent selection controls */
+body.page-my-leads.ml-actions-open{overflow:hidden}
+body.page-my-leads .ml-action-overlay{position:fixed;inset:0;z-index:2147483010;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(12,29,49,.56);backdrop-filter:blur(4px)}
+body.page-my-leads .ml-action-dialog{width:min(440px,100%);max-height:calc(100dvh - 40px);overflow:auto;border-radius:22px;background:#fff;box-shadow:0 25px 85px rgba(9,26,50,.3);padding:24px;outline:none}
+body.page-my-leads .ml-action-dialog-head{display:flex;justify-content:space-between;gap:14px;align-items:start;margin-bottom:18px}
+body.page-my-leads .ml-action-eyebrow{font-size:11px;letter-spacing:.13em;font-weight:800;color:#1682f5}
+body.page-my-leads .ml-action-dialog h2{font-size:22px;line-height:1.2;margin:7px 0;color:#142845;overflow-wrap:anywhere}
+body.page-my-leads .ml-action-dialog p{margin:0;color:#687d97;font-weight:600;font-size:13px}
+body.page-my-leads .ml-action-close{flex-shrink:0;border:1px solid #d9e5f2;background:#f5f8fc;border-radius:12px;width:38px;height:38px;display:grid;place-items:center;cursor:pointer}
+body.page-my-leads .ml-action-dialog-buttons{display:grid;gap:10px}
+body.page-my-leads .ml-action-dialog-buttons button{display:flex;align-items:center;gap:13px;padding:15px;border:1px solid #dde8f5;border-radius:14px;background:#f9fbfe;color:#17395e;text-align:left;font-weight:750;font-size:14px;cursor:pointer}
+body.page-my-leads .ml-action-dialog-buttons button:hover,body.page-my-leads .ml-action-dialog-buttons button:focus-visible{background:#eaf4ff;border-color:#70b2ff}
+body.page-my-leads .ml-action-dialog-buttons button span{flex:1}
+body.page-my-leads .ml-action-dialog-buttons svg{width:19px;height:19px;flex-shrink:0}
+body.page-my-leads .row-action-btn svg{height:18px;width:18px}
+body.page-my-leads .table-check{width:21px!important;height:21px!important;min-width:21px;border-radius:7px!important;border:2px solid #96aac4!important;appearance:none!important;-webkit-appearance:none!important;display:block!important;margin:0 auto!important;cursor:pointer;position:relative!important;background:#fff}
+body.page-my-leads .table-check:checked{background:#216bff!important;border-color:#216bff!important}
+body.page-my-leads .table-check:checked::after{content:""!important;display:block!important;position:absolute!important;left:5px!important;top:1px!important;width:6px!important;height:11px!important;border:solid white!important;border-width:0 2.5px 2.5px 0!important;transform:rotate(45deg)!important}
+body.page-my-leads .checkbox-shell{border-radius:6px!important;width:19px!important;height:19px!important;flex-shrink:0!important}
+body.page-my-leads .checkbox-shell.is-checked{background:#216bff;border-color:#216bff}
+body.page-my-leads .checkbox-shell.is-checked::after{border-color:#fff!important;left:5px!important;top:1px!important;width:5px!important;height:10px!important;border-width:0 2px 2px 0!important}
+html[data-theme="dark"] body.page-my-leads .ml-action-dialog{background:#11243b}
+html[data-theme="dark"] body.page-my-leads .ml-action-dialog h2{color:#ecf5ff}
+html[data-theme="dark"] body.page-my-leads .ml-action-dialog-buttons button{background:#17304c;border-color:#31506d;color:#ecf5ff}
+
+/* Improved selection/actions alignment and row highlighting */
+body.page-my-leads .ml-row-controls{display:flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap}
+body.page-my-leads .ml-row-controls .table-check{flex:0 0 21px;margin:0!important}
+body.page-my-leads .ml-row-controls .row-action-btn{width:32px;height:32px;flex:0 0 32px;border-color:#d5e3f3;background:#f5f9ff;color:#215fae}
+body.page-my-leads .ml-row-controls .row-action-btn:hover{background:#dfeeff;border-color:#8cbaf5;color:#075ace}
+body.page-my-leads .my-leads-table tbody tr:has(.table-check:checked) td{background:#edf5ff!important}
+body.page-my-leads .my-leads-table thead th:first-child,body.page-my-leads .my-leads-table tbody td:first-child{width:99px!important;min-width:99px!important}
+body.page-my-leads .ml-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+body.page-my-leads .ml-details-grid>div{padding:12px;border-radius:12px;background:#f5f8fd;min-width:0}
+body.page-my-leads .ml-details-grid small{display:block;color:#6b7d97;font-size:11px;margin-bottom:5px}
+body.page-my-leads .ml-details-grid strong{display:block;color:#142845;font-size:13px;overflow-wrap:anywhere}
+body.page-my-leads .ml-dialog-back{margin-top:8px}
+body.page-my-leads .ml-queue-message{font-size:12px;color:#536b89;line-height:1.5}
+body.page-my-leads .ml-queue-link{display:block;text-align:center;padding:12px;border-radius:12px;background:#e8f2ff;color:#1263c5;font-weight:800}
+body.page-my-leads .ml-action-dialog-buttons button:disabled{opacity:.65;cursor:wait}
+@media(max-width:899px){
+ body.page-my-leads .table-filter-button{min-width:40px;width:40px;justify-content:center;padding:6px!important;position:relative}
+ body.page-my-leads .table-filter-button>span:not(.table-filter-count),body.page-my-leads .table-filter-button>svg:last-child{display:none}
+ body.page-my-leads .table-filter-count{position:absolute;right:-6px;top:-7px;min-width:16px;height:16px;font-size:10px}
+ body.page-my-leads .my-leads-table .filter-pill{width:38px;min-height:38px;padding:7px;justify-content:center;margin:auto}
+ body.page-my-leads .my-leads-table .filter-pill>span,body.page-my-leads .my-leads-table .filter-pill>svg:last-child{display:none}
+ body.page-my-leads .my-leads-table .filter-pill>svg:first-child{width:19px;height:19px}
+ body.page-my-leads .my-leads-table thead th.col-tags,body.page-my-leads .my-leads-table thead th.col-source,body.page-my-leads .my-leads-table thead th.col-stage{width:54px;min-width:54px;padding-left:5px;padding-right:5px}
+ body.page-my-leads .ml-action-dialog{padding:19px}
+ body.page-my-leads .ml-details-grid{grid-template-columns:1fr}
+}
+html[data-theme="dark"] body.page-my-leads .ml-details-grid>div{background:#1b3450}
+html[data-theme="dark"] body.page-my-leads .ml-details-grid strong{color:#eff6ff}
+
+body.page-my-leads .my-leads-table tbody tr[data-row-id]{cursor:pointer}
+body.page-my-leads .my-leads-table tbody tr[data-row-id] button,body.page-my-leads .my-leads-table tbody tr[data-row-id] input{cursor:pointer}
+
+/* 2026-10-12: Readable, horizontally scrollable leads columns.
+   Overrides the earlier desktop rules that forced all columns into 100%. */
+body.page-my-leads .my-table-card { min-width:0; max-width:100%; }
+body.page-my-leads .my-table-scroller {
+  width:100%!important; max-width:100%!important;
+  overflow-x:auto!important; overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+body.page-my-leads .my-leads-table {
+  width:100%!important; min-width:1260px!important;
+  max-width:none!important; table-layout:fixed!important;
+}
+body.page-my-leads .my-leads-table thead th {
+  min-width:unset!important; padding:7px 8px!important;
+  box-sizing:border-box;
+}
+body.page-my-leads .my-leads-table tbody td {
+  padding:10px 9px!important; overflow-wrap:normal!important;
+}
+body.page-my-leads .my-leads-table th.col-select,
+body.page-my-leads .my-leads-table td:first-child {width:104px!important;min-width:104px!important}
+body.page-my-leads .my-leads-table .col-company {width:215px!important}
+body.page-my-leads .my-leads-table .col-contact {width:155px!important}
+body.page-my-leads .my-leads-table .col-phone {width:170px!important}
+body.page-my-leads .my-leads-table .col-location {width:205px!important}
+body.page-my-leads .my-leads-table .col-tags {width:145px!important}
+body.page-my-leads .my-leads-table .col-source {width:135px!important}
+body.page-my-leads .my-leads-table .col-stage {width:131px!important}
+body.page-my-leads .my-leads-table .header-pill {
+  box-sizing:border-box; min-width:0!important; width:100%!important;
+  padding:0 9px!important; gap:7px!important;
+  font-size:12px!important; letter-spacing:0!important;
+  white-space:nowrap!important; overflow:hidden;
+}
+body.page-my-leads .my-leads-table .header-pill > span:not(.sort-pair):not(.checkbox-shell) {
+  white-space:nowrap!important; line-height:1.2!important;
+  flex:0 1 auto; min-width:0; text-align:left;
+}
+body.page-my-leads .my-leads-table .header-pill svg {width:15px!important;height:15px!important;flex-shrink:0}
+body.page-my-leads .my-leads-table .sort-pair {margin-left:auto;flex-shrink:0}
+body.page-my-leads .my-leads-table .data-pill {white-space:nowrap!important;max-width:100%;font-size:11px}
+body.page-my-leads .my-leads-table .company-name,
+body.page-my-leads .my-leads-table .contact-name,
+body.page-my-leads .my-leads-table .phone-main,
+body.page-my-leads .my-leads-table .location-main {font-size:13px!important;overflow-wrap:anywhere}
+@media (max-width:899px){
+ body.page-my-leads .my-leads-table {min-width:1260px!important}
+ body.page-my-leads .my-leads-table .filter-pill {width:100%!important;min-height:38px}
+ body.page-my-leads .my-leads-table .filter-pill>span {display:inline!important}
+ body.page-my-leads .my-leads-table .filter-pill>svg:last-child {display:block!important}
+}
+
+/* Compact Sort & Filter modal */
+body.page-my-leads #filtersModal .ml-modal-card{width:min(760px,100%)!important}
+body.page-my-leads #filtersModal .ml-sort-filter-body{padding:12px 24px 18px;display:flex;flex-direction:column;gap:16px}
+body.page-my-leads #filtersModal .ml-sort-section h3{margin:0 0 10px;color:#17365e;font-size:14px;font-weight:800}
+body.page-my-leads #filtersModal .ml-sort-section+.ml-sort-section{border-top:1px solid #e5ebf4;padding-top:14px}
+body.page-my-leads #filtersModal .ml-sort-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+body.page-my-leads #filtersModal .ml-sort-card{min-width:0;display:flex;align-items:center;gap:10px;padding:12px;border:1.5px solid #dce6f2;border-radius:12px;color:#17365e;font-weight:750;font-size:13px;cursor:pointer}
+body.page-my-leads #filtersModal .ml-sort-card input{position:absolute;opacity:0;width:1px;height:1px}
+body.page-my-leads #filtersModal .ml-sort-card>svg:first-of-type{width:20px;height:20px;color:#2379df;flex-shrink:0}
+body.page-my-leads #filtersModal .ml-sort-card span{min-width:0;flex:1}
+body.page-my-leads #filtersModal .ml-choice-check{width:17px;height:17px;flex-shrink:0;opacity:0;color:#1676fc}
+body.page-my-leads #filtersModal .ml-sort-card:has(input:checked){border-color:#247bff;background:#eef6ff}
+body.page-my-leads #filtersModal .ml-sort-card:has(input:checked) .ml-choice-check{opacity:1}
+body.page-my-leads #filtersModal .ml-sort-card:has(input:focus-visible){outline:2px solid #247bff;outline-offset:2px}
+body.page-my-leads #filtersModal .ml-filter-radio-row{display:flex;flex-wrap:wrap;gap:12px 22px}
+body.page-my-leads #filtersModal .ml-filter-radio-row label{display:flex;align-items:center;gap:7px;color:#284366;font-size:13px;font-weight:650;cursor:pointer}
+body.page-my-leads #filtersModal input[type=radio]{accent-color:#247bff}
+@media(max-width:550px){body.page-my-leads #filtersModal .ml-sort-filter-body{padding:12px 16px}body.page-my-leads #filtersModal .ml-sort-grid{gap:7px}body.page-my-leads #filtersModal .ml-sort-card{padding:10px 8px;gap:7px;font-size:12px}}
+
+/* My Leads visual theme: match the bright-blue Outreach buttons.
+   Presentation-only overrides; filters, table and data behavior are unchanged. */
+body.page-my-leads .my-stat-card {
+  background:#087cff!important;
+  border:1px solid #087cff!important;
+  color:#fff!important;
+  box-shadow:none;
+  border-radius:13px;
+}
+body.page-my-leads .my-stat-card strong,
+body.page-my-leads .my-stat-card span,
+html[data-theme="dark"] body.page-my-leads .my-stat-card strong,
+html[data-theme="dark"] body.page-my-leads .my-stat-card span {
+  color:#fff!important;
+}
+body.page-my-leads .my-stat-card .my-stat-icon,
+body.page-my-leads .my-stat-card .my-stat-icon.blue,
+body.page-my-leads .my-stat-card .my-stat-icon.sky,
+body.page-my-leads .my-stat-card .my-stat-icon.green,
+body.page-my-leads .my-stat-card .my-stat-icon.purple {
+  color:#fff!important;
+  background:rgba(255,255,255,.16)!important;
+  border-radius:11px;
+}
+body.page-my-leads .my-stat-icon svg {stroke:currentColor;}
+body.page-my-leads .table-filter-button,
+html[data-theme="dark"] body.page-my-leads .table-filter-button {
+  background:#087cff!important;
+  border-color:#087cff!important;
+  color:#fff!important;
+  border-radius:11px;
+}
+body.page-my-leads .table-filter-button svg {color:#fff!important;stroke:currentColor;}
+body.page-my-leads .table-filter-button:hover {background:#006be3!important;border-color:#006be3!important;}
+body.page-my-leads .table-filter-button.is-active {background:#066bde!important;border-color:#066bde!important;color:#fff!important;}
+body.page-my-leads .table-filter-button:focus-visible {outline:3px solid #9acaff;outline-offset:2px;}
+/* The On This Page value is intentionally shown without an info badge. */
+body.page-my-leads #statOnPage ~ .info-icon,
+body.page-my-leads #statOnPage ~ .info-circle,
+body.page-my-leads #statOnPage ~ [data-lucide="info"] {display:none!important;}

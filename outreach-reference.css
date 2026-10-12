@@ -294,3 +294,8 @@ body.page-outreach .ref-regular-call-actions #refRegularDidNotCall{border-color:
 .ref-tools-dialog footer button{cursor:pointer;border:1px solid #cddcec;background:#fff;color:#17345b;padding:10px 14px;border-radius:9px;font-weight:700;}
 .ref-tools-dialog footer button.ref-tools-confirm{background:#087efa;color:white;border-color:#087efa;}
 .ref-tools-dialog .ref-tool-help{font-size:12px;color:#7584a5;}
+
+/* Solid calling-status dots, no glow or halo. */
+body.page-outreach .ref-status .ref-green-dot,
+body.page-outreach .ref-status .ref-green-dot.ref-red-dot,
+body.page-outreach .ref-status .ref-green-dot.ref-neutral-dot { box-shadow:none !important; filter:none !important; animation:none !important; }

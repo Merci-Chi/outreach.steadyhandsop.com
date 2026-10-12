@@ -24,8 +24,9 @@
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
   <script src="sidebar.js?v=batch2" defer></script>
-<link rel="stylesheet" href="outreach-reference.css?v=1" />
+<link rel="stylesheet" href="outreach-reference.css?v=solid-status-20261012" />
 <link rel="stylesheet" href="outreach-tools.css?v=integration-2">
+<link rel="stylesheet" href="starter-scripts.css?v=2">
 </head>
 <body class="page-outreach">
 <div class="app">
@@ -53,12 +54,18 @@
       <button type="button" data-ref-tool="alerts"><i data-lucide="bell"></i><span>Alerts</span></button>
       <button type="button" data-ref-tool="tags"><i data-lucide="tag"></i><span>Tags</span></button>
       <button type="button" data-ref-tool="notes"><i data-lucide="notebook-pen"></i><span>Notes</span></button>
+      <button type="button" id="shOpenScripts" aria-haspopup="dialog"><i data-lucide="scroll-text"></i><span>Scripts</span></button>
       <button type="button" data-ref-tool="preview"><i data-lucide="send"></i><span>Send Site<br>Preview</span></button>
-      <button type="button" data-ref-tool="templates"><i data-lucide="messages-square"></i><span>Templates</span></button>
       <button type="button" data-ref-tool="quick"><i data-lucide="circle-dollar-sign"></i><span>Quick Info</span></button>
       <button type="button" data-ref-tool="calendar"><i data-lucide="calendar-plus"></i><span>Add to<br>Calendar</span></button>
     </div>
     <p class="ref-message" id="refMessage" role="status" aria-live="polite"></p>
+    <section class="sh-starter-card" aria-label="Starter calling scripts">
+      <div class="sh-starter-top"><div><span class="sh-starter-eyebrow">STARTER SCRIPT</span><h2>Choose what fits this lead</h2></div><button id="shStarterCopy" class="sh-starter-copy" type="button" aria-label="Copy starter script" title="Copy script"><i data-lucide="copy"></i></button></div>
+      <div class="sh-starter-tabs" role="group" aria-label="Script type"><button type="button" class="is-active" data-starter="no-site" aria-pressed="true">No Site</button><button type="button" data-starter="broken" aria-pressed="false">Broken Site</button><button type="button" data-starter="old" aria-pressed="false">Old Site</button><button type="button" data-starter="spanish" aria-pressed="false">Spanish</button></div>
+      <p id="shStarterText" class="sh-starter-text" aria-live="polite"></p><span id="shStarterStatus" class="sh-starter-status" role="status" aria-live="polite"></span>
+    </section>
+
   </main>
   <div id="referenceLegacy" class="reference-legacy" aria-hidden="true"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
     <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
@@ -231,8 +238,9 @@
 <script src="queue-star-sync.js?v=reliable-v1" defer></script>
 <script src="outreach-desktop-redesign.js?v=layout-fix-20261011" defer></script>
 <script src="outreach-tasks.js?v=1" defer></script>
-<script src="outreach-reference.js?v=20261012-stage-popup-fix1" defer></script>
+<script src="outreach-reference.js?v=hours-sync-20261012" defer></script>
 <script src="outreach-tools.js?v=integration-2" defer></script>
+<script src="starter-scripts.js?v=3" defer></script>
 <script src="outreach-postcall.js?v=integration-2" defer></script>
 </body>
 </html>

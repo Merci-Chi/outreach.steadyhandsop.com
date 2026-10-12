@@ -189,7 +189,18 @@ if(key==='notes'){const el=$('#workspaceQuickNotesInput');if(el){el.focus();el.s
 if(key==='quick'){const pane=$('#shCallInfo');if(pane){pane.scrollIntoView({behavior:'smooth'});tell('Lead details shown in Call Information.');return;}}
 const b=c.querySelector('.call-btn[data-select-lead]');if(b){b.click();return;}tell('Open the call workspace to use this tool.');}
 function timeZone(c){const raw=c?.dataset.timezone||'';if(raw.includes('/'))return raw;const z=raw.toLowerCase();if(z.includes('pacific')||z==='pst'||z==='pdt')return 'America/Los_Angeles';if(z.includes('mountain')||z==='mst'||z==='mdt')return 'America/Denver';if(z.includes('central')||z==='cst'||z==='cdt')return 'America/Chicago';if(z.includes('eastern')||z==='est'||z==='edt')return 'America/New_York';return ''}
-function clock(){const c=card(),el=$('#refLocalTime');if(!el)return;if(!c){el.textContent='Local time unavailable';return;}const zone=timeZone(c)||(!c&&document.querySelector('.ref-active-panel')?timeZone({dataset:{timezone:new URLSearchParams(location.search).get('timezone')||''}}):'');if(!zone){el.textContent=c.querySelector('.compact-local-time')?.textContent?.trim()||'Local time unavailable';return;}try{el.textContent=new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long',hour:'numeric',minute:'2-digit'}).format(new Date());}catch{el.textContent='Local time unavailable';}}
+function resolvedZone(c){
+  const explicit=timeZone(c);
+  if(explicit)return explicit;
+  const number=c?.querySelector('.contact-line span')?.textContent?.trim()||'';
+  if(typeof callcenterLeadZone==='function' && number){
+    try{return callcenterLeadZone(number,c?.dataset.timezone||'').zone||'';}catch{}
+  }
+  const label=c?.querySelector('.compact-local-time')?.textContent||'';
+  const match=label.match(/(Pacific|Arizona|Mountain|Central|Eastern|Alaska|Hawaii) Time/i);
+  return match?({'pacific':'America/Los_Angeles','arizona':'America/Phoenix','mountain':'America/Denver','central':'America/Chicago','eastern':'America/New_York','alaska':'America/Anchorage','hawaii':'Pacific/Honolulu'}[match[1].toLowerCase()]||''):'';
+}
+function clock(){const c=card(),el=$('#refLocalTime');if(!el)return;if(!c){el.textContent='Local time unavailable';return;}const zone=resolvedZone(c)||(!c&&document.querySelector('.ref-active-panel')?timeZone({dataset:{timezone:new URLSearchParams(location.search).get('timezone')||''}}):'');if(!zone){el.textContent=c.querySelector('.compact-local-time')?.textContent?.trim()||'Local time unavailable';return;}try{el.textContent=new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long',hour:'numeric',minute:'2-digit'}).format(new Date());}catch{el.textContent='Local time unavailable';}}
 async function attempts(id){$('#refAttempts').textContent='—';const client=window.steadyHandsCRMClient;if(!client||!id)return;try{const {count,error}=await client.from('callcenter_call_activity').select('*',{count:'exact',head:true}).eq('crm_id',id);if(!error&&activeId===id)$('#refAttempts').textContent=String(count||0);}catch{}}
 function update(){
  const callPage=!!document.querySelector('.ref-active-panel');
@@ -212,7 +223,7 @@ function update(){
  }else{
   $('#refCompany').textContent=company||'Prospect';
   $('#refPhone').textContent=phone;
-  const zone=lead?timeZone(lead.c):timeZone({dataset:{timezone:params.get('timezone')||''}});
+  const zone=lead?resolvedZone(lead.c):timeZone({dataset:{timezone:params.get('timezone')||''}});
   const withinHours=recommendedCallStatus(lead?.c,zone);
   $('#refStatus').textContent=withinHours===false?'Outside of recommended calling hours':withinHours===true?'Ready to call':'Calling hours unavailable';
  }

@@ -35,13 +35,19 @@
   }
   function clock() {
     const el = $('#refLocalTime'); if (!el) return;
-    const tz = zone();
+    let tz = zone();
+    if (!tz && lead.number && typeof callcenterLeadZone === 'function') {
+      try { tz = callcenterLeadZone(lead.number,lead.timezone).zone || ''; } catch (_) {}
+    }
     if (!tz) { el.textContent = 'Local time unavailable'; return; }
     try { el.textContent = new Intl.DateTimeFormat('en-US', { timeZone:tz, weekday:'long',hour:'numeric',minute:'2-digit',timeZoneName:'short' }).format(new Date()); }
     catch (_) { el.textContent = 'Local time unavailable'; }
   }
   function callingWindow() {
-    const tz = zone();
+    let tz = zone();
+    if (!tz && lead.number && typeof callcenterLeadZone === 'function') {
+      try { tz = callcenterLeadZone(lead.number,lead.timezone).zone || ''; } catch (_) {}
+    }
     if (!tz) return null;
     try {
       const parts = new Intl.DateTimeFormat('en-US', {

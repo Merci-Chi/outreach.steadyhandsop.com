@@ -30,7 +30,9 @@
     total: 0,
     matching: 0,
     followups: 0,
-    sort: 'company',
+    sort: 'newest',
+    contactFilter: 'all',
+    previewFilter: 'all',
     desc: false,
     query: '',
     rows: [],
@@ -46,6 +48,13 @@
     sourceMode: 'AND',
     stageMode: 'OR'
   };
+
+  try {
+    const saved=JSON.parse(localStorage.getItem('steadyhands-my-leads-sort-filter')||'{}');
+    if(['newest','oldest','az','za','recent','least'].includes(saved.sort)) state.sort=saved.sort;
+    if(['all','never','called'].includes(saved.contact)) state.contactFilter=saved.contact;
+    if(['all','yes','no'].includes(saved.preview)) state.previewFilter=saved.preview;
+  }catch(e){}
 
   let client = null;
   let searchTimer = null;
@@ -203,7 +212,7 @@
     return `
       <tr data-row-id="${htmlEscape(id)}">
         <td>
-          <input class="table-check" type="checkbox" ${state.selectedRows.has(id) ? 'checked' : ''} data-select-row="${htmlEscape(id)}" />
+          <div class="ml-row-controls"><input class="table-check" type="checkbox" aria-label="Select ${htmlEscape(company)}" ${state.selectedRows.has(id) ? 'checked' : ''} data-select-row="${htmlEscape(id)}" /><button type="button" class="row-action-btn" data-open-menu="${htmlEscape(id)}" aria-label="Actions for ${htmlEscape(company)}" title="Lead actions"><i data-lucide="arrow-right"></i></button></div>
         </td>
         <td>
           <div class="company-cell">
@@ -241,40 +250,43 @@
             <span class="data-pill ${colorClassForLabel(stage)}">${htmlEscape(stage)}</span>
           </div>
         </td>
-        <td>
-          <div class="row-actions">
-            <button type="button" class="row-action-btn" data-open-menu="${htmlEscape(id)}" aria-label="Open row actions">
-              <i data-lucide="ellipsis"></i>
-            </button>
-            <div class="row-menu" id="menu-${htmlEscape(id)}">
-              <button type="button" data-action="select" data-id="${htmlEscape(id)}">Open Call Workspace</button>
-              <button type="button" data-action="preview" data-id="${htmlEscape(id)}">View Site Preview</button>
-              <button type="button" data-action="details" data-id="${htmlEscape(id)}">View Details</button>
-            </div>
-          </div>
-        </td>
       </tr>
     `;
   }
 
+  function hasContact(row) {
+    return !!(row.lastcalled || row.callbackat || row.outcome && String(row.outcome).trim() && !['notstarted','not_started','new'].includes(String(row.outcome).toLowerCase()));
+  }
+
+  function hasPreview(row) { return !!(String(row.previewurl || '').trim() || String(row.sitekey || '').trim()); }
+
+  function createdValue(row) {
+    const date = Date.parse(row.created_at || row.createdat || row.assigned_at || '');
+    return Number.isFinite(date) ? date : null;
+  }
+
   function applyClientSort(rows) {
     const sorted = [...rows];
-    const getValue = row => {
+    const name = row => String(row.company || row.business_name || row.business || '').toLowerCase();
+    const contactTime = row => {const t=Date.parse(row.lastcalled || '');return Number.isFinite(t)?t:0;};
+    sorted.sort((a,b) => {
       switch (state.sort) {
-        case 'contact': return row.contact_name || row.name || '';
-        case 'phone': return row.phone || row.email || '';
-        case 'location': return `${row.city || row.location || ''} ${row.state_code || row.state || ''}`;
-        case 'stage': return row.stage || 'New';
-        case 'company':
-        default: return row.company || row.business_name || row.business || '';
+        case 'newest': case 'oldest': {
+          const av=createdValue(a),bv=createdValue(b);
+          // Fallback to the server's ID ordering when a creation date isn't supplied.
+          const diff=av!==null&&bv!==null ? av-bv : String(a.id||'').localeCompare(String(b.id||''),undefined,{numeric:true});
+          return (state.sort==='newest'?-diff:diff);
+        }
+        case 'recent': return contactTime(b)-contactTime(a) || name(a).localeCompare(name(b));
+        case 'least': return contactTime(a)-contactTime(b) || name(a).localeCompare(name(b));
+        case 'az': return name(a).localeCompare(name(b));
+        case 'za': return name(b).localeCompare(name(a));
+        default: {
+          const getValue = row => state.sort==='contact' ? row.contact_name||row.name||'' : state.sort==='phone' ? row.phone||row.email||'' : state.sort==='location' ? `${row.city||row.location||''} ${row.state_code||row.state||''}` : state.sort==='stage' ? row.stage||'New' : name(row);
+          const v=String(getValue(a)).localeCompare(String(getValue(b)),undefined,{numeric:true});
+          return state.desc?-v:v;
+        }
       }
-    };
-    sorted.sort((a, b) => {
-      const av = String(getValue(a) || '').toLowerCase();
-      const bv = String(getValue(b) || '').toLowerCase();
-      if (av < bv) return state.desc ? 1 : -1;
-      if (av > bv) return state.desc ? -1 : 1;
-      return 0;
     });
     return sorted;
   }
@@ -476,7 +488,7 @@
     $('#headerTagsBtn')?.classList.toggle('is-active', !!state.tags.length);
     $('#openSourcesBtn')?.classList.toggle('is-active', !!state.sources.length);
     $('#headerSourcesBtn')?.classList.toggle('is-active', !!state.sources.length);
-    const activeCount = state.stages.length + state.tags.length + state.sources.length;
+    const activeCount = state.stages.length + state.tags.length + state.sources.length + (state.contactFilter !== 'all' ? 1 : 0) + (state.previewFilter !== 'all' ? 1 : 0) + (state.sort !== 'newest' ? 1 : 0);
     $('#openFiltersBtn')?.classList.toggle('is-active', !!activeCount);
     $('#headerStageBtn')?.classList.toggle('is-active', !!state.stages.length);
     const filterBadge = $('#filterBadge');
@@ -510,9 +522,15 @@
     if (!userId) throw new Error('Please sign in to view your assigned leads.');
     const all = [];
     for (let offset = 0; offset < 50000; offset += 1000) {
-      const { data, error } = await client.from('crm')
-        .select('id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
+      const columns = 'id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id';
+      // Support CRM schemas both with and without a created_at timestamp.
+      let response = await client.from('crm').select(columns + ',created_at')
         .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);
+      if (response.error && /created_at|column.*not.*exist|schema cache/i.test(response.error.message || '')) {
+        response = await client.from('crm').select(columns)
+          .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);
+      }
+      const { data, error } = response;
       if (error) throw error;
       all.push(...(data || []));
       if (!data || data.length < 1000) break;
@@ -534,6 +552,10 @@
       const stageChoices = state.stages.map(normalizeStage);
       if (stageChoices.length && !stageChoices.includes(stage)) return false;
       if (stage === 'follow_up' && state.followupCategories.length && !state.followupCategories.some(c => String(c).toLowerCase() === String(row.follow_up_category || '').toLowerCase())) return false;
+      if (state.contactFilter === 'never' && hasContact(row)) return false;
+      if (state.contactFilter === 'called' && !hasContact(row)) return false;
+      if (state.previewFilter === 'yes' && !hasPreview(row)) return false;
+      if (state.previewFilter === 'no' && hasPreview(row)) return false;
       return true;
     });
   }
@@ -682,30 +704,113 @@
     });
 
     $$('[data-open-menu]').forEach(btn => {
-      btn.addEventListener('click', event => {
-        event.stopPropagation();
-        const id = btn.dataset.openMenu;
-        const menu = $(`#menu-${CSS.escape(id)}`);
-        const isOpen = menu?.classList.contains('is-open');
-        $$('.row-menu.is-open').forEach(m => m.classList.remove('is-open'));
-        if (menu && !isOpen) menu.classList.add('is-open');
+      btn.addEventListener('click', () => openLeadActions(btn.dataset.openMenu));
+    });
+    $$('tr[data-row-id]').forEach(tr => {
+      tr.addEventListener('click', event => {
+        if (event.target.closest('button, input, a, label, select')) return;
+        openLeadActions(tr.dataset.rowId);
       });
     });
 
     $$('[data-action="select"]').forEach(btn => btn.addEventListener('click', () => selectLeadForOutreach(btn.dataset.id)));
     $$('[data-action="preview"]').forEach(btn => btn.addEventListener('click', async () => { const tab=window.open('about:blank','_blank'); try {const url=await window.SteadyHandsPreviews.resolveCRM(btn.dataset.id);if(tab)tab.location.replace(url);else window.location.assign(url);}catch(e){if(tab)tab.close();alert(e.message||'Preview not available.');} }));
-    $$('[data-action="details"]').forEach(btn => btn.addEventListener('click', () => {
-      const row = state.rows.find(item => String(item.id ?? item.crm_id ?? '') === String(btn.dataset.id || ''));
-      if (!row) return;
-      if (btn.dataset.url) {
-        window.open(btn.dataset.url, '_blank', 'noopener');
-        return;
-      }
-      const email = row.email || row.email_address || '';
-      if (email) {
-        location.href = `mailto:${encodeURIComponent(email)}`;
-      }
-    }));
+  }
+
+  function closeLeadActions() {
+    const existing = document.getElementById('mlLeadActionsDialog');
+    existing?.remove();
+    document.body.classList.remove('ml-actions-open');
+  }
+
+  function openLeadActions(id) {
+    closeLeadActions();
+    const row = state.rows.find(item => String(item.id ?? item.crm_id ?? '') === String(id));
+    if (!row) return;
+    const company = row.company || row.business_name || row.business || 'This lead';
+    const contact = row.contact_name || row.name || 'No contact name available';
+    const popup = document.createElement('div');
+    popup.id = 'mlLeadActionsDialog';
+    popup.className = 'ml-action-overlay';
+    popup.innerHTML = `<section class="ml-action-dialog" role="dialog" aria-modal="true" aria-labelledby="mlActionsTitle" tabindex="-1">
+      <header class="ml-action-dialog-head"><div><span class="ml-action-eyebrow">LEAD ACTIONS</span><h2 id="mlActionsTitle">${htmlEscape(company)}</h2><p>${htmlEscape(contact)}</p></div><button class="ml-action-close" type="button" data-close-actions aria-label="Close"><i data-lucide="x"></i></button></header>
+      <div class="ml-action-dialog-buttons">
+        <button type="button" data-lead-action="call"><i data-lucide="phone-call"></i><span>Open Call Workspace</span><i data-lucide="arrow-right"></i></button>
+        <button type="button" data-lead-action="preview"><i data-lucide="globe"></i><span>View Site Preview</span><i data-lucide="external-link"></i></button>
+        <button type="button" data-lead-action="queue"><i data-lucide="list-plus"></i><span>Add to Queue</span><i data-lucide="arrow-right"></i></button>
+        <button type="button" data-lead-action="details"><i data-lucide="contact-round"></i><span>View Details</span><i data-lucide="arrow-right"></i></button>
+      </div></section>`;
+    document.body.appendChild(popup);
+    document.body.classList.add('ml-actions-open');
+    popup.querySelector('[data-close-actions]').addEventListener('click',closeLeadActions);
+    popup.addEventListener('click',e=>{if(e.target===popup)closeLeadActions();});
+    popup.querySelector('[data-lead-action="call"]').addEventListener('click',()=>{closeLeadActions();selectLeadForOutreach(id);});
+    popup.querySelector('[data-lead-action="preview"]').addEventListener('click',async()=>{
+      const tab=window.open('about:blank','_blank');
+      closeLeadActions();
+      try {const url=await window.SteadyHandsPreviews.resolveCRM(id);if(tab)tab.location.replace(url);else window.location.assign(url);}
+      catch(e){if(tab)tab.close();alert(e.message||'Preview not available.');}
+    });
+    popup.querySelector('[data-lead-action="queue"]').addEventListener('click',()=>openQueuePicker(id,company));
+    popup.querySelector('[data-lead-action="details"]').addEventListener('click',()=>{
+      const safe = value => htmlEscape(value == null || value === '' ? 'Not provided' : Array.isArray(value) ? value.join(', ') : value);
+      popup.querySelector('.ml-action-eyebrow').textContent = 'CONTACT DETAILS';
+      popup.querySelector('.ml-action-dialog-buttons').innerHTML = `<div class="ml-details-grid">
+        <div><small>Business</small><strong>${safe(company)}</strong></div>
+        <div><small>Contact</small><strong>${safe(contact)}</strong></div>
+        <div><small>Phone</small><strong>${safe(row.phone)}</strong></div>
+        <div><small>Email</small><strong>${safe(row.email)}</strong></div>
+        <div><small>Stage</small><strong>${safe(row.pipeline_stage||row.stage)}</strong></div>
+        <div><small>Tags</small><strong>${safe(arrayify(row.tags))}</strong></div>
+        <div><small>Sources</small><strong>${safe(arrayify(row.sources))}</strong></div>
+        <div><small>Notes</small><strong>${safe(row.notes)}</strong></div>
+      </div><button type="button" class="ml-dialog-back"><i data-lucide="arrow-left"></i><span>Back to actions</span></button>`;
+      popup.querySelector('.ml-dialog-back').addEventListener('click',()=>openLeadActions(id));
+      window.lucide?.createIcons?.({nodes:popup.querySelectorAll('[data-lucide]')});
+    });
+    window.lucide?.createIcons?.({nodes:popup.querySelectorAll('[data-lucide]')});
+    popup.querySelector('.ml-action-dialog').focus();
+  }
+
+  async function openQueuePicker(id, company) {
+    const popup = document.getElementById('mlLeadActionsDialog');
+    if (!popup) return;
+    const title = popup.querySelector('.ml-action-eyebrow');
+    title.textContent = 'ADD TO QUEUE';
+    const region = popup.querySelector('.ml-action-dialog-buttons');
+    region.innerHTML = '<p class="ml-queue-message" role="status">Loading your queues…</p>';
+    try {
+      const api = initClient();
+      const {data:{user},error:authError} = await api.auth.getUser();
+      if(authError || !user) throw new Error('Please sign in again.');
+      const {data:queues,error} = await api.from('outreach_queues').select('id,name,queue_type').eq('owner_id',user.id).order('created_at',{ascending:false});
+      if(error) throw error;
+      if(!document.getElementById('mlLeadActionsDialog')) return;
+      if(!queues?.length){region.innerHTML='<p class="ml-queue-message">You do not have a queue yet. Create one on the Queue page first.</p><a class="ml-queue-link" href="queue.html">Go to Queue</a>';return;}
+      region.innerHTML = queues.map(q=>`<button type="button" data-queue-id="${htmlEscape(q.id)}"><i data-lucide="list-plus"></i><span>${htmlEscape(q.name)}</span><i data-lucide="plus"></i></button>`).join('')+'<p class="ml-queue-message" role="status" aria-live="polite"></p>';
+      window.lucide?.createIcons?.({nodes:region.querySelectorAll('[data-lucide]')});
+      region.querySelectorAll('[data-queue-id]').forEach(btn=>btn.addEventListener('click',async()=>{
+        const queueId=btn.dataset.queueId;
+        const message=region.querySelector('.ml-queue-message');
+        btn.disabled=true;
+        message.textContent='Adding contact…';
+        try {
+          const check=await api.from('crm').select('id').eq('id',id).eq('assigned_user_id',user.id).single();
+          if(check.error) throw new Error('This lead is no longer assigned to you.');
+          const existing=await api.from('outreach_queue_items').select('id').eq('queue_id',queueId).eq('crm_id',id).limit(1);
+          if(existing.error) throw existing.error;
+          if(existing.data?.length){message.textContent='This lead is already in that queue.';return;}
+          const last=await api.from('outreach_queue_items').select('position').eq('queue_id',queueId).order('position',{ascending:false}).limit(1);
+          if(last.error) throw last.error;
+          const position=Number(last.data?.[0]?.position||0)+1;
+          const result=await api.from('outreach_queue_items').insert({queue_id:queueId,crm_id:String(id),company_name:company,position});
+          if(result.error) throw result.error;
+          message.textContent='Added to queue successfully.';
+          btn.querySelector('span').textContent='Added!';
+        }catch(err){message.textContent='Could not add lead: '+(err.message||'Unknown error');}
+        finally {btn.disabled=false;}
+      }));
+    }catch(err){region.innerHTML=`<p class="ml-queue-message">${htmlEscape(err.message||'Could not load queues.')}</p>`;}
   }
 
   // Header menus are true dropdowns. Keep them outside the table so scrolling
@@ -749,7 +854,7 @@
     $$('.sort-pill').forEach(pill => pill.classList.toggle('is-active', pill.dataset.sort === field));
     renderTable();
     // Server ordering is supported for company; other fields sort current page.
-    if (field === 'company') loadLeads();
+    displayCachedLeads();
   }
 
   function bindHeaderDropdowns() {
@@ -789,7 +894,20 @@
 
     bindHeaderDropdowns();
 
-    $('#openFiltersBtn')?.addEventListener('click', () => openModal('filtersModal'));
+    const setRadio = (name, value) => {const el = $(`input[name="${name}"][value="${value}"]`); if(el) el.checked=true;};
+    const syncSortPopup = () => {setRadio('leadSort', ['newest','oldest','az','za','recent','least'].includes(state.sort)?state.sort:'newest');setRadio('leadContact',state.contactFilter);setRadio('leadPreview',state.previewFilter);};
+    $('#openFiltersBtn')?.addEventListener('click', () => {syncSortPopup();openModal('filtersModal');});
+    $('#resetSortFilters')?.addEventListener('click', () => {
+      state.sort='newest';state.desc=false;state.contactFilter='all';state.previewFilter='all';
+      syncSortPopup();state.page=1;displayCachedLeads();
+    });
+    $('#applySortFilters')?.addEventListener('click', () => {
+      state.sort=$('input[name="leadSort"]:checked')?.value||'newest';
+      state.contactFilter=$('input[name="leadContact"]:checked')?.value||'all';
+      state.previewFilter=$('input[name="leadPreview"]:checked')?.value||'all';
+      try {localStorage.setItem('steadyhands-my-leads-sort-filter',JSON.stringify({sort:state.sort,contact:state.contactFilter,preview:state.previewFilter}));}catch(e){}
+      state.page=1;closeModals();displayCachedLeads();
+    });
     $('#headerStageBtn')?.addEventListener('click', () => openModal('stageModal'));
     $('#openTagsBtn')?.addEventListener('click', () => openModal('tagsModal'));
     $('#headerTagsBtn')?.addEventListener('click', () => openModal('tagsModal'));
@@ -843,11 +961,7 @@
       displayCachedLeads();
     }));
 
-    document.addEventListener('click', event => {
-      if (!event.target.closest('.row-actions')) {
-        $$('.row-menu.is-open').forEach(menu => menu.classList.remove('is-open'));
-      }
-    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeLeadActions(); });
   }
 
   function refreshIcons() {
