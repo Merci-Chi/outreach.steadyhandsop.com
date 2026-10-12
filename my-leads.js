@@ -292,8 +292,10 @@
     const start = state.matching ? (state.page - 1) * state.pageSize + 1 : 0;
     const end = state.matching ? Math.min((state.page - 1) * state.pageSize + state.rows.length, state.matching) : 0;
     const text = `Showing ${formatNum(start)}–${formatNum(end)} of ${formatNum(state.matching)} leads`;
-    $('#tableMetaTop').textContent = text;
-    $('#tableMetaBottom').textContent = text;
+    const metaTop = $('#tableMetaTop');
+    const metaBottom = $('#tableMetaBottom');
+    if (metaTop) metaTop.textContent = text;
+    if (metaBottom) metaBottom.textContent = text;
 
     $('#statOnPage').textContent = formatNum(state.rows.length);
     updateHeaderSelectionState();
@@ -480,7 +482,7 @@
     const all = [];
     for (let offset = 0; offset < 50000; offset += 1000) {
       const { data, error } = await client.from('crm')
-        .select('id,company,name,phone,email,city,state_code,category,industry,stage,tags,sources,source,timezone,sitekey,previewurl,assigned_user_id')
+        .select('id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
         .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);
       if (error) throw error;
       all.push(...(data || []));
@@ -529,12 +531,12 @@
       updateToolbarBadges();
       renderTable();
     } catch (error) {
-      console.error('Assigned CRM leads failed to load:',error);
+      console.error('Assigned CRM leads failed to load:', error?.message || error, { code: error?.code, details: error?.details, hint: error?.hint });
       state.rows = [];
       state.total = state.matching = state.followups = 0;
       refreshStats();
       renderTable();
-      setStatus('Could not load your assigned leads: ' + (error?.message || 'Unknown error') + '. Please refresh or contact your administrator.', 'error');
+      setStatus('Could not load your assigned leads: ' + (error?.message || 'Unknown error') + (error?.hint ? ' ' + error.hint : '') + ' Please refresh or contact your administrator.', 'error');
     }
   }
 
