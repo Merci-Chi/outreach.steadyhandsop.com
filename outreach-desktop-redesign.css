@@ -130,3 +130,25 @@ html[data-theme="dark"] body.page-outreach:not(.page-leads) .workspace-change-le
  body.page-outreach:not(.page-leads) .workspace-notes-form textarea {min-height:76px;max-height:120px;padding:9px;font-size:12px;}
  body.page-outreach:not(.page-leads) .workspace-save-note {min-height:32px;padding:5px 12px;font-size:11px;}
 }
+
+/* Mobile Outreach: keep the page scroll contained within the app viewport.
+   The sidebar is independently scrollable via sidebar.css. */
+@media (max-width:899px) {
+  body.page-outreach:not(.page-leads):has(.sh-sidebar) .app {
+    height:100vh!important;
+    height:100dvh!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body.page-outreach:not(.page-leads):has(.sh-sidebar) .topbar {
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  body.page-outreach.sh-menu-open:not(.page-leads):has(.sh-sidebar) .app {
+    overflow-y:hidden!important;
+  }
+}

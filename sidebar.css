@@ -125,3 +125,43 @@ body:has(.sh-sidebar) .sh-sidebar-toggle { position:relative;z-index:1; }
 @media(prefers-reduced-motion:reduce){
   .sh-sidebar,.sh-sidebar-backdrop,.sh-sidebar-link{transition:none!important;animation:none!important;}
 }
+
+/* Mobile: independent sidebar/page scrolling, with safe-area clearance. */
+@media (max-width:899px) {
+  html:has(.sh-sidebar),
+  body:has(.sh-sidebar) {
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+  body:has(.sh-sidebar) .app {
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  body:has(.sh-sidebar) .topbar {
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  body:has(.sh-sidebar) .sh-sidebar {
+    top:0;
+    bottom:auto;
+    height:100vh;
+    height:100dvh;
+    padding-top:env(safe-area-inset-top, 0px);
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+  }
+  body.sh-menu-open .app { overflow-y:hidden; }
+  body:has(.sh-sidebar) .content { scroll-margin-top:12px; }
+}
