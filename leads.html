@@ -15,7 +15,7 @@
 
   <link rel="stylesheet" href="styles.css?v=20261012-my-leads" />
   <link rel="stylesheet" href="sidebar.css?v=batch2" />
-  <link rel="stylesheet" href="my-leads.css?v=20261012-unified-v4" />
+  <link rel="stylesheet" href="my-leads.css?v=20261012-modal-fit-v5" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
@@ -211,7 +211,7 @@
         <div><h2 id="stageTitle">Stage</h2><p>Filter your assigned leads by stage.</p></div>
         <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
       </div>
-      <div class="ml-modal-body"><div id="stageOptionGridPopup" class="modal-chip-grid"></div></div>
+      <div class="ml-modal-body"><div id="stageOptionGridPopup" class="ml-stage-card-grid"></div><div id="stageFollowUpFilters" class="ml-stage-followups" hidden><h3>Follow-up category</h3><div id="followUpOptionGrid" class="ml-followup-card-grid"></div></div></div>
       <div class="ml-modal-foot">
         <button type="button" class="modal-btn secondary" data-clear="stages">Clear</button>
         <button type="button" class="modal-btn primary" data-apply-modal="stages">Apply Stages</button>
@@ -276,6 +276,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="auth-guard.js?v=20261005-dark-mode"></script>
   <script src="preview-resolver.js?v=20261012-unified"></script>
-<script src="my-leads.js?v=20261012-crm-fix-v5" defer></script>
+<script src="my-leads.js?v=20261012-modal-fit-v5" defer></script>
 </body>
 </html>

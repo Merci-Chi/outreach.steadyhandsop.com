@@ -41,6 +41,7 @@
     tagOptions: [],
     sourceOptions: [],
     stageOptions: [],
+    followupCategories: [],
     tagMode: 'AND',
     sourceMode: 'AND',
     stageMode: 'OR'
@@ -330,34 +331,47 @@
     });
   }
 
+  const PIPELINE_STAGE_CHOICES = [
+    ['called','Called'], ['follow_up','Follow-up'], ['portal_link_sent','Portal Link Sent'],
+    ['account_created','Account Created'], ['reviewing_site','Reviewing Site'],
+    ['ready_to_buy','Ready to Buy'], ['cancelled','Cancelled']
+  ];
+  const FOLLOWUP_CHOICES = ['Interested','Unsure','Needs More Info','Not Now','Budget Concerns'];
+  const normalizeStage = value => String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
   function renderStageOptions() {
-    const wraps = [$('#stageOptionGrid'), $('#stageOptionGridPopup')].filter(Boolean);
-    if (!wraps.length) return;
-    const options = state.stageOptions.length ? state.stageOptions : [
-      { name: 'New', count: 0 },
-      { name: 'Contacted', count: 0 },
-      { name: 'Follow Up', count: 0 },
-      { name: 'Qualified', count: 0 },
-      { name: 'Proposal', count: 0 },
-      { name: 'Sold', count: 0 }
-    ];
-    const markup = options.map(item => `
-      <button type="button" class="filter-chip-btn ${state.stages.includes(item.name) ? 'is-active' : ''}" data-stage-chip="${htmlEscape(item.name)}">
-        ${htmlEscape(item.name)}${item.count != null ? ` (${formatNum(item.count)})` : ''}
-      </button>
-    `).join('');
-    wraps.forEach(wrap => {
+    const main = $('#stageOptionGridPopup');
+    const secondary = $('#stageOptionGrid');
+    const available = new Set(PIPELINE_STAGE_CHOICES.map(([key]) => key));
+    const extra = state.stageOptions.map(item => typeof item === 'string' ? item : item.name)
+      .filter(Boolean).filter(label => !available.has(normalizeStage(label)));
+    const choices = [...PIPELINE_STAGE_CHOICES, ...extra.map(label => [normalizeStage(label),label])];
+    const markup = choices.map(([key,label],index) => {
+      const checked = state.stages.some(selected => normalizeStage(selected) === key);
+      return `<button type="button" class="ml-stage-choice ${checked ? 'is-selected' : ''}" data-stage-chip="${htmlEscape(key)}" aria-pressed="${checked}"><span class="ml-stage-number">${key === 'cancelled' ? '×' : index + 1}</span><span class="ml-stage-name">${htmlEscape(label)}</span><span class="ml-stage-tick">✓</span></button>`;
+    }).join('');
+    [main,secondary].filter(Boolean).forEach(wrap => {
       wrap.innerHTML = markup;
-      $$('[data-stage-chip]', wrap).forEach(btn => btn.addEventListener('click', () => {
-        const name = btn.dataset.stageChip;
-        if (!name) return;
-        const idx = state.stages.indexOf(name);
-        if (idx >= 0) state.stages.splice(idx, 1);
-        else state.stages.push(name);
-        renderStageOptions();
-        updateToolbarBadges();
+      wrap.querySelectorAll('[data-stage-chip]').forEach(btn => btn.addEventListener('click', () => {
+        const key = btn.dataset.stageChip;
+        const index = state.stages.findIndex(v => normalizeStage(v) === key);
+        if (index >= 0) state.stages.splice(index,1); else state.stages.push(key);
+        if (key === 'follow_up' && index >= 0) state.followupCategories = [];
+        renderStageOptions(); updateToolbarBadges();
       }));
     });
+    const followWrap = $('#stageFollowUpFilters');
+    if (followWrap) followWrap.hidden = !state.stages.some(s => normalizeStage(s) === 'follow_up');
+    const followGrid = $('#followUpOptionGrid');
+    if (followGrid) {
+      followGrid.innerHTML = FOLLOWUP_CHOICES.map(label => `<button type="button" class="ml-followup-choice ${state.followupCategories.includes(label) ? 'is-selected' : ''}" aria-pressed="${state.followupCategories.includes(label)}" data-followup-filter="${htmlEscape(label)}">${htmlEscape(label)}</button>`).join('');
+      followGrid.querySelectorAll('[data-followup-filter]').forEach(btn => btn.addEventListener('click', () => {
+        const label = btn.dataset.followupFilter;
+        const idx = state.followupCategories.indexOf(label);
+        if(idx < 0) state.followupCategories.push(label); else state.followupCategories.splice(idx,1);
+        renderStageOptions();
+      }));
+    }
   }
 
   function renderModalOptions(kind, searchTerm = '') {
@@ -496,14 +510,15 @@
     return rows.filter(row => {
       const tags = arrayify(row.tags).map(t => String(t).toLowerCase());
       const sources = arrayify(row.sources).concat(row.source || []).map(t => String(t).toLowerCase());
-      const stage = String(row.stage || 'New').toLowerCase();
+      const stage = normalizeStage(row.pipeline_stage || row.stage || '');
       if (search && ![row.company,row.name,row.phone,row.email,row.city,row.state_code,row.category,stage].some(v => String(v || '').toLowerCase().includes(search))) return false;
       const tagChoices = state.tags.map(t => String(t).toLowerCase());
       if (tagChoices.length && !(state.tagMode === 'AND' ? tagChoices.every(t => tags.includes(t)) : tagChoices.some(t => tags.includes(t)))) return false;
       const sourceChoices = state.sources.map(t => String(t).toLowerCase());
       if (sourceChoices.length && !(state.sourceMode === 'AND' ? sourceChoices.every(t => sources.includes(t)) : sourceChoices.some(t => sources.includes(t)))) return false;
-      const stageChoices = state.stages.map(t => String(t).toLowerCase());
+      const stageChoices = state.stages.map(normalizeStage);
       if (stageChoices.length && !stageChoices.includes(stage)) return false;
+      if (stage === 'follow_up' && state.followupCategories.length && !state.followupCategories.some(c => String(c).toLowerCase() === String(row.follow_up_category || '').toLowerCase())) return false;
       return true;
     });
   }
@@ -513,13 +528,40 @@
     try {
       client = client || initClient();
       const assigned = await fetchAssignedRows();
+      // The pipeline tracks stages separately from CRM; enrich rows only when accessible.
+      try {
+        const ids = assigned.map(row => row.id).filter(Boolean);
+        for(let n=0;n<ids.length;n+=200) {
+          const {data: pipeline, error: pipelineError} = await client.from('sh_pipeline_records').select('crm_id,stage,follow_up_category').in('crm_id',ids.slice(n,n+200));
+          if (pipelineError) break;
+          const byId = new Map((pipeline || []).map(p => [String(p.crm_id),p]));
+          assigned.slice(n,n+200).forEach(row => {const p=byId.get(String(row.id));if(p){row.pipeline_stage=p.stage;row.follow_up_category=p.follow_up_category;}});
+        }
+      } catch (error) { console.warn('Pipeline stages unavailable; using CRM stages.',error); }
       const filtered = matchedAssignedRows(assigned);
       state.total = assigned.length;
       state.matching = filtered.length;
       state.followups = assigned.filter(r => String(r.stage || '').toLowerCase().includes('follow')).length;
-      state.tagOptions = [...new Set(assigned.flatMap(r => arrayify(r.tags)))].sort();
-      state.sourceOptions = [...new Set(assigned.flatMap(r => [...arrayify(r.sources), ...(r.source ? [r.source] : [])]))].sort();
-      state.stageOptions = [...new Set(assigned.map(r => r.stage || 'New'))].sort();
+      // Build live filter options from Supabase CRM records assigned to this
+      // salesperson. The popup renderer expects {name, count} objects, not
+      // strings. Keep counts per lead (not repeated values within one lead).
+      const makeOptions = field => {
+        const counts = new Map();
+        for (const row of assigned) {
+          const raw = field === 'tags' ? arrayify(row.tags) : [...arrayify(row.sources), ...arrayify(row.source)];
+          const unique = new Set(raw.map(value => String(value || '').trim()).filter(Boolean));
+          for (const name of unique) {
+            const key = name.toLocaleLowerCase();
+            const previous = counts.get(key);
+            if (previous) previous.count += 1;
+            else counts.set(key, { name, count: 1 });
+          }
+        }
+        return Array.from(counts.values()).sort((a, b) => a.name.localeCompare(b.name));
+      };
+      state.tagOptions = makeOptions('tags');
+      state.sourceOptions = makeOptions('sources');
+      state.stageOptions = [...new Set(assigned.map(r => r.pipeline_stage || r.stage).filter(Boolean))].sort();
       const ordered = applyClientSort(filtered);
       const pageCount = Math.max(1, Math.ceil(filtered.length / state.pageSize));
       state.page = Math.min(state.page, pageCount);
@@ -726,7 +768,7 @@
       const kind = btn.dataset.clear;
       if (kind === 'tags') state.tags = [];
       if (kind === 'sources') state.sources = [];
-      if (kind === 'stages' || kind === 'all') state.stages = [];
+      if (kind === 'stages' || kind === 'all') {state.stages = [];state.followupCategories = [];}
       if (kind === 'all') { state.tags = []; state.sources = []; }
       renderStageOptions();
       renderModalOptions('tags', $('#tagSearchInput')?.value || '');
