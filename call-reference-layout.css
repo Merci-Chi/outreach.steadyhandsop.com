@@ -1,0 +1,145 @@
+/* Reference layouts for ready / active call; behavior remains owned by call.html. */
+body.page-call .call-topbar{background:linear-gradient(110deg,#0c345a,#112e53)!important;color:white!important;}
+body.page-call .call-topbar h1{text-align:center!important;color:#fff!important;}
+body.page-call .call-business-icon{color:#7fd1ff!important;}
+body.page-call .call-content{background:#f4f9ff!important;}
+body.page-call .call-identity{background:#fff!important;border:1px solid #d9e6f5!important;border-radius:19px!important;box-shadow:0 6px 22px rgba(17,49,83,.05)!important;}
+body.page-call .call-company{font-weight:800!important;color:#10204f!important;}
+body.page-call .call-number{font-weight:850!important;color:#091646!important;}
+body.page-call .call-status{color:#71819f!important;}
+body.page-call .call-transcript-section{background:#fff!important;border:1px solid #d9e6f5!important;border-radius:19px!important;}
+body.page-call .call-reference-tools-heading{display:none;font-weight:800;color:#0a1641;font-size:21px;line-height:1.1;margin:0 0 15px;}
+body.page-call .call-action-grid-six .call-action-card{background:#fff!important;border:1px solid #d9e5f5!important;color:#0d2051!important;}
+body.page-call .call-action-grid-six .call-action-icon,body.page-call .call-action-grid-six svg{color:#0879ed!important;}
+body.page-call .sh-start-sale{background:linear-gradient(110deg,#0696ff,#056cdd)!important;color:white!important;border-radius:13px!important;}
+body.page-call .live-transcript-head h2{color:#091848!important;}
+body.page-call .call-controls .call-control.start-call span,body.page-call .call-controls .call-control.hangup span{font-weight:800!important;}
+/* The opening layout: left identity + call method; right six tools. */
+@media(min-width:900px){
+ body.page-call .call-content{grid-template-columns:minmax(0,1fr) minmax(0,1.18fr)!important;grid-template-rows:auto auto auto auto!important;grid-template-areas:'identity actions' 'mode actions' 'sale sale' 'script script'!important;gap:13px 22px!important;padding:24px clamp(20px,3vw,48px) 32px!important;align-content:start!important;}
+ body.page-call .call-identity{min-height:190px!important;display:grid!important;grid-template-columns:140px 1fr!important;grid-template-rows:auto auto auto!important;align-content:center!important;column-gap:22px!important;row-gap:7px!important;text-align:left!important;padding:24px!important;}
+ body.page-call .call-avatar{grid-column:1;grid-row:1/4;width:130px!important;height:130px!important;margin:0!important;}
+ body.page-call .call-company{grid-column:2;grid-row:1;font-size:25px!important;text-align:left!important;}
+ body.page-call .call-number{grid-column:2;grid-row:2;font-size:31px!important;text-align:left!important;}
+ body.page-call .call-status{grid-column:2;grid-row:3;text-align:left!important;font-size:16px!important;}
+ body.page-call .calling-mode-selector{grid-area:mode!important;display:block!important;border:1px solid #d9e6f5!important;background:#fff!important;border-radius:18px!important;padding:15px 22px!important;}
+ body.page-call .calling-mode-title{margin-bottom:12px;}
+ body.page-call .calling-mode-title strong{font-size:14px!important;color:#667792!important;}
+ body.page-call .calling-mode-title span{display:none;}
+ body.page-call .calling-mode-options{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;}
+ body.page-call .calling-mode-choice{min-height:72px!important;font-size:16px!important;border-radius:13px!important;}
+ body.page-call .calling-mode-choice svg{width:31px!important;height:31px!important;}
+ body.page-call #appPhoneMode{background:#087cff!important;color:white!important;border-color:#087cff!important;}
+ body.page-call #appPhoneMode[aria-pressed='false']{background:#fff!important;color:#087cff!important;}
+ body.page-call #regularPhoneMode{background:#fff!important;color:#0c1e4e!important;border-color:#087cff!important;}
+ body.page-call #regularPhoneMode[aria-pressed='true']{background:#087cff!important;color:white!important;}
+ body.page-call .call-action-grid-six{background:#fff!important;border:1px solid #d9e6f5!important;border-radius:18px!important;padding:20px!important;grid-template-rows:repeat(2,minmax(135px,1fr))!important;align-content:stretch!important;gap:12px!important;}
+ body.page-call .call-action-grid-six::before{content:'Call tools';display:block;grid-column:1/-1;font-weight:850;font-size:22px;color:#0a1641;margin-bottom:0;}
+ body.page-call .call-action-grid-six .call-action-card{min-height:135px!important;height:auto!important;font-size:17px!important;padding:18px 8px!important;}
+ body.page-call .call-action-grid-six .call-action-icon svg{width:40px!important;height:40px!important;}
+ body.page-call .call-action-grid-six .call-action-card>span:last-child{font-size:16px!important;}
+ body.page-call .sh-start-sale{min-height:66px!important;height:66px!important;font-size:21px!important;}
+ body.page-call .call-controls,body.page-call .call-transcript-section{display:none!important;}
+ body.page-call .starter-script-card{grid-area:script!important;}
+ body.page-call.call-is-active .call-content{grid-template-columns:minmax(0,1fr) minmax(0,1.13fr)!important;grid-template-rows:auto auto auto!important;grid-template-areas:'identity transcript' 'controls transcript' 'sale sale'!important;align-items:stretch!important;}
+ body.page-call.call-is-active .call-identity{min-height:215px!important;}
+ body.page-call.call-is-active .calling-mode-selector,body.page-call.call-is-active .call-action-grid-six,body.page-call.call-is-active .starter-script-card{display:none!important;}
+ body.page-call.call-is-active .call-controls{grid-area:controls!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;width:100%!important;max-width:none!important;margin:0!important;background:#fff!important;border:1px solid #d9e6f5!important;border-radius:19px!important;padding:14px!important;}
+ body.page-call.call-is-active .call-controls .call-control{max-width:none!important;}
+ body.page-call.call-is-active .call-transcript-section{grid-area:transcript!important;display:flex!important;height:100%!important;min-height:410px!important;}
+ body.page-call.call-is-active .sh-start-sale{grid-area:sale!important;}
+ body.page-call.call-is-active .live-transcript-head h2{font-size:24px!important;}
+ body.page-call.call-is-active .call-transcript-card{min-height:300px;}
+ body.page-call.regular-phone-mode .call-content{grid-template-areas:'identity external' 'mode external' 'actions actions' 'sale sale'!important;}
+ body.page-call.regular-phone-mode .regular-phone-panel{grid-area:external!important;}
+}
+@media(max-width:899px){
+ body.page-call .call-content{gap:16px!important;padding:20px 15px 38px!important;}
+ body.page-call .call-identity{order:1!important;padding:24px 20px!important;display:grid!important;grid-template-columns:120px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:15px;text-align:left!important;}
+ body.page-call .call-avatar{grid-column:1;grid-row:1/4;width:115px!important;height:115px!important;margin:0!important;}
+ body.page-call .call-company{grid-column:2;grid-row:1;font-size:22px!important;text-align:left!important;}
+ body.page-call .call-number{grid-column:2;grid-row:2;font-size:clamp(20px,4.9vw,32px)!important;text-align:left!important;}
+ body.page-call .call-status{grid-column:2;grid-row:3;font-size:14px!important;text-align:left!important;}
+ body.page-call .calling-mode-selector{order:2!important;margin:0!important;display:block!important;padding:17px!important;background:#fff!important;border-radius:18px!important;border:1px solid #d9e6f5!important;}
+ body.page-call .calling-mode-title strong{font-size:15px!important;}
+ body.page-call .calling-mode-title span{display:none;}
+ body.page-call .calling-mode-options{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;}
+ body.page-call .calling-mode-choice{padding:17px 8px!important;font-size:16px!important;min-height:75px!important;}
+ body.page-call .calling-mode-choice svg{width:30px!important;height:30px!important;}
+ body.page-call #appPhoneMode{background:#087cff!important;color:white!important;border-color:#087cff!important;}
+ body.page-call #appPhoneMode[aria-pressed='false']{background:white!important;color:#087cff!important;}
+ body.page-call .call-action-grid-six{order:3!important;display:grid!important;background:#fff!important;border:1px solid #d9e6f5!important;border-radius:18px!important;padding:19px!important;gap:10px!important;}
+ body.page-call .call-action-grid-six::before{content:'Call tools';font-size:22px;font-weight:850;color:#0a1641;grid-column:1/-1;padding-bottom:5px;}
+ body.page-call .call-action-grid-six .call-action-card{min-height:112px!important;padding:14px 6px!important;font-size:15px!important;}
+ body.page-call .call-action-grid-six .call-action-icon svg{height:33px!important;width:33px!important;}
+ body.page-call .call-action-grid-six .call-action-card>span:last-child{font-size:14px!important;}
+ body.page-call .sh-start-sale{order:4!important;min-height:67px!important;font-size:clamp(14px,3.4vw,20px)!important;}
+ body.page-call .call-controls,body.page-call .call-transcript-section{display:none!important;}
+ body.page-call .starter-script-card{order:6!important;}
+ body.page-call .regular-phone-panel{order:3!important;margin:0!important;}
+ body.page-call.call-is-active .calling-mode-selector,body.page-call.call-is-active .call-action-grid-six{display:none!important;}
+ body.page-call.call-is-active .call-controls{order:2!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;width:100%!important;max-width:100%!important;background:#fff!important;border:1px solid #d9e6f5!important;border-radius:17px!important;padding:15px 5px!important;}
+ body.page-call.call-is-active .call-transcript-section{order:3!important;display:flex!important;min-height:570px!important;height:clamp(570px,74dvh,790px)!important;max-height:none!important;padding:18px!important;}
+ body.page-call.call-is-active .sh-start-sale{order:4!important;}
+ body.page-call.call-is-active .starter-script-card{order:5!important;}
+ body.page-call.call-is-active .call-controls .call-control.start-call,body.page-call.call-is-active .call-controls .call-control.hangup{border-radius:50%!important;}
+}
+@media(max-width:490px){
+ body.page-call .call-identity{grid-template-columns:82px minmax(0,1fr);padding:18px 13px!important;column-gap:10px;}
+ body.page-call .call-avatar{width:80px!important;height:80px!important;}
+ body.page-call .call-company{font-size:17px!important;}
+ body.page-call .call-number{font-size:clamp(18px,5vw,24px)!important;}
+ body.page-call .call-action-grid-six .call-action-card{min-height:91px!important;}
+ body.page-call.call-is-active .call-controls{grid-template-columns:repeat(5,minmax(0,1fr))!important;}
+}
+
+/* Active Call Through App — approved desktop/mobile reference. Header is untouched. */
+body.page-call .call-prospect-time{display:none}
+body.page-call .call-calendar-action{display:none}
+body.page-call.call-is-active:not(.regular-phone-mode) .call-calendar-action{display:flex!important}
+body.page-call.call-is-active:not(.regular-phone-mode) .call-prospect-time{display:block;grid-area:prospect-time;background:#fff;border-inline:1px solid #d9e6f5;padding:8px 26px 11px;color:#7887a7}
+body.page-call .call-prospect-time span{display:block;font-size:14px;font-weight:650}
+body.page-call .call-prospect-time strong{display:block;color:#0c1b51;font-size:18px;font-weight:800;margin-top:3px}
+body.page-call.call-is-active:not(.regular-phone-mode) .live-transcript-head h2{font-size:22px!important}
+body.page-call.call-is-active:not(.regular-phone-mode) .live-transcript-head p{display:none}
+body.page-call.call-is-active:not(.regular-phone-mode) .live-transcript-head:after{content:'●  Live';color:#05c982;font-size:15px;font-weight:800;margin-left:auto}
+body.page-call.call-is-active:not(.regular-phone-mode) .live-transcript-list{justify-content:flex-end;min-height:0;overflow-y:auto}
+body.page-call.call-is-active:not(.regular-phone-mode) .live-transcript-empty{margin:auto}
+@media (min-width:900px){
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-content{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)!important;grid-template-areas:'identity transcript' 'prospect-time transcript' 'controls transcript' 'sale sale' 'actions actions'!important;grid-template-rows:auto auto auto auto auto!important;gap:0 12px!important;padding:22px 26px 30px!important;align-content:start!important;align-items:stretch!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-identity{grid-area:identity!important;min-height:185px!important;border-radius:18px 18px 0 0!important;border-bottom:0!important;padding:23px 24px 5px!important;grid-template-columns:140px 1fr!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-avatar{width:130px!important;height:130px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-controls{grid-area:controls!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-rows:auto 62px!important;column-gap:8px!important;row-gap:9px!important;width:100%!important;max-width:none!important;min-height:185px!important;margin:0!important;padding:12px 18px 20px!important;border-radius:0 0 18px 18px!important;border-top:0!important;justify-items:stretch!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-controls .call-control.small{width:100%!important;max-width:none!important;min-height:83px!important;grid-template-rows:60px auto!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn{grid-column:1/-1!important;grid-row:2!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:14px!important;width:100%!important;max-width:none!important;height:60px!important;min-height:60px!important;color:white!important;border-radius:11px!important;background:#f22832!important;border:0!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn:before{display:none!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn svg{position:static!important;color:white!important;width:26px!important;height:26px!important;transform:rotate(135deg)!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn span{color:white!important;font-size:22px!important;margin:0!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-transcript-section{grid-area:transcript!important;display:flex!important;min-height:0!important;height:100%!important;max-height:none!important;margin:0!important;padding:20px 20px 14px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-transcript-card{min-height:240px!important;flex:1!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .sh-start-sale{grid-area:sale!important;height:60px!important;min-height:60px!important;margin:14px 0 10px!important;font-size:19px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six{grid-area:actions!important;display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;grid-template-rows:110px!important;gap:8px!important;padding:0!important;background:transparent!important;border:0!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six:before{display:none!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-card{display:flex!important;height:110px!important;min-height:110px!important;flex-direction:column!important;justify-content:center!important;font-size:13px!important;padding:9px 5px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-icon svg{width:29px!important;height:29px!important;color:#061950!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-card>span:last-child{font-size:13px!important}
+}
+@media (max-width:899px){
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-content{display:flex!important;flex-direction:column!important;gap:0!important;padding:19px 15px 32px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-identity{order:1!important;width:100%;border-radius:18px 18px 0 0!important;border-bottom:0!important;padding-bottom:9px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-prospect-time{order:2!important;width:100%;padding:7px 18px 12px}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-controls{order:3!important;width:100%!important;max-width:none!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-rows:auto auto!important;gap:9px!important;border-top:0!important;border-radius:0 0 18px 18px!important;padding:8px 12px 14px!important;min-height:0!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-controls .call-control.small{width:100%!important;max-width:none!important;min-height:86px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn{grid-column:1/-1!important;grid-row:2!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;width:100%!important;max-width:none!important;height:58px!important;min-height:58px!important;background:#ef2730!important;border-radius:11px!important;border:0!important;color:white!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn:before{display:none!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn svg{position:static!important;color:white!important;width:25px!important;height:25px!important;transform:rotate(135deg)!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) #hangupBtn span{color:white!important;font-size:19px!important;margin:0!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six{order:4!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:auto!important;gap:8px!important;margin:15px 0 0!important;padding:17px 12px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-card{display:flex!important;height:94px!important;min-height:94px!important;padding:8px 5px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-card>span:last-child{font-size:12px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six .call-action-icon svg{color:#0675e8!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-action-grid-six:before{content:'Call tools';display:block!important;grid-column:1/-1}
+ body.page-call.call-is-active:not(.regular-phone-mode) .call-transcript-section{order:5!important;display:flex!important;min-height:540px!important;height:clamp(540px,70dvh,760px)!important;margin:14px 0 0!important;padding:17px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .sh-start-sale{order:6!important;width:100%;margin:14px 0 0!important;min-height:60px!important}
+ body.page-call.call-is-active:not(.regular-phone-mode) .starter-script-card{order:7!important}
+}

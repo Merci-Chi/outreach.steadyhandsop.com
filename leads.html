@@ -11,171 +11,271 @@
   <meta name="apple-mobile-web-app-title" content="Outreach" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="192x192" href="images/icon-192.png" />
-  <title>Leads | Steady Hands</title>
+  <title>My Leads | Steady Hands</title>
 
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="stylesheet" href="styles.css?v=20261009-filters-sources-v1" />
-
+  <link rel="stylesheet" href="styles.css?v=20261012-my-leads" />
+  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+  <link rel="stylesheet" href="my-leads.css?v=20261012-unified-v4" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
-  <link rel="stylesheet" href="sidebar.css?v=batch2" />
-<link rel="stylesheet" href="leads-batch9.css?v=9-layout-fix2" />
-  <link rel="stylesheet" href="leads-batch12.css?v=12-compact-all-1" />
   <script src="sidebar.js?v=batch9-menu-fix-1" defer></script>
 </head>
-<body class="page-outreach page-leads">
-<div class="app">
-  <header class="topbar">
-    <div class="topbar-row">
-      <div class="sh-leads-heading">
-        <h1>Leads</h1>
-        <p>Browse and manage CRM leads</p>
+<body class="page-leads page-my-leads">
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-row">
+        <h1>My Leads</h1>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="content outreach-loading">
-    <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
-      <div>
-        <span class="desktop-kicker">OUTREACH</span>
-        <h2>CRM Leads</h2>
-        <p>Search, filter, and choose who to contact next.</p>
-      </div>
-    </div>
+    <main class="content my-leads-content">
+      <div id="myLeadsStatus" class="my-leads-notice" role="status" aria-live="polite" hidden></div>
+      <section class="my-leads-toolbar-card">
+        <div class="my-leads-toolbar-row my-leads-toolbar-top">
+          <label class="my-search-wrap" for="leadSearch">
+            <i data-lucide="search"></i>
+            <input id="leadSearch" type="search" placeholder="Search company, contact name, phone, email, or location…" autocomplete="off" />
+          </label>
 
-    <div class="desktop-outreach-heading desktop-workspace-heading" aria-hidden="true">
-      <div>
-        <span class="desktop-kicker">CALL WORKSPACE</span>
-        <h2>Selected Lead</h2>
-        <p>Everything you need for the next call, in one view.</p>
-      </div>
-    </div>
-
-    <div id="selectedLeadTop" class="crm-leads selected-lead-top" aria-live="polite">
-      <div class="skeleton-lead skeleton-expanded selected-lead-skeleton" aria-hidden="true">
-        <div class="sk-row">
-          <div class="sk-shape sk-icon"></div>
-          <div class="sk-grow">
-            <div class="sk-shape sk-title"></div>
-            <div class="sk-shape sk-subtitle"></div>
-          </div>
-          <div class="sk-shape sk-star"></div>
+          <label class="toolbar-page-size" for="pageSizeSelect">
+            <select id="pageSizeSelect" aria-label="Leads per page">
+              <option value="10">10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+              <option value="500">500 per page</option>
+            </select>
+            <i data-lucide="chevron-down"></i>
+          </label>
         </div>
-        <div class="sk-shape sk-phone"></div>
-        <div class="sk-shape sk-line"></div>
-        <div class="sk-chips"><span class="sk-shape"></span><span class="sk-shape"></span></div>
-        <div class="sk-shape sk-preview"></div>
-        <div class="sk-shape sk-note"></div>
-        <div class="sk-shape sk-call"></div>
-        <div class="sk-chips sk-bottom"><span class="sk-shape"></span><span class="sk-shape"></span><span class="sk-shape"></span></div>
-      </div>
-    </div>
 
-    <div class="outreach-controls">
-      <div class="outreach-controls-skeleton" aria-hidden="true">
-        <div class="sk-shape sk-search-bar"></div>
-        <div class="sk-shape sk-refresh-button"></div>
-        <div class="sk-filter-row">
-          <span class="sk-shape sk-filter-pill"></span>
-          <span class="sk-shape sk-filter-pill sk-filter-pill-wide"></span>
+        <div class="my-stats-grid">
+          <article class="my-stat-card">
+            <div class="my-stat-icon blue"><i data-lucide="users"></i></div>
+            <div>
+              <strong id="statTotalAssigned">0</strong>
+              <span>Total Assigned</span>
+            </div>
+          </article>
+          <article class="my-stat-card">
+            <div class="my-stat-icon sky"><i data-lucide="funnel"></i></div>
+            <div>
+              <strong id="statMatching">0</strong>
+              <span>Matching Filters</span>
+            </div>
+          </article>
+          <article class="my-stat-card">
+            <div class="my-stat-icon green"><i data-lucide="list"></i></div>
+            <div>
+              <strong id="statOnPage">0</strong>
+              <span>On This Page</span>
+            </div>
+          </article>
+          <article class="my-stat-card">
+            <div class="my-stat-icon purple"><i data-lucide="phone-forwarded"></i></div>
+            <div>
+              <strong id="statFollowUps">0</strong>
+              <span>Follow Ups</span>
+            </div>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <div class="outreach-controls-live">
-        <div class="crm-toolbar">
-          <input
-            type="search"
-            id="crmSearch"
-            aria-label="Search all leads"
-            placeholder="Search name, company, phone, email, notes…"
-            autocomplete="off"
-          />
-          <button id="crmReload" type="button" title="Refresh">
-            <i data-lucide="refresh-cw"></i>
+
+      <section class="my-table-card">
+        <div class="my-table-topbar">
+          <button type="button" class="table-filter-button" id="openFiltersBtn">
+            <i data-lucide="sliders-horizontal"></i>
+            <span>Filters</span>
+            <span id="filterBadge" class="table-filter-count" hidden></span>
+            <i data-lucide="chevron-down"></i>
           </button>
+          <div class="my-pagination-inline" id="paginationTop"></div>
         </div>
 
-        <div class="filter-row">
-          <button class="pill active outreach-filter-pill" id="crmMainFilter" type="button">
-            <i data-lucide="list-filter"></i>
-            <span id="crmMainFilterLabel">Filter: All</span>
-          </button>
-
-          <button class="pill tag-filter-pill" id="crmTagFilter" type="button">
-            <i data-lucide="tags"></i>
-            <span>Tags &amp; Sources</span>
-            <span class="tag-filter-count" id="crmTagFilterCount" hidden></span>
-          </button>
-          <span id="crmLiveTotals" aria-live="polite" hidden style="margin-left:auto;white-space:nowrap;font-size:12px;color:inherit;opacity:.75;">
-            Total CRM Leads: <strong id="crmTotalLeads" style="font-variant-numeric:tabular-nums;font-weight:700;">—</strong>
-          </span>
+        <div class="my-table-scroller">
+          <table class="my-leads-table">
+            <thead>
+              <tr>
+                <th class="col-select">
+                  <button type="button" class="header-pill header-select" id="toggleAllVisible" aria-label="Select all visible">
+                    <span class="checkbox-shell" id="headerCheckbox"></span>
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </th>
+                <th class="col-company">
+                  <button type="button" class="header-pill sort-pill" data-sort="company">
+                    <i data-lucide="building-2"></i>
+                    <span>Company / Business</span>
+                    <span class="sort-pair"><i data-lucide="chevrons-up-down"></i></span>
+                  </button>
+                </th>
+                <th class="col-contact">
+                  <button type="button" class="header-pill sort-pill" data-sort="contact">
+                    <i data-lucide="user-round"></i>
+                    <span>Contact</span>
+                    <span class="sort-pair"><i data-lucide="chevrons-up-down"></i></span>
+                  </button>
+                </th>
+                <th class="col-phone">
+                  <button type="button" class="header-pill sort-pill" data-sort="phone">
+                    <i data-lucide="phone"></i>
+                    <span>Phone / Email</span>
+                    <span class="sort-pair"><i data-lucide="chevrons-up-down"></i></span>
+                  </button>
+                </th>
+                <th class="col-location">
+                  <button type="button" class="header-pill sort-pill" data-sort="location">
+                    <i data-lucide="map-pin"></i>
+                    <span>Location (Local Time)</span>
+                    <span class="sort-pair"><i data-lucide="chevrons-up-down"></i></span>
+                  </button>
+                </th>
+                <th class="col-tags">
+                  <button type="button" class="header-pill filter-pill" id="headerTagsBtn">
+                    <i data-lucide="tag"></i>
+                    <span>Tags</span>
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </th>
+                <th class="col-source">
+                  <button type="button" class="header-pill filter-pill" id="headerSourcesBtn">
+                    <i data-lucide="share-2"></i>
+                    <span>Source</span>
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </th>
+                <th class="col-stage">
+                  <button type="button" class="header-pill filter-pill" id="headerStageBtn" aria-haspopup="dialog" aria-controls="stageModal">
+                    <i data-lucide="chart-column"></i>
+                    <span>Stage</span>
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                </th>
+                <th class="col-actions">
+                  <button type="button" class="header-pill header-actions" aria-label="Actions column">
+                    <i data-lucide="ellipsis"></i>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="myLeadsTableBody">
+              <tr>
+                <td colspan="9" class="table-loading-row">Loading assigned leads…</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        <div class="my-table-bottombar">
+          <div class="my-table-meta" id="tableMetaBottom">Showing 0–0 of 0 leads</div>
+          <div class="my-pagination-inline" id="paginationBottom"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="ml-modal-backdrop" id="modalBackdrop" hidden></div>
+
+  <section class="ml-modal" id="filtersModal" hidden aria-hidden="true" aria-labelledby="filtersTitle">
+    <div class="ml-modal-card">
+      <div class="ml-modal-head">
+        <div>
+          <h2 id="filtersTitle">Filters</h2>
+          <p>Filter your assigned leads.</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
+      </div>
+      <div class="ml-modal-body filter-stack">
+        <div class="filter-group">
+          <label class="filter-label">Stage</label>
+          <p class="filter-help">Choose one or more stages, or use the Stage column header.</p>
+          <div id="stageOptionGrid" class="modal-chip-grid"></div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Currently applied</label>
+          <p class="filter-help" id="activeFilterSummary">No filters applied</p>
+        </div>
+      </div>
+      <div class="ml-modal-foot">
+        <button type="button" class="modal-btn secondary" data-clear="all">Clear All</button>
+        <button type="button" class="modal-btn primary" data-apply-modal="filters">Apply Filters</button>
       </div>
     </div>
+  </section>
 
-    <section class="crm-state card" id="crmStatus" aria-live="polite">
-      Connecting to CRM…
-    </section>
-
-    <div id="crmLeadCards" class="crm-leads" aria-live="polite">
-      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
-        <div class="sk-row">
-          <div class="sk-shape sk-icon"></div>
-          <div class="sk-grow">
-            <div class="sk-shape sk-title"></div>
-            <div class="sk-shape sk-subtitle"></div>
-          </div>
-          <div class="sk-shape sk-star"></div>
-        </div>
-        <div class="sk-shape sk-phone"></div>
+  <section class="ml-modal" id="stageModal" hidden aria-hidden="true" aria-labelledby="stageTitle">
+    <div class="ml-modal-card">
+      <div class="ml-modal-head">
+        <div><h2 id="stageTitle">Stage</h2><p>Filter your assigned leads by stage.</p></div>
+        <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
       </div>
-
-      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
-        <div class="sk-row">
-          <div class="sk-shape sk-icon"></div>
-          <div class="sk-grow">
-            <div class="sk-shape sk-title"></div>
-            <div class="sk-shape sk-subtitle"></div>
-          </div>
-          <div class="sk-shape sk-star"></div>
-        </div>
-        <div class="sk-shape sk-phone"></div>
-      </div>
-
-      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
-        <div class="sk-row">
-          <div class="sk-shape sk-icon"></div>
-          <div class="sk-grow">
-            <div class="sk-shape sk-title"></div>
-            <div class="sk-shape sk-subtitle"></div>
-          </div>
-          <div class="sk-shape sk-star"></div>
-        </div>
-        <div class="sk-shape sk-phone"></div>
-      </div>
-
-      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
-        <div class="sk-row">
-          <div class="sk-shape sk-icon"></div>
-          <div class="sk-grow">
-            <div class="sk-shape sk-title"></div>
-            <div class="sk-shape sk-subtitle"></div>
-          </div>
-          <div class="sk-shape sk-star"></div>
-        </div>
-        <div class="sk-shape sk-phone"></div>
+      <div class="ml-modal-body"><div id="stageOptionGridPopup" class="modal-chip-grid"></div></div>
+      <div class="ml-modal-foot">
+        <button type="button" class="modal-btn secondary" data-clear="stages">Clear</button>
+        <button type="button" class="modal-btn primary" data-apply-modal="stages">Apply Stages</button>
       </div>
     </div>
-  </main>
+  </section>
 
-  
-</div>
+  <section class="ml-modal" id="tagsModal" hidden aria-hidden="true" aria-labelledby="tagsTitle">
+    <div class="ml-modal-card large">
+      <div class="ml-modal-head">
+        <div>
+          <h2 id="tagsTitle">Tags</h2>
+          <p>View all available tags and filter leads.</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
+      </div>
+      <div class="ml-modal-toolbar">
+        <label class="modal-search"><i data-lucide="search"></i><input id="tagSearchInput" type="search" placeholder="Search tags…" /></label>
+        <label class="modal-checkline"><input type="checkbox" id="tagSelectAll" /> <span>Select all</span></label>
+        <div class="mode-toggle" id="tagModeToggle">
+          <button type="button" class="is-active" data-mode="AND">AND</button>
+          <button type="button" data-mode="OR">OR</button>
+        </div>
+      </div>
+      <div class="ml-modal-body">
+        <div id="tagOptionGrid" class="modal-option-grid three-col"></div>
+      </div>
+      <div class="ml-modal-foot">
+        <button type="button" class="modal-btn secondary" data-clear="tags">Clear</button>
+        <button type="button" class="modal-btn primary" data-apply-modal="tags">Apply Tags</button>
+      </div>
+    </div>
+  </section>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="auth-guard.js?v=20261005-dark-mode"></script>
-<script src="user-data.js?v=20261001-1930"></script>
-<script src="app.js?v=20261009-search-timeout-fix-v1"></script>
-<script src="leads-batch9.js?v=9" defer></script>
+  <section class="ml-modal" id="sourcesModal" hidden aria-hidden="true" aria-labelledby="sourcesTitle">
+    <div class="ml-modal-card large">
+      <div class="ml-modal-head">
+        <div>
+          <h2 id="sourcesTitle">Sources</h2>
+          <p>View all available sources and filter leads.</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal><i data-lucide="x"></i></button>
+      </div>
+      <div class="ml-modal-toolbar">
+        <label class="modal-search"><i data-lucide="search"></i><input id="sourceSearchInput" type="search" placeholder="Search sources…" /></label>
+        <label class="modal-checkline"><input type="checkbox" id="sourceSelectAll" /> <span>Select all</span></label>
+        <div class="mode-toggle" id="sourceModeToggle">
+          <button type="button" class="is-active" data-mode="AND">AND</button>
+          <button type="button" data-mode="OR">OR</button>
+        </div>
+      </div>
+      <div class="ml-modal-body">
+        <div id="sourceOptionGrid" class="modal-option-grid three-col"></div>
+      </div>
+      <div class="ml-modal-foot">
+        <button type="button" class="modal-btn secondary" data-clear="sources">Clear</button>
+        <button type="button" class="modal-btn primary" data-apply-modal="sources">Apply Sources</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="auth-guard.js?v=20261005-dark-mode"></script>
+  <script src="preview-resolver.js?v=20261012-unified"></script>
+<script src="my-leads.js?v=20261012-unified-v4" defer></script>
 </body>
 </html>

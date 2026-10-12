@@ -1,0 +1,296 @@
+/* Reference-style Outreach content only. Existing topbar/sidebar are not modified. */
+body.page-outreach .ref-outreach-main{max-width:1600px;margin:0 auto;padding:24px 30px 42px;display:block!important;}
+body.page-outreach #referenceLegacy{position:absolute!important;left:-20000px!important;top:0!important;width:1100px!important;height:1px!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
+body.page-outreach .ref-outreach-grid{display:grid;grid-template-columns:0.91fr 1.09fr;gap:14px;align-items:stretch;}
+body.page-outreach .ref-lead-card,body.page-outreach .ref-side-card{background:#fff;border-radius:20px;box-shadow:0 8px 25px rgba(23,55,99,.035);padding:28px 26px;color:#070f42;min-width:0;}
+body.page-outreach .ref-lead-identity{display:flex;align-items:center;gap:24px;min-height:176px;}
+body.page-outreach .ref-business-icon{width:142px;height:142px;flex:0 0 142px;border-radius:50%;display:grid;place-items:center;background:#e3f3ff;color:#087bf4;}
+body.page-outreach .ref-business-icon svg{width:74px;height:74px;stroke-width:2.1;}
+body.page-outreach .ref-lead-identity-copy{min-width:0;}
+body.page-outreach .ref-lead-identity h2{font-size:clamp(20px,2vw,31px);font-weight:800;line-height:1.18;margin:0 0 5px;overflow-wrap:anywhere;}
+body.page-outreach .ref-phone{font-size:clamp(24px,2.25vw,37px);font-weight:800;letter-spacing:-.02em;line-height:1.2;overflow-wrap:anywhere;}
+body.page-outreach .ref-status{display:flex;gap:10px;align-items:center;color:#7483a6;font-size:clamp(15px,1.45vw,23px);font-weight:700;margin-top:12px;}
+body.page-outreach .ref-green-dot{width:16px;height:16px;flex:0 0 16px;background:#14c789;border-radius:50%;}
+body.page-outreach .ref-line{height:1px;background:#d7e2f1;margin:15px 0 20px;}
+body.page-outreach .ref-call-label,body.page-outreach .ref-muted,body.page-outreach .ref-attempts{font-size:clamp(15px,1.42vw,22px);color:#7482a4;font-weight:700;}
+body.page-outreach .ref-call-methods,body.page-outreach .ref-next-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:19px;}
+body.page-outreach .ref-call-methods button,body.page-outreach .ref-next-buttons button{border:2px solid #1685ff;color:#071443;background:white;display:flex;align-items:center;justify-content:center;gap:20px;min-height:118px;padding:16px;border-radius:13px;cursor:pointer;font-size:clamp(15px,1.5vw,22px);font-weight:750;text-align:left;line-height:1.2;}
+body.page-outreach .ref-call-methods button svg,body.page-outreach .ref-next-buttons button svg{width:43px;height:43px;stroke:#007df5;flex-shrink:0;}
+body.page-outreach button.ref-primary,body.page-outreach .ref-call-methods .ref-primary,body.page-outreach .ref-next-buttons .ref-primary{background:#087efa;color:#fff;border-color:#087efa;}
+body.page-outreach button.ref-primary svg{stroke:#fff;}
+body.page-outreach .ref-side-card{padding:28px 26px 20px;}
+body.page-outreach .ref-next-buttons{margin:0;}
+body.page-outreach .ref-next-buttons button{min-height:112px;}
+body.page-outreach .ref-side-card .ref-line{margin:24px 0 20px;}
+body.page-outreach .ref-time-block{display:flex;gap:24px;align-items:flex-start;}
+body.page-outreach .ref-time-icon{display:grid;place-items:center;width:92px;height:92px;flex:0 0 92px;border-radius:50%;background:#e7f4ff;color:#0787fa;}
+body.page-outreach .ref-time-icon svg{width:52px;height:52px;}
+body.page-outreach .ref-time{font-size:clamp(23px,2.2vw,35px);font-weight:800;margin:8px 0;line-height:1.16;}
+body.page-outreach .ref-time-block p{color:#7584a5;font-size:clamp(13px,1.36vw,20px);font-weight:550;line-height:1.4;margin:10px 0 0;}
+body.page-outreach .ref-attempts{display:flex;align-items:center;gap:24px;}
+body.page-outreach .ref-attempts span{background:#e4f3ff;color:#090b46;border-radius:40px;padding:4px 26px;font-size:23px;font-weight:800;}
+body.page-outreach .ref-sale{margin:22px 0 16px;width:100%;border:0;border-radius:12px;background:#087efa;color:#fff;min-height:90px;display:flex;gap:24px;align-items:center;justify-content:center;position:relative;font-size:clamp(20px,2vw,31px);font-weight:800;cursor:pointer;}
+body.page-outreach .ref-sale svg:first-child{height:44px;width:44px;}body.page-outreach .ref-sale svg:last-child{position:absolute;right:28px;width:38px;height:38px;}
+body.page-outreach .ref-tools{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;}
+body.page-outreach .ref-tools button{border:1px solid #d4e1ef;background:#fff;color:#070d43;border-radius:12px;min-height:146px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;font-weight:700;font-size:clamp(13px,1.34vw,21px);cursor:pointer;line-height:1.12;padding:12px 4px;}
+body.page-outreach .ref-tools svg{height:45px;width:45px;stroke-width:2.15;}
+body.page-outreach .ref-message{font-size:13px;color:#667894;min-height:16px;margin:9px 0;}
+body.page-outreach .ref-outreach-main button:hover{filter:brightness(.975);transform:translateY(-1px)}body.page-outreach .ref-outreach-main button:focus-visible{outline:3px solid #75adff;outline-offset:2px}
+@media(max-width:1050px){body.page-outreach .ref-lead-card,body.page-outreach .ref-side-card{padding:20px 18px;}body.page-outreach .ref-business-icon{width:95px;height:95px;flex-basis:95px;}body.page-outreach .ref-business-icon svg{width:52px;height:52px;}body.page-outreach .ref-lead-identity{gap:12px;min-height:135px;}body.page-outreach .ref-next-buttons button,body.page-outreach .ref-call-methods button{gap:10px;min-height:90px;}body.page-outreach .ref-next-buttons svg,body.page-outreach .ref-call-methods svg{width:31px;height:31px;}body.page-outreach .ref-time-icon{width:62px;height:62px;flex-basis:62px;}body.page-outreach .ref-time-icon svg{width:36px;height:36px;}body.page-outreach .ref-tools button{min-height:112px;}body.page-outreach .ref-tools svg{width:33px;height:33px;}}
+@media(max-width:720px){body.page-outreach .ref-outreach-main{padding:16px 13px 30px;}body.page-outreach .ref-outreach-grid{grid-template-columns:1fr;}body.page-outreach .ref-lead-card,body.page-outreach .ref-side-card{padding:20px;border-radius:16px;}body.page-outreach .ref-side-card .ref-line{margin:16px 0;}body.page-outreach .ref-tools{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}body.page-outreach .ref-tools button{min-height:102px;}body.page-outreach .ref-sale{min-height:70px;font-size:17px;padding:12px 34px 12px 10px;gap:10px;}body.page-outreach .ref-sale svg:first-child{width:30px;height:30px;}body.page-outreach .ref-sale svg:last-child{right:10px;width:24px;height:24px;}body.page-outreach .ref-desktop-only{display:none;}body.page-outreach .ref-next-buttons button{font-size:15px;gap:8px;}body.page-outreach .ref-call-methods button{font-size:16px;}body.page-outreach .ref-attempts span{font-size:18px;}body.page-outreach .ref-phone{font-size:clamp(20px,5vw,30px);}body.page-outreach .ref-lead-identity h2{font-size:clamp(21px,5vw,29px);}}
+
+/* Compact content pass: keep the existing header and all wiring unchanged. */
+body.page-outreach .ref-outreach-main{max-width:1440px;padding:14px 20px 26px;}
+body.page-outreach .ref-outreach-grid{gap:12px;}
+body.page-outreach .ref-lead-card,body.page-outreach .ref-side-card{padding:18px 20px;border-radius:16px;}
+body.page-outreach .ref-lead-identity{gap:16px;min-height:120px;}
+body.page-outreach .ref-business-icon{width:94px;height:94px;flex-basis:94px;}
+body.page-outreach .ref-business-icon svg{width:48px;height:48px;}
+body.page-outreach .ref-lead-identity h2{font-size:clamp(19px,1.7vw,25px);}
+body.page-outreach .ref-phone{font-size:clamp(22px,2vw,29px);}
+body.page-outreach .ref-status{font-size:clamp(13px,1.18vw,17px);margin-top:7px;gap:8px;}
+body.page-outreach .ref-green-dot{height:12px;width:12px;flex-basis:12px;}
+body.page-outreach .ref-line{margin:10px 0 12px;}
+body.page-outreach .ref-call-label,body.page-outreach .ref-muted,body.page-outreach .ref-attempts{font-size:clamp(13px,1.2vw,17px);}
+body.page-outreach .ref-call-methods,body.page-outreach .ref-next-buttons{gap:10px;margin-top:12px;}
+body.page-outreach .ref-call-methods button,body.page-outreach .ref-next-buttons button{min-height:76px;border-width:1px;border-radius:11px;padding:10px;gap:12px;font-size:clamp(13px,1.2vw,17px);}
+body.page-outreach .ref-call-methods button svg,body.page-outreach .ref-next-buttons button svg{width:31px;height:31px;}
+body.page-outreach .ref-side-card{padding:18px 20px 15px;}
+body.page-outreach .ref-next-buttons{margin:0;}
+body.page-outreach .ref-next-buttons button{min-height:72px;}
+body.page-outreach .ref-side-card .ref-line{margin:13px 0;}
+body.page-outreach .ref-time-block{gap:16px;}
+body.page-outreach .ref-time-icon{width:60px;height:60px;flex-basis:60px;}
+body.page-outreach .ref-time-icon svg{width:34px;height:34px;}
+body.page-outreach .ref-time{font-size:clamp(20px,1.95vw,27px);margin:5px 0;}
+body.page-outreach .ref-time-block p{font-size:clamp(12px,1.1vw,15px);line-height:1.3;margin:6px 0 0;}
+body.page-outreach .ref-attempts{gap:15px;}
+body.page-outreach .ref-attempts span{font-size:18px;padding:3px 18px;}
+body.page-outreach .ref-sale{min-height:60px;margin:12px 0 10px;border-radius:10px;gap:14px;font-size:clamp(17px,1.7vw,23px);}
+body.page-outreach .ref-sale svg:first-child{width:31px;height:31px;}
+body.page-outreach .ref-sale svg:last-child{right:20px;width:26px;height:26px;}
+body.page-outreach .ref-tools{gap:8px;}
+body.page-outreach .ref-tools button{min-height:91px;border-radius:10px;gap:5px;padding:8px 3px;font-size:clamp(11px,1vw,15px);}
+body.page-outreach .ref-tools svg{width:29px;height:29px;}
+body.page-outreach .ref-message{margin:5px 0;font-size:12px;}
+@media(max-width:1050px){
+ body.page-outreach .ref-outreach-main{padding:12px 13px 24px;}
+ body.page-outreach .ref-lead-identity{min-height:105px;}
+ body.page-outreach .ref-business-icon{width:74px;height:74px;flex-basis:74px;}
+ body.page-outreach .ref-business-icon svg{width:38px;height:38px;}
+ body.page-outreach .ref-call-methods button,body.page-outreach .ref-next-buttons button{min-height:65px;gap:8px;}
+ body.page-outreach .ref-tools button{min-height:82px;}
+ body.page-outreach .ref-tools svg{height:26px;width:26px;}
+}
+@media(max-width:720px){
+ body.page-outreach .ref-outreach-main{padding:11px 11px 24px;}
+ body.page-outreach .ref-outreach-grid{gap:10px;}
+ body.page-outreach .ref-lead-card,body.page-outreach .ref-side-card{padding:14px;border-radius:14px;}
+ body.page-outreach .ref-lead-identity{gap:12px;min-height:90px;}
+ body.page-outreach .ref-business-icon{width:70px;height:70px;flex-basis:70px;}
+ body.page-outreach .ref-business-icon svg{width:37px;height:37px;}
+ body.page-outreach .ref-lead-identity h2{font-size:clamp(18px,4.8vw,24px);}
+ body.page-outreach .ref-phone{font-size:clamp(19px,5.1vw,27px);}
+ body.page-outreach .ref-call-methods button,body.page-outreach .ref-next-buttons button{min-height:64px;font-size:clamp(12px,3.6vw,15px);padding:8px;}
+ body.page-outreach .ref-call-methods button svg,body.page-outreach .ref-next-buttons button svg{width:27px;height:27px;}
+ body.page-outreach .ref-time-icon{width:50px;height:50px;flex-basis:50px;}
+ body.page-outreach .ref-time-icon svg{width:28px;height:28px;}
+ body.page-outreach .ref-time{font-size:21px;}
+ body.page-outreach .ref-sale{min-height:56px;font-size:16px;}
+ body.page-outreach .ref-tools{gap:7px;}
+ body.page-outreach .ref-tools button{min-height:80px;font-size:12px;gap:4px;}
+ body.page-outreach .ref-tools svg{width:26px;height:26px;}
+}
+
+/* Only actionable calling buttons may be clicked. */
+body.page-outreach .ref-call-methods button:disabled{opacity:.48;cursor:not-allowed;filter:grayscale(.25);pointer-events:none;}
+
+/* Readiness dot: glowing green during weekday 9–5 prospect-local hours, red outside. */
+body.page-outreach .ref-status .ref-green-dot{background:#19c77b;box-shadow:0 0 0 3px rgba(25,199,123,.12),0 0 11px 3px rgba(25,199,123,.5);}
+body.page-outreach .ref-status .ref-green-dot.ref-red-dot{background:#ec464b;box-shadow:0 0 0 3px rgba(236,70,75,.13),0 0 11px 3px rgba(236,70,75,.52);}
+body.page-outreach .ref-status .ref-green-dot.ref-neutral-dot{background:#9baac0;box-shadow:none;}
+/* Accessible Regular Phone actions popup */
+.ref-phone-modal[hidden]{display:none!important;}
+.ref-phone-modal{position:fixed;inset:0;z-index:99999;background:rgba(11,27,56,.57);display:flex;align-items:center;justify-content:center;padding:16px;}
+.ref-phone-dialog{position:relative;width:min(420px,100%);border-radius:18px;background:white;color:#111c42;box-shadow:0 22px 75px rgba(5,15,37,.24);padding:27px;text-align:left;}
+.ref-phone-dialog h2{font-size:21px;font-weight:800;margin:0 32px 8px 0;}
+.ref-phone-dialog p{font-size:14px;color:#73809a;margin:0 0 20px;}
+.ref-phone-close{position:absolute;right:16px;top:13px;background:#eef3fa;border:0;border-radius:8px;width:32px;height:32px;cursor:pointer;color:#475569;font-size:23px;}
+.ref-phone-number{background:#f5f9ff;border:1px solid #e1eaf6;border-radius:11px;padding:14px;font-size:23px;font-weight:750;text-align:center;margin-bottom:16px;user-select:text;}
+.ref-phone-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ref-phone-actions a,.ref-phone-actions button{min-height:44px;border-radius:10px;font-size:13px;font-weight:800;display:flex;justify-content:center;align-items:center;text-decoration:none;cursor:pointer;text-align:center;padding:9px;}
+.ref-phone-dialer{background:#087efa;color:#fff;}
+.ref-phone-actions button{background:#fff;color:#087efa;border:1px solid #087efa;}
+.ref-phone-dialog .ref-phone-feedback{min-height:15px;margin:10px 0 0;font-size:12px;}
+@media(max-width:420px){.ref-phone-dialog{padding:21px;}.ref-phone-actions{grid-template-columns:1fr;}}
+
+/* Soft status indicators: subtle white inner glow and restrained outer halo. */
+body.page-outreach .ref-status .ref-green-dot{
+  background:#19c77b;
+  box-shadow:inset 0 0 4px 1.5px rgba(255,255,255,.8), 0 0 0 2px rgba(25,199,123,.09), 0 0 5px 1px rgba(25,199,123,.19);
+}
+body.page-outreach .ref-status .ref-green-dot.ref-red-dot{
+  background:#ec464b;
+  box-shadow:inset 0 0 4px 1.5px rgba(255,255,255,.8), 0 0 0 2px rgba(236,70,75,.09), 0 0 5px 1px rgba(236,70,75,.19);
+}
+body.page-outreach .ref-status .ref-green-dot.ref-neutral-dot{
+  box-shadow:inset 0 0 3px 1px rgba(255,255,255,.55);
+}
+
+/* Call Through Outreach setup notice */
+.ref-setup-modal[hidden]{display:none!important;}
+.ref-setup-modal{position:fixed;inset:0;z-index:100000;background:rgba(12,32,55,.56);display:grid;place-items:center;padding:18px;backdrop-filter:blur(3px);}
+.ref-setup-dialog{position:relative;width:min(100%,460px);box-sizing:border-box;border-radius:18px;background:#fff;padding:26px;box-shadow:0 18px 70px rgba(12,32,55,.25);color:#102945;}
+.ref-setup-dialog h2{font-size:21px;font-weight:800;margin:0 32px 12px 0;}
+.ref-setup-dialog>p{font-size:15px;line-height:1.55;color:#536884;}
+.ref-setup-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px;}
+.ref-setup-actions button{min-height:46px;border-radius:10px;padding:10px;font-size:14px;font-weight:750;cursor:pointer;}
+.ref-setup-contact{border:1px solid #117cf1;background:#117cf1;color:white;}
+.ref-setup-cancel{border:1px solid #d5e1ef;background:white;color:#17426b;}
+.ref-setup-contact:disabled{opacity:.7;cursor:default;}
+.ref-setup-dialog .ref-phone-feedback{min-height:20px;margin:14px 0 0;}
+@media(max-width:440px){.ref-setup-actions{grid-template-columns:1fr;}}
+
+/* Mobile reference layout: prospect → call tools → sale → navigation. Desktop unchanged. */
+@media (max-width:720px) {
+  body.page-outreach #refOutreachMain.ref-outreach-main {
+    display:flex!important;
+    flex-direction:column;
+    gap:10px;
+    padding:12px 12px 18px;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+  body.page-outreach .ref-outreach-grid { display:contents!important; }
+  body.page-outreach .ref-lead-card {
+    order:1; width:100%; box-sizing:border-box;
+    padding:16px 16px 17px; border-radius:17px;
+  }
+  body.page-outreach .ref-lead-identity { min-height:88px;gap:15px; }
+  body.page-outreach .ref-business-icon { width:75px;height:75px;flex:0 0 75px; }
+  body.page-outreach .ref-business-icon svg { width:42px;height:42px; }
+  body.page-outreach .ref-lead-identity h2 { font-size:clamp(18px,4.7vw,24px);line-height:1.16;margin-bottom:3px; }
+  body.page-outreach .ref-phone { font-size:clamp(21px,5.2vw,27px);line-height:1.15; }
+  body.page-outreach .ref-status { margin-top:6px;font-size:12px;line-height:1.25;gap:8px; }
+  body.page-outreach .ref-status .ref-green-dot { width:10px;height:10px;flex:0 0 10px; }
+  body.page-outreach .ref-lead-card .ref-line { margin:13px 0 11px; }
+  body.page-outreach .ref-call-label { font-size:14px; }
+  body.page-outreach .ref-call-methods { margin-top:10px;gap:9px; }
+  body.page-outreach .ref-call-methods button {
+    min-height:68px; padding:9px 7px;gap:8px;
+    border-radius:12px;font-size:clamp(12px,3.4vw,16px);
+    justify-content:center;
+  }
+  body.page-outreach .ref-call-methods button svg {
+    width:27px;height:27px;flex:0 0 27px;
+  }
+
+  body.page-outreach .ref-tools {
+    order:2; width:100%;box-sizing:border-box;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    background:#fff;border-radius:17px;
+    padding:14px 12px; gap:8px;
+  }
+  body.page-outreach .ref-tools::before {
+    content:"Call tools";grid-column:1/-1;
+    font-weight:800;color:#0b1642;
+    font-size:19px;line-height:1.25;margin-bottom:2px;
+  }
+  body.page-outreach .ref-tools button {
+    min-width:0;min-height:82px;padding:8px 4px;
+    border-radius:12px;gap:6px;font-size:clamp(11px,3vw,13px);
+    line-height:1.14;
+  }
+  body.page-outreach .ref-tools button svg {width:29px;height:29px;}
+  body.page-outreach .ref-sale {
+    order:3;width:100%;box-sizing:border-box;
+    margin:0;min-height:54px;padding:9px 32px 9px 9px;
+    border-radius:14px;gap:10px;font-size:clamp(13px,3.7vw,17px);
+  }
+  body.page-outreach .ref-sale svg:first-child {width:26px;height:26px;flex-shrink:0;}
+  body.page-outreach .ref-sale svg:last-child {width:21px;height:21px;right:9px;}
+
+  body.page-outreach .ref-side-card {
+    order:4;width:100%;box-sizing:border-box;
+    border-radius:17px;padding:12px;
+  }
+  body.page-outreach .ref-next-buttons {
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;margin:0;
+  }
+  body.page-outreach .ref-next-buttons button {
+    min-width:0;min-height:85px;border:1px solid #d4e1ef;
+    background:#f7f9fd;color:#142b4b;
+    display:flex; flex-direction:column;gap:5px;
+    border-radius:12px;padding:7px 3px;
+    font-weight:750;font-size:clamp(11px,3.1vw,13px);
+    line-height:1.14;text-align:center;
+  }
+  body.page-outreach .ref-next-buttons button.ref-primary {
+    background:#f7f9fd;color:#142b4b;border-color:#d4e1ef;
+  }
+  body.page-outreach .ref-next-buttons button svg,
+  body.page-outreach .ref-next-buttons button.ref-primary svg {
+    width:28px;height:28px;stroke:#142b4b;
+  }
+  body.page-outreach .ref-side-card > .ref-line,
+  body.page-outreach .ref-side-card > .ref-time-block,
+  body.page-outreach .ref-side-card > .ref-attempts { display:none; }
+  body.page-outreach .ref-message {order:5;margin:0;min-height:0;}
+}
+@media(max-width:370px){
+  body.page-outreach #refOutreachMain.ref-outreach-main{padding:9px 8px 14px;gap:8px;}
+  body.page-outreach .ref-lead-card{padding:12px;}
+  body.page-outreach .ref-business-icon{width:60px;height:60px;flex-basis:60px;}
+  body.page-outreach .ref-business-icon svg{width:33px;height:33px;}
+  body.page-outreach .ref-lead-identity{min-height:70px;gap:10px;}
+  body.page-outreach .ref-tools{padding:11px 9px;}
+  body.page-outreach .ref-tools button{min-height:75px;}
+  body.page-outreach .ref-next-buttons button{min-height:76px;}
+}
+
+@media(max-width:720px){
+ body.page-outreach .ref-next-buttons [data-ref-tool="calendar"]{
+   display:flex;flex-direction:column;justify-content:center;align-items:center;
+   min-width:0;min-height:85px;background:#f7f9fd;border:1px solid #d4e1ef;
+   color:#142b4b;font-size:clamp(11px,3.1vw,13px);
+   line-height:1.14;border-radius:12px;padding:7px 3px;gap:5px;text-align:center;
+   font-weight:750;
+ }
+ body.page-outreach .ref-next-buttons [data-ref-tool="calendar"] svg{width:28px;height:28px;stroke:#142b4b;}
+}
+
+/* Regular Phone: compact manual elapsed timer occupies the two call button slots. */
+body.page-outreach .ref-call-methods.ref-methods-hidden{display:none!important;}
+body.page-outreach .ref-regular-call-tracker[hidden]{display:none!important;}
+body.page-outreach .ref-regular-call-tracker{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;min-height:76px;padding:9px 13px;border:1px solid #cfe1f3;border-radius:12px;background:#f7fbff;box-sizing:border-box;}
+body.page-outreach .ref-regular-call-time{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;}
+body.page-outreach .ref-regular-call-label{font-size:11px;font-weight:700;color:#7184a6;white-space:nowrap;}
+body.page-outreach #refRegularElapsed{font-size:26px;line-height:1.05;font-weight:800;letter-spacing:.02em;color:#071646;font-variant-numeric:tabular-nums;}
+body.page-outreach .ref-regular-call-actions{display:flex;align-items:center;gap:7px;}
+body.page-outreach .ref-regular-call-actions button{border:1px solid #147ff0;background:#147ff0;color:#fff;padding:9px 12px;border-radius:9px;min-height:40px;font-weight:750;font-size:12px;cursor:pointer;white-space:nowrap;}
+body.page-outreach .ref-regular-call-actions #refRegularDidNotCall{border-color:#ccdced;background:white;color:#375374;}
+@media(max-width:720px){
+ body.page-outreach .ref-regular-call-tracker{margin-top:10px;min-height:68px;gap:7px;padding:8px;}
+ body.page-outreach .ref-regular-call-label{font-size:10px;}
+ body.page-outreach #refRegularElapsed{font-size:22px;}
+ body.page-outreach .ref-regular-call-actions{gap:5px;}
+ body.page-outreach .ref-regular-call-actions button{min-height:38px;padding:7px 8px;font-size:11px;}
+}
+@media(max-width:370px){body.page-outreach .ref-regular-call-tracker{flex-wrap:wrap;}body.page-outreach .ref-regular-call-actions{width:100%;}body.page-outreach .ref-regular-call-actions button{flex:1;}}
+
+/* Tool popups, scoped to the new Outreach page. */
+.ref-tools-modal{position:fixed;inset:0;z-index:100005;background:rgba(8,28,55,.55);display:flex;justify-content:center;align-items:center;padding:18px;backdrop-filter:blur(3px)}
+.ref-tools-dialog{background:#fff;color:#112748;width:min(100%,510px);max-height:min(86vh,740px);overflow-y:auto;border-radius:18px;box-shadow:0 18px 65px rgba(6,29,60,.3);box-sizing:border-box;padding:20px;}
+.ref-tools-dialog header,.ref-tools-dialog footer{display:flex;align-items:center;gap:10px;justify-content:space-between;}
+.ref-tools-dialog header h2{font-size:21px;font-weight:800;margin:0;}
+.ref-tools-dialog header button{font-size:27px;border:0;background:#edf3f9;border-radius:10px;width:35px;height:35px;cursor:pointer;}
+.ref-tools-dialog-body{padding:17px 0;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.45;}
+.ref-tools-dialog-body p{margin:0;color:#506585;}
+.ref-tools-dialog-body label{font-weight:750;color:#17345b;}
+.ref-tools-dialog textarea,.ref-tools-dialog input,.ref-tools-dialog select{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cddcec;border-radius:10px;font:inherit;background:#fff;color:#112748;}
+.ref-tools-dialog footer{flex-wrap:wrap;justify-content:flex-end;padding-top:13px;border-top:1px solid #dae5f2;}
+.ref-tools-dialog footer [data-tool-status]{flex:1 0 100%;font-size:12px;color:#4d6484;min-height:0;}
+.ref-tools-dialog footer button{cursor:pointer;border:1px solid #cddcec;background:#fff;color:#17345b;padding:10px 14px;border-radius:9px;font-weight:700;}
+.ref-tools-dialog footer button.ref-tools-confirm{background:#087efa;color:white;border-color:#087efa;}
+.ref-tools-dialog .ref-tool-help{font-size:12px;color:#7584a5;}

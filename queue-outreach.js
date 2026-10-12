@@ -6,13 +6,15 @@ const selectedId=()=>document.querySelector('#selectedLeadTop .lead-card')?.data
 const key='steadyhands-selected-outreach-crm-id';
 const openLead=id=>{sessionStorage.setItem(key,String(id));window.location.assign('index.html?crm_id='+encodeURIComponent(id));};
 let active=null,items=[],busy=false;
+const eligible=()=>new Set([...document.querySelectorAll('#crmLeadCards .lead-card[data-crm-id]')].map(el=>String(el.dataset.crmId)));
+
 async function sync(){
  const c=client();if(!c)return;
  const auth=await c.auth.getUser();if(!auth.data?.user)return;
  const res=await c.from('outreach_queues').select('id,name').eq('owner_id',auth.data.user.id).eq('is_active',true).maybeSingle();
  if(res.error){console.warn('Active queue unavailable',res.error);return;}
  active=res.data||null;
- if(active){const rows=await c.from('outreach_queue_items').select('id,crm_id,status,position').eq('queue_id',active.id).order('position',{ascending:true}).limit(1000);if(rows.error){console.warn('Queue items unavailable',rows.error);return;}items=rows.data||[];}
+ if(active){const rows=await c.from('outreach_queue_items').select('id,crm_id,status,position').eq('queue_id',active.id).order('position',{ascending:true}).limit(1000);if(rows.error){console.warn('Queue items unavailable',rows.error);return;}const authorized=eligible();items=(rows.data||[]).filter(x=>authorized.has(String(x.crm_id)));}
  else items=[];
  update();
 }
@@ -28,7 +30,7 @@ async function advance(){
  try{
   await sync();
   if(active){
-   const usable=items.filter(x=>x.status==='pending');
+   const usable=items.filter(x=>x.status==='pending'&&eligible().has(String(x.crm_id)));
    if(!usable.length){alert('Queue complete. Activate another queue or add leads.');return;}
    const current=selectedId();const index=usable.findIndex(x=>String(x.crm_id)===String(current));
    const next=usable[index>=0? (index+1)%usable.length:0];
@@ -39,10 +41,9 @@ async function advance(){
   // Use the existing live CRM-based random button, if available.
   const random=[...document.querySelectorAll('#selectedLeadTop .quick-btn')].find(b=>/random/i.test(b.textContent)&&b!==button);
   if(random){random.click();return;}
-  const {data,error}=await client().rpc('outreach_random_eligible_lead',{p_exclude_id: selectedId()||null});
-  if(error)throw error;
-  if(!data){alert('No other eligible leads are available.');return;}
-  openLead(data);
+  const candidates=[...eligible()].filter(id=>id!==selectedId());
+  if(!candidates.length){alert('No other assigned leads are available.');return;}
+  openLead(candidates[Math.floor(Math.random()*candidates.length)]);
 
  }catch(e){console.error(e);alert('Unable to select the next lead.');}
  finally{busy=false;if(button)button.disabled=false;}

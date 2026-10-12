@@ -11,1934 +11,260 @@
   <meta name="apple-mobile-web-app-title" content="Outreach" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="192x192" href="images/icon-192.png" />
-  <title>Call</title>
+  <title>Call | Steady Hands</title>
+
   <link rel="preconnect" href="https://unpkg.com">
-  <link rel="stylesheet" href="styles.css?v=20261009-unified-dark" />
+  <link rel="stylesheet" href="styles.css?v=20261009-filters-sources-v1" />
+
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
   <link rel="stylesheet" href="sidebar.css?v=batch2" />
-  <link rel="stylesheet" href="sale-start.css?v=2" />
-  <link rel="stylesheet" href="call-compact.css?v=20261011-icon-circle-rebuild" />
-  <link rel="stylesheet" href="external-call.css?v=20261011-1" />
-  <script src="sidebar.js?v=batch9-menu-fix-1" defer></script>
-<link rel="stylesheet" href="first-login.css?v=1" />
+<link rel="stylesheet" href="queue.css?v=queue-b2" />
+<link rel="stylesheet" href="leads-batch9.css?v=9" />
+<link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
+  <script src="sidebar.js?v=batch2" defer></script>
+<link rel="stylesheet" href="call.css?v=outreach-copy-1" />
 </head>
-<body class="page-call">
-<div class="app call-app">
-  <header class="call-topbar">
-    <button class="call-round-btn" id="callBack" aria-label="Back"><i data-lucide="chevron-left"></i></button>
-    <h1 id="callCompanyHeader">Business</h1>
-    <button class="call-round-btn call-business-icon" aria-label="Business"><i data-lucide="building-2"></i></button>
+<body class="page-outreach">
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-row">
+      <h1>Outreach</h1><div class="sh-tools" aria-label="Tasks and notifications"><button class="sh-tool-btn" id="shTasksOpen" type="button"><i data-lucide="list-checks"></i><span class="sh-tool-label">Tasks</span><span class="sh-tool-count" id="shTasksBadge" hidden>0</span></button><button class="sh-tool-btn" id="shNoticesOpen" type="button"><i data-lucide="bell"></i><span class="sh-tool-label">Notifications</span><span class="sh-tool-count" id="shNoticesBadge" hidden>0</span></button></div>
+    </div>
   </header>
 
-  <main class="call-content">
-    <section class="calling-mode-selector" aria-label="Calling method">
-      <div class="calling-mode-title"><strong>Calling method</strong><span>Choose how you contact this business</span></div>
-      <div class="calling-mode-options" role="group" aria-label="Choose calling method">
-        <button type="button" id="regularPhoneMode" class="calling-mode-choice" aria-pressed="false"><i data-lucide="smartphone"></i> Regular Phone</button>
-        <button type="button" id="appPhoneMode" class="calling-mode-choice" aria-pressed="true"><i data-lucide="headset"></i> Call Through App</button>
-      </div>
-    </section>
-    <section class="call-identity">
-      <div class="call-avatar"><i data-lucide="user-round"></i></div>
-      <div class="call-number" id="callNumber">(000) 000-0000</div>
-      <div class="call-company" id="callCompany">Business</div>
-      <div class="call-status" data-state="idle"><i id="callStatusIcon" data-lucide="phone"></i><strong id="callStatusText">Ready</strong><span id="callTimerWrap" hidden>· <span id="callTimer">00:00</span></span></div>
-    </section>
-
-    <section class="call-action-grid call-action-grid-six">
-      <button class="call-action-card" data-call-action="Alerts"><span class="call-action-icon"><i data-lucide="bell"></i></span><span>Alerts</span></button>
-      <button class="call-action-card" data-call-action="Tags"><span class="call-action-icon"><i data-lucide="tag"></i></span><span>Tags</span></button>
-      <button class="call-action-card" data-call-action="Notes"><span class="call-action-icon"><i data-lucide="notebook-pen"></i></span><span>Notes</span></button>
-      <button class="call-action-card" data-call-action="Send Site Preview"><span class="call-action-icon"><i data-lucide="send"></i></span><span>Send Site Preview</span></button>
-      <button class="call-action-card" data-call-action="Templates"><span class="call-action-icon"><i data-lucide="messages-square"></i></span><span>Templates</span></button>
-      <button class="call-action-card" data-call-action="Quick Info"><span class="call-action-icon"><i data-lucide="circle-dollar-sign"></i></span><span>Quick Info</span></button>
-    </section>
-    <button class="sh-start-sale" id="shStartSale" type="button"><i data-lucide="handshake"></i><span>Start Sale / Track Customer</span><i data-lucide="arrow-right"></i></button>
-    <section id="regularPhonePanel" class="regular-phone-panel" hidden aria-label="Regular phone calling">
-      <div class="regular-phone-header"><i data-lucide="smartphone"></i><div><strong>Call using your phone</strong><p>Calls made outside this app cannot be automatically verified or transcribed.</p></div></div>
-      <div class="regular-phone-number" id="regularPhoneNumber"></div>
-      <div class="regular-phone-actions">
-        <a id="externalDialerLink" class="regular-phone-dial" href="tel:"><i data-lucide="phone-outgoing"></i> Open Phone Dialer</a>
-        <button id="externalCopyNumber" type="button" class="regular-phone-secondary"><i data-lucide="copy"></i> Copy Number</button>
-      </div>
-      <button id="externalLogCall" class="regular-phone-log" type="button"><i data-lucide="clipboard-check"></i> Log Call / Record Outcome</button>
-      <p class="regular-phone-disclaimer">Opening the dialer or copying the number does not log a call. Tap Log Call when you're ready to record what happened.</p>
-    </section>
-    <section class="call-controls">
-      <button class="call-control small" id="muteBtn"><i data-lucide="mic"></i><span>Mute</span></button>
-      <button class="call-control small" id="keypadBtn"><i data-lucide="grid-3x3"></i><span>Keypad</span></button>
-      <button class="call-control start-call" id="hangupBtn" aria-label="Start call"><i data-lucide="phone"></i><span>Start Call</span></button>
-      <button class="call-control small" id="holdBtn"><i data-lucide="pause"></i><span>Hold</span></button>
-      <button class="call-control small" id="speakerBtn"><i data-lucide="volume-2"></i><span>Speaker</span></button>
-    </section>
-    <section class="starter-script-card" id="starterScriptCard">
-      <button class="call-script-toggle" type="button" aria-expanded="false" aria-controls="callScriptBody"><i data-lucide="book-open"></i><span>Starter Script</span><i data-lucide="chevron-down"></i></button>
-      <div class="call-script-body" id="callScriptBody">
-      <div class="starter-script-head">
-        <div>
-          <span>Starter Script</span>
-          <strong>Choose what fits this lead</strong>
-        </div>
-        <button class="starter-copy" id="copyStarterScript" type="button" aria-label="Copy starter script"><i data-lucide="copy"></i></button>
-      </div>
-      <div class="starter-script-tabs" id="starterScriptTabs">
-        <button class="starter-script-tab active" type="button" data-script="no-site">No Site</button>
-        <button class="starter-script-tab" type="button" data-script="broken">Broken Site</button>
-        <button class="starter-script-tab" type="button" data-script="old-site">Old Site</button>
-        <button class="starter-script-tab" type="button" data-script="spanish">Spanish</button>
-      </div>
-      <p class="starter-script-text" id="starterScriptText"></p>
-      </div>
-    </section>
-
-    <section class="call-transcript-section" id="transcriptSection">
-      <div class="live-transcript-head">
-        <div>
-          <h2>Transcript</h2>
-          <p>Transcribes both sides of the Twilio call in real time.</p>
-        </div>
-        <button class="live-transcript-enable" id="enableLiveTranscript" type="button"><i data-lucide="mic"></i> Enable Live Transcript</button>
-      </div>
-
-      <div class="live-transcript-permission" id="liveTranscriptPermission">
-        <strong>Enable live transcript?</strong>
-        <p>Enable this before dialing to show both your speech and the customer's speech here while the call is active.</p>
-        <small>Powered by Twilio Real-Time Transcriptions.</small>
-      </div>
-
-      <div class="call-transcript-card">
-        <div class="live-transcript-list" id="liveTranscriptList">
-          <div class="live-transcript-empty" id="liveTranscriptEmpty">No transcript yet.</div>
-        </div>
-        <div class="transcript-listening" id="liveTranscriptStatus">
-          <i data-lucide="mic"></i><span>Live transcript is off</span><i data-lucide="audio-lines"></i>
-        </div>
-      </div>
-    </section>
+  <main class="content ref-outreach-main" id="refOutreachMain">
+    <nav class="call-back-nav" aria-label="Call page navigation">
+      <button type="button" id="backToOutreach" class="call-back-btn"><i data-lucide="arrow-left" aria-hidden="true"></i><span>Back to Outreach</span></button>
+    </nav>
+    <div class="ref-outreach-grid">
+      <section class="ref-lead-card" aria-label="Selected prospect">
+        <div class="ref-lead-identity"><div class="ref-business-icon"><i data-lucide="building-2"></i></div><div class="ref-lead-identity-copy"><h2 id="refCompany">No prospect selected</h2><div class="ref-phone" id="refPhone">No phone number on file</div><div class="ref-status"><span class="ref-green-dot"></span><span id="refStatus">Waiting for call</span><span class="ref-active-duration" id="refCallTimer" hidden></span></div></div></div>
+        <div class="ref-line"></div>
+        <section class="ref-active-panel" aria-label="Active call controls">
+          <div class="ref-active-clock"><span>Prospect’s local time</span><strong id="refLocalTime">Local time unavailable</strong></div>
+          <div class="ref-active-controls ref-five-controls" aria-label="Call controls">
+            <button type="button" class="ref-call-control" id="refMute" aria-label="Mute"><span class="ref-control-circle"><i data-lucide="mic"></i></span><span>Mute</span></button>
+            <button type="button" class="ref-call-control" id="refKeypad" aria-label="Keypad"><span class="ref-control-circle"><i data-lucide="grid-3x3"></i></span><span>Keypad</span></button>
+            <div class="ref-phone-center">
+              <button type="button" class="ref-round-phone is-idle" id="refEndCall" aria-label="Call" disabled>
+                <span class="ref-round-phone-inner"><i data-lucide="phone" class="ref-round-phone-icon"></i></span>
+              </button>
+              <span id="refPhoneActionLabel" class="ref-phone-action-label">Call</span>
+            </div>
+            <button type="button" class="ref-call-control" id="refHold" aria-label="Hold"><span class="ref-control-circle"><i data-lucide="pause"></i></span><span>Hold</span></button>
+            <button type="button" class="ref-call-control" id="refSpeaker" aria-label="Speaker"><span class="ref-control-circle"><i data-lucide="volume-2"></i></span><span>Speaker</span></button>
+          </div>
+        </section>
+      </section>
+      <section class="ref-side-card ref-transcript-card" aria-label="Live transcript">
+        <div class="ref-transcript-header"><h2>Live transcript</h2><span class="ref-transcript-indicator" id="refTranscriptStatus">Waiting for call</span></div>
+        <div class="ref-transcript-list" id="refTranscriptList" role="log" aria-label="Transcript messages" aria-live="polite"></div>
+      </section>
+    </div>
+    <button type="button" class="ref-sale" id="refStartSale"><i data-lucide="handshake"></i><span>Start Sale / Track Customer</span><i data-lucide="arrow-right"></i></button>
+    <div class="ref-tools" aria-label="Call tools">
+      <button type="button" data-ref-tool="alerts"><i data-lucide="bell"></i><span>Alerts</span></button>
+      <button type="button" data-ref-tool="tags"><i data-lucide="tag"></i><span>Tags</span></button>
+      <button type="button" data-ref-tool="notes"><i data-lucide="notebook-pen"></i><span>Notes</span></button>
+      <button type="button" data-ref-tool="preview"><i data-lucide="send"></i><span>Send Site<br>Preview</span></button>
+      <button type="button" data-ref-tool="templates"><i data-lucide="messages-square"></i><span>Templates</span></button>
+      <button type="button" data-ref-tool="quick"><i data-lucide="circle-dollar-sign"></i><span>Quick Info</span></button>
+      <button type="button" data-ref-tool="calendar"><i data-lucide="calendar-plus"></i><span>Add to<br>Calendar</span></button>
+    </div>
+    <p class="ref-message" id="refMessage" role="status" aria-live="polite"></p>
   </main>
+  <div id="referenceLegacy" class="reference-legacy" aria-hidden="true"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
+    <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
+      <div>
+        <span class="desktop-kicker">OUTREACH</span>
+        <h2>Lead Queue</h2>
+        <p>Search, filter, and choose who to contact next.</p>
+      </div>
+    </div>
+
+    <div class="desktop-outreach-heading desktop-workspace-heading" aria-hidden="true">
+      <div>
+        <span class="desktop-kicker">CALL WORKSPACE</span>
+        <h2>Selected Lead</h2>
+        <p>Everything you need for the next call, in one view.</p>
+      </div>
+    </div>
+
+    <div id="shNoLead" class="crm-state card sh-empty-workspace" hidden>No lead selected. Visit Leads to choose a prospect to contact. <a href="leads.html">Browse Leads</a></div>
+
+    <div class="sh-reference-toolbar"><div><strong>Call workspace for the selected lead</strong></div><a href="leads.html" class="sh-change-lead workspace-change-lead"><i data-lucide="users"></i> Change Lead</a></div>
+    <section class="outreach-workspace-layout">
+      <div class="workspace-main">
+        <div id="selectedLeadTop" class="crm-leads selected-lead-top" aria-live="polite">
+      <div class="skeleton-lead skeleton-expanded selected-lead-skeleton" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+        <div class="sk-shape sk-line"></div>
+        <div class="sk-chips"><span class="sk-shape"></span><span class="sk-shape"></span></div>
+        <div class="sk-shape sk-preview"></div>
+        <div class="sk-shape sk-note"></div>
+        <div class="sk-shape sk-call"></div>
+        <div class="sk-chips sk-bottom"><span class="sk-shape"></span><span class="sk-shape"></span><span class="sk-shape"></span></div>
+      </div>
+        </div>
+      </div>
+      <aside class="workspace-side">
+        <section id="shCallInfo" class="workspace-card workspace-side-card" aria-live="polite">
+          <div class="workspace-card-head"><i data-lucide="phone"></i><h2>Call Information</h2></div>
+          <div class="workspace-side-empty">Select a lead to see calling details.</div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="outreach-lower-grid" aria-live="polite">
+      <section id="shRecentActivity" class="workspace-card">
+        <div class="workspace-card-head"><i data-lucide="history"></i><h2>Recent Activity</h2></div>
+        <div class="workspace-empty-copy">Select a lead to view recent outreach activity.</div>
+      </section>
+      <section id="shQuickNotes" class="workspace-card">
+        <div class="workspace-card-head"><i data-lucide="notebook-pen"></i><h2>Quick Notes</h2></div>
+        <div class="workspace-empty-copy">Select a lead to write a quick note.</div>
+      </section>
+    </section>
+
+    <div class="outreach-controls">
+      <div class="outreach-controls-skeleton" aria-hidden="true">
+        <div class="sk-shape sk-search-bar"></div>
+        <div class="sk-shape sk-refresh-button"></div>
+        <div class="sk-filter-row">
+          <span class="sk-shape sk-filter-pill"></span>
+          <span class="sk-shape sk-filter-pill sk-filter-pill-wide"></span>
+        </div>
+      </div>
+
+      <div class="outreach-controls-live">
+        <div class="crm-toolbar">
+          <input
+            type="search"
+            id="crmSearch"
+            aria-label="Search all leads"
+            placeholder="Search name, company, phone, email, notes…"
+            autocomplete="off"
+          />
+          <button id="crmReload" type="button" title="Refresh">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </div>
+
+        <div class="filter-row">
+          <button class="pill active outreach-filter-pill" id="crmMainFilter" type="button">
+            <i data-lucide="list-filter"></i>
+            <span id="crmMainFilterLabel">Filter: All</span>
+          </button>
+
+          <button class="pill tag-filter-pill" id="crmTagFilter" type="button">
+            <i data-lucide="tags"></i>
+            <span>Tags &amp; Sources</span>
+            <span class="tag-filter-count" id="crmTagFilterCount" hidden></span>
+          </button>
+          <span id="crmLiveTotals" aria-live="polite" hidden style="margin-left:auto;white-space:nowrap;font-size:12px;color:inherit;opacity:.75;">
+            Total CRM Leads: <strong id="crmTotalLeads" style="font-variant-numeric:tabular-nums;font-weight:700;">—</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <section class="crm-state card" id="crmStatus" aria-live="polite">
+      Connecting to CRM…
+    </section>
+
+    <div id="crmLeadCards" class="crm-leads" aria-live="polite">
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+
+      <div class="skeleton-lead skeleton-compact" aria-hidden="true">
+        <div class="sk-row">
+          <div class="sk-shape sk-icon"></div>
+          <div class="sk-grow">
+            <div class="sk-shape sk-title"></div>
+            <div class="sk-shape sk-subtitle"></div>
+          </div>
+          <div class="sk-shape sk-star"></div>
+        </div>
+        <div class="sk-shape sk-phone"></div>
+      </div>
+    </div>
+  </div><div class="sh-tools-backdrop" id="shToolsBackdrop" hidden></div><aside class="sh-tools-panel" id="shToolsPanel" role="dialog" aria-modal="true" aria-label="Tasks and notifications" tabindex="-1" hidden><div class="sh-tools-head"><h2 id="shToolsTitle">My Tasks</h2><button id="shToolsClose" type="button" aria-label="Close">✕</button></div><div class="sh-tools-body" id="shToolsBody"></div></aside>
+
+  
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  const btn = document.querySelector('.call-script-toggle');
-  const card = document.getElementById('starterScriptCard');
-  if(!btn || !card) return;
-  btn.addEventListener('click', function(){
-    const open = card.classList.toggle('script-expanded');
-    btn.setAttribute('aria-expanded',String(open));
-  });
-});
-</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261005-dark-mode"></script>
-<script src="user-data.js?v=20261005-call-diagnostics"></script>
-<script src="app.js?v=20261003-recipient-timezone-fix"></script>
-<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.18.5/dist/twilio.min.js"></script>
-<script src="twilio-voice-mic.js?v=20261005-caller-ids"></script>
+<script src="user-data.js?v=20261001-1930"></script>
 <script>
-(function(){
-  const params = new URLSearchParams(location.search);
-  const company = params.get('company') || 'Business';
-  const contact = params.get('contact') || '____';
-  const number = params.get('number') || '(000) 000-0000';
-  const previewUrl = params.get('preview') || '';
-  const crmId = params.get('crm_id') || '';
-  const storedTimezone = params.get('timezone') || '';
-  const externalModeFromUrl = params.get('mode');
-  let externalCallLog = false;
-  const externalPreferenceKey = 'steadyhands-default-calling-method-v1';
-  let callingMethod = externalModeFromUrl === 'external' ? 'external' : externalModeFromUrl === 'app' ? 'app' : (localStorage.getItem(externalPreferenceKey) === 'external' ? 'external' : 'app');
-  function setCallingMethod(method){
-    if(['calling','ringing','connected'].includes(callState)){
-      alert('Finish the current app call before switching calling methods.');
-      return;
-    }
-    callingMethod = method === 'external' ? 'external' : 'app';
-    if(localStorage.getItem(externalPreferenceKey) !== 'ask') localStorage.setItem(externalPreferenceKey, callingMethod);
-    document.body.classList.toggle('regular-phone-mode', callingMethod === 'external');
-    const externalPanel = document.getElementById('regularPhonePanel');
-    if(externalPanel) externalPanel.hidden = callingMethod !== 'external';
-    ['regularPhoneMode','appPhoneMode'].forEach(id=>{
-      const button = document.getElementById(id);
-      if(button) button.setAttribute('aria-pressed', String(id === (callingMethod === 'external' ? 'regularPhoneMode':'appPhoneMode')));
-    });
+try {
+  const handoffId = new URLSearchParams(location.search).get('crm_id');
+  if (handoffId) {
+    window.steadyHandsForcedCRMId = handoffId;
+    sessionStorage.setItem('steadyhands-selected-outreach-crm-id', handoffId);
   }
-  // The user chooses one calling method once per login/session, not for each lead.
-  if(!externalModeFromUrl && localStorage.getItem(externalPreferenceKey) === 'ask') {
-    const sessionKey = 'steadyhands-session-call-method';
-    const chosen = sessionStorage.getItem(sessionKey);
-    if(chosen === 'external' || chosen === 'app') {
-      callingMethod = chosen;
-    } else {
-      setTimeout(() => {
-        const selection = document.createElement('div');
-        selection.className = 'call-choice-overlay';
-        selection.innerHTML = `<div class="call-choice-dialog" role="dialog" aria-modal="true" aria-labelledby="callChoiceTitle"><h2 id="callChoiceTitle">How are you calling today?</h2><p>Choose your calling method for this session. You can change it later.</p><button type="button" data-method="external">Regular Phone</button><button type="button" data-method="app">Call Through App</button></div>`;
-        document.body.appendChild(selection);
-        selection.querySelectorAll('[data-method]').forEach(btn => btn.addEventListener('click', () => {
-          const chosenMethod = btn.dataset.method;
-          sessionStorage.setItem(sessionKey, chosenMethod);
-          setCallingMethod(chosenMethod);
-          selection.remove();
-        }));
-      }, 50);
+} catch (_) {}
+</script>
+<script src="call-reference.js?v=handoff-2" defer></script>
+<script src="call-round-controls.js?v=20261011-fix" defer></script>
+<script>
+(() => {
+  const back = document.getElementById('backToOutreach');
+  if (!back) return;
+  back.addEventListener('click', () => {
+    const callButton = document.getElementById('refEndCall');
+    const active = callButton?.dataset.callState === 'active';
+    if (active && !window.confirm('A call is in progress. Going back may interrupt the call. Leave the call page?')) return;
+    const id = new URLSearchParams(location.search).get('crm_id') || window.steadyHandsCallLead?.id || '';
+    if (id) {
+      try { sessionStorage.setItem('steadyhands-selected-outreach-crm-id', id); } catch (_) {}
     }
-  }
-  document.getElementById('regularPhoneMode')?.addEventListener('click', ()=>setCallingMethod('external'));
-  document.getElementById('appPhoneMode')?.addEventListener('click', ()=>setCallingMethod('app'));
-  document.getElementById('regularPhoneNumber').textContent = number;
-  const dialNumber = number.replace(/[^+0-9]/g,'');
-  document.getElementById('externalDialerLink').href = dialNumber ? 'tel:' + dialNumber : '#';
-  document.getElementById('externalCopyNumber')?.addEventListener('click', async ()=>{
-    try { await navigator.clipboard.writeText(number); }
-    catch { prompt('Copy phone number:',number); }
+    location.href = id ? 'index.html?crm_id=' + encodeURIComponent(id) : 'index.html';
   });
-  document.getElementById('externalLogCall')?.addEventListener('click', ()=>{
-    if(questionnaireOpen) return;
-    externalCallLog = true;
-    connectedSeconds = 0;
-    callConnectedAt = null;
-    callEndedAt = Date.now();
-    currentCallSid = '';
-    openPostCallFlow();
-  });
-
-
-  const header = document.getElementById('callCompanyHeader');
-  const companyEl = document.getElementById('callCompany');
-  const numberEl = document.getElementById('callNumber');
-  const prospectEl = document.getElementById('prospectLabel');
-  const statusText = document.getElementById('callStatusText');
-  const timerWrap = document.getElementById('callTimerWrap');
-  const timer = document.getElementById('callTimer');
-  const statusIcon = document.getElementById('callStatusIcon');
-  const transcript = document.getElementById('transcriptSection');
-
-  if (header) header.textContent = company;
-  if (companyEl) companyEl.textContent = company;
-  if (numberEl) numberEl.textContent = number;
-  if (prospectEl) prospectEl.textContent = contact || '____';
-
-  let staffFirstName = '____';
-  const contactFirstName = (contact || '____').trim().split(/\s+/)[0] || '____';
-  let activeStarterScript = 'no-site';
-
-  const starterScripts = {
-    'no-site': () => `Hey ${contactFirstName}, this is ${staffFirstName}. I was looking into your business earlier and I couldn’t find a website. I help businesses get set up with a professional site. Is that something you’re considering?`,
-    'old-site': () => `Hey ${contactFirstName}, this is ${staffFirstName}. I was looking at your website earlier and noticed it seems dated. I help businesses redesign and upgrade older sites. Would you be open to talking about it?`,
-    'broken': () => `Hey ${contactFirstName}, this is ${staffFirstName}. I noticed parts of your website weren’t working properly. I can help get it fixed or rebuild it. Would you be interested?`,
-    'spanish': () => 'No hay problema. Un miembro de mi equipo habla español. Puedo pedirle que le llame?'
-  };
-
-  function renderStarterScript(){
-    const target = document.getElementById('starterScriptText');
-    if(target) target.textContent = starterScripts[activeStarterScript]?.() || '';
-  }
-
-  document.querySelectorAll('.starter-script-tab').forEach(button => {
-    button.addEventListener('click', () => {
-      activeStarterScript = button.dataset.script || 'no-site';
-      document.querySelectorAll('.starter-script-tab').forEach(item => item.classList.toggle('active', item === button));
-      renderStarterScript();
-    });
-  });
-
-  document.getElementById('copyStarterScript')?.addEventListener('click', async () => {
-    const text = starterScripts[activeStarterScript]?.() || '';
-    try { await navigator.clipboard.writeText(text); }
-    catch { prompt('Copy this:', text); }
-  });
-
-  async function loadStarterStaffName(){
-    const c = window.steadyHandsCRMClient;
-    if(!c) { renderStarterScript(); return; }
-    try {
-      const { data: sessionData } = await c.auth.getSession();
-      const userId = sessionData?.session?.user?.id;
-      if(!userId) { renderStarterScript(); return; }
-      const { data } = await c.from('callcenter_profiles').select('display_name,email').eq('user_id',userId).maybeSingle();
-      const source = String(data?.display_name || data?.email || '').trim();
-      if(source) staffFirstName = source.split(/[\s@]+/)[0] || '____';
-    } catch(error) {
-      console.warn('Unable to load starter script name:', error);
-    }
-    renderStarterScript();
-  }
-
-  renderStarterScript();
-  setTimeout(loadStarterStaffName, 0);
-
-  document.getElementById('callBack')?.addEventListener('click', () => {
-    history.length > 1 ? history.back() : location.href='index.html';
-  });
-
-  let callState = 'idle';
-  setCallingMethod(callingMethod);
-  let connectedSeconds = 0;
-  let timerTick = null;
-  let stateTimers = [];
-  let questionnaireOpen = false;
-  let leadBlockedNotInterested = false;
-  let leadLockHeld = false;
-  let leadLockHeartbeat = null;
-
-  async function claimLeadForCall(){
-    const client = window.steadyHandsCRMClient;
-    if (!client || !crmId) throw new Error('CRM connection is required to start a call.');
-    const { data, error } = await client.rpc('callcenter_claim_lead', { p_lead_id: String(crmId) });
-    if (error) throw new Error('Call safety setup is unavailable: ' + error.message);
-    if (data !== true) throw new Error('This lead is already being called, was contacted, or is unavailable. Refresh Outreach.');
-    leadLockHeld = true;
-    clearInterval(leadLockHeartbeat);
-    leadLockHeartbeat = setInterval(async () => {
-      if (!leadLockHeld) return;
-      const { data: renewed, error: renewalError } = await client.rpc('callcenter_renew_lead', { p_lead_id: String(crmId) });
-      if (error || renewed !== true) {
-        console.error('Lead reservation could not be renewed', renewalError);
-        clearInterval(leadLockHeartbeat);
-        leadLockHeartbeat = null;
-        // Fail safely: end an in-progress call if its reservation is lost.
-        if (['calling','ringing','connected'].includes(callState)) {
-          window.SteadyHandsTwilioVoice?.hangup();
-          stopCall();
-          if (!questionnaireOpen) openPostCallFlow();
-          alert('Lead reservation lost. The call was ended to prevent duplicate outreach.');
-        }
-        leadLockHeld = false;
-      }
-    }, 30000);
-  }
-
-  async function releaseLeadAfterCall(){
-    clearInterval(leadLockHeartbeat);
-    leadLockHeartbeat = null;
-    if (!leadLockHeld) return;
-    leadLockHeld = false;
-    try {
-      await window.steadyHandsCRMClient?.rpc('callcenter_release_lead', { p_lead_id: String(crmId) });
-    } catch (error) { console.warn('Lead lock will expire automatically:', error); }
-  }
-
-  let holdActive = false;
-  let userMuted = false;
-
-  let ringbackContext = null;
-  let ringbackOscillators = [];
-  let ringbackGain = null;
-  let ringbackTimer = null;
-
-  function unlockRingbackAudio(){
-    try{
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if(!AudioContextClass) return;
-      if(!ringbackContext) ringbackContext = new AudioContextClass();
-      if(ringbackContext.state === 'suspended') ringbackContext.resume().catch(() => {});
-    }catch(error){
-      console.warn('Unable to prepare ringback audio:', error);
-    }
-  }
-
-  function stopRingback(){
-    if(ringbackTimer){
-      clearInterval(ringbackTimer);
-      ringbackTimer = null;
-    }
-
-    if(ringbackGain){
-      try{
-        const now = ringbackContext?.currentTime || 0;
-        ringbackGain.gain.cancelScheduledValues(now);
-        ringbackGain.gain.setValueAtTime(0, now);
-      }catch{}
-    }
-
-    ringbackOscillators.forEach(oscillator => {
-      try{ oscillator.stop(); }catch{}
-      try{ oscillator.disconnect(); }catch{}
-    });
-    ringbackOscillators = [];
-
-    try{ ringbackGain?.disconnect(); }catch{}
-    ringbackGain = null;
-  }
-
-  function startRingback(){
-    if(ringbackOscillators.length) return;
-
-    try{
-      unlockRingbackAudio();
-      if(!ringbackContext) return;
-
-      const gain = ringbackContext.createGain();
-      gain.gain.value = 0.055;
-      gain.connect(ringbackContext.destination);
-      ringbackGain = gain;
-
-      [440, 480].forEach(frequency => {
-        const oscillator = ringbackContext.createOscillator();
-        oscillator.type = 'sine';
-        oscillator.frequency.value = frequency;
-        oscillator.connect(gain);
-        oscillator.start();
-        ringbackOscillators.push(oscillator);
-      });
-
-      // North American ringback cadence: roughly 2 seconds on, 4 seconds off.
-      let audible = true;
-      ringbackTimer = setInterval(() => {
-        if(!ringbackGain || !ringbackContext) return;
-        audible = !audible;
-        const now = ringbackContext.currentTime;
-        ringbackGain.gain.cancelScheduledValues(now);
-        ringbackGain.gain.setTargetAtTime(audible ? 0.055 : 0, now, 0.015);
-      }, audible ? 2000 : 4000);
-
-      // Replace the simple interval above with the correct 2s-on / 4s-off cadence.
-      clearInterval(ringbackTimer);
-      const cycle = () => {
-        if(!ringbackGain || !ringbackContext) return;
-        const now = ringbackContext.currentTime;
-        ringbackGain.gain.cancelScheduledValues(now);
-        ringbackGain.gain.setTargetAtTime(0.055, now, 0.015);
-        ringbackTimer = setTimeout(() => {
-          if(!ringbackGain || !ringbackContext) return;
-          const offNow = ringbackContext.currentTime;
-          ringbackGain.gain.cancelScheduledValues(offNow);
-          ringbackGain.gain.setTargetAtTime(0, offNow, 0.015);
-          ringbackTimer = setTimeout(cycle, 4000);
-        }, 2000);
-      };
-      cycle();
-    }catch(error){
-      console.warn('Unable to play ringback audio:', error);
-      stopRingback();
-    }
-  }
-
-  function showNotInterestedWarning() {
-    alert('This client is listed as not interested');
-  }
-
-  async function refreshNotInterestedStatus() {
-    const client = window.steadyHandsCRMClient;
-    if (!client || !crmId) return false;
-
-    const { data, error } = await client
-      .from('crm')
-      .select('stage,outcome,tags')
-      .eq('id', crmId)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Unable to verify Not Interested status:', error);
-      return false;
-    }
-
-    const tags = Array.isArray(data?.tags)
-      ? data.tags
-      : typeof data?.tags === 'string'
-        ? [data.tags]
-        : [];
-
-    leadBlockedNotInterested = [
-      data?.stage,
-      data?.outcome,
-      ...tags
-    ].some(value => /not\s*interested|notinterested/i.test(String(value || '')));
-
-    if (leadBlockedNotInterested && mainCallButton) {
-      mainCallButton.disabled = true;
-      mainCallButton.classList.remove('hangup');
-      mainCallButton.classList.add('start-call');
-      mainCallButton.setAttribute('aria-label', 'Client is listed as not interested');
-      mainCallButton.innerHTML = '<i data-lucide="phone-off"></i><span>Not Interested</span>';
-      lucide.createIcons();
-    }
-
-    return leadBlockedNotInterested;
-  }
-
-  function setState(state){
-    callState = state;
-    const map = {
-      idle: 'Ready',
-      calling: 'Calling…',
-      ringing: 'Ringing…',
-      connected: 'Connected',
-      ended: 'Call Ended'
-    };
-    statusText.textContent = map[state] || state;
-    document.querySelector('.call-status').dataset.state = state;
-
-    if(state === 'connected'){
-      if(!callConnectedAt) callConnectedAt = Date.now();
-      callEndedAt = null;
-      timerWrap.hidden = false;
-      if(!timerTick){
-        timerTick = setInterval(() => {
-          connectedSeconds++;
-          const m = String(Math.floor(connectedSeconds/60)).padStart(2,'0');
-          const s = String(connectedSeconds%60).padStart(2,'0');
-          timer.textContent = `${m}:${s}`;
-        },1000);
-      }
-    } else {
-      timerWrap.hidden = true;
-    }
-  }
-
-  setState('idle');
-
-  function stopCall(){
-    stopRingback();
-
-    if(liveTranscriptPollTimer){
-      clearInterval(liveTranscriptPollTimer);
-      liveTranscriptPollTimer = null;
-    }
-    if(liveTranscriptDiagnosticTimer){
-      clearTimeout(liveTranscriptDiagnosticTimer);
-      liveTranscriptDiagnosticTimer = null;
-    }
-    if(liveTranscriptChannel && window.steadyHandsCRMClient){
-      try{ window.steadyHandsCRMClient.removeChannel(liveTranscriptChannel); }catch{}
-      liveTranscriptChannel = null;
-    }
-    currentTranscriptCallSid = '';
-    holdActive = false;
-    userMuted = false;
-
-    const muteControl = document.getElementById('muteBtn');
-    if(muteControl){
-      muteControl.classList.remove('active');
-      muteControl.innerHTML = '<i data-lucide="mic"></i><span>Mute</span>';
-      muteControl.disabled = false;
-    }
-
-    const holdControl = document.getElementById('holdBtn');
-    if(holdControl){
-      holdControl.classList.remove('active');
-      holdControl.innerHTML = '<i data-lucide="pause"></i><span>Hold</span>';
-      holdControl.disabled = false;
-    }
-
-    const speakerControl = document.getElementById('speakerBtn');
-    if(speakerControl){
-      speakerControl.classList.remove('active');
-      speakerControl.innerHTML = '<i data-lucide="volume-2"></i><span>Speaker</span>';
-      speakerControl.disabled = false;
-    }
-
-    const keypadControl = document.getElementById('keypadBtn');
-    if(keypadControl){
-      keypadControl.classList.remove('active');
-      keypadControl.disabled = false;
-    }
-    document.querySelector('.call-keypad-overlay')?.remove();
-
-    stateTimers.forEach(clearTimeout);
-    stateTimers = [];
-    if(timerTick) clearInterval(timerTick);
-    timerTick = null;
-
-    callEndedAt = Date.now();
-
-    if(liveTranscriptEnabled && speechRecognition){
-      liveTranscriptEnabled = false;
-      try{ speechRecognition.stop(); }catch{}
-      setTranscriptStatus('Live transcript is off');
-      const button = document.getElementById('enableLiveTranscript');
-      if(button) button.innerHTML = '<i data-lucide="mic"></i> Enable Live Transcript';
-    }
-
-    setState('ended');
-    lucide.createIcons();
-  }
-
-  const mainCallButton = document.getElementById('hangupBtn');
-
-  function syncMainCallButton(){
-    const active = ['calling','ringing','connected'].includes(callState);
-    if(!mainCallButton) return;
-    mainCallButton.classList.toggle('start-call', !active);
-    mainCallButton.classList.toggle('hangup', active);
-    mainCallButton.setAttribute('aria-label', active ? 'End call' : 'Start call');
-    mainCallButton.innerHTML = active
-      ? '<i data-lucide="phone"></i><span>End Call</span>'
-      : '<i data-lucide="phone"></i><span>Start Call</span>';
-    lucide.createIcons();
-  }
-
-  async function startCall(){
-    stateTimers.forEach(clearTimeout);
-    stateTimers = [];
-    connectedSeconds = 0;
-    callConnectedAt = null;
-    callEndedAt = null;
-    currentCallSid = '';
-    transcriptStartedAt = null;
-    transcriptSegments = [];
-    transcriptSavedForCall = false;
-
-    const transcriptList = document.getElementById('liveTranscriptList');
-    if(transcriptList){
-      transcriptList.innerHTML = '<div class="live-transcript-empty" id="liveTranscriptEmpty">No transcript yet.</div>';
-    }
-
-    timer.textContent = '00:00';
-    setState('calling');
-    syncMainCallButton();
-
-    try {
-      if (!window.SteadyHandsTwilioVoice) {
-        throw new Error('The browser phone is still loading. Try again in a second.');
-      }
-
-      await claimLeadForCall();
-      await window.SteadyHandsTwilioVoice.start(number, {
-        crmId,
-        company,
-        transcribe: liveTranscriptRequested
-      });
-    } catch (error) {
-      console.error('Unable to start Twilio call:', error);
-      stopCall();
-      await releaseLeadAfterCall();
-      syncMainCallButton();
-      alert(error?.message || 'The call could not be started.');
-    }
-  }
-
-  function confirmLiveTranscriptBeforeCall(){
-    return new Promise(resolve => {
-      const body = `
-        <div class="call-time-confirm">
-          <div class="call-time-confirm-icon"><i data-lucide="captions"></i></div>
-          <p class="call-time-confirm-question">Live transcript</p>
-          <strong class="call-time-confirm-time" style="font-size:1.25rem">Enable transcript for this call?</strong>
-          <p class="call-time-confirm-hours">Twilio will transcribe both sides of the call — you and the customer — and stream the text into this call screen.</p>
-        </div>`;
-
-      modal('Before you call', body, [
-        {
-          label: 'Not Now',
-          onClick: close => {
-            liveTranscriptRequested = false;
-            unlockRingbackAudio();
-            close();
-            resolve('skip');
-          }
-        },
-        {
-          label: 'Enable & Call',
-          primary: true,
-          onClick: close => {
-            liveTranscriptRequested = true;
-            transcriptStartedAt = Date.now();
-            setTranscriptStatus('Waiting for Twilio transcription…', true);
-            const button = document.getElementById('enableLiveTranscript');
-            if(button) button.innerHTML = '<i data-lucide="captions"></i> Live Transcript On';
-            unlockRingbackAudio();
-            close();
-            lucide.createIcons();
-            resolve('enabled');
-          }
-        }
-      ]);
-    });
-  }
-
-  function confirmCallTime() {
-    const theirTime = window.callcenterLocalTimeText
-      ? window.callcenterLocalTimeText(number, storedTimezone)
-      : new Date().toLocaleString();
-
-    const timing = window.callcenterCallStatus
-      ? window.callcenterCallStatus(number, storedTimezone)
-      : { state: 'good', label: 'Check their local time before calling', zone: storedTimezone };
-
-    const zoneLabel = window.callcenterZoneLabel
-      ? window.callcenterZoneLabel(timing.zone)
-      : (storedTimezone || 'Local time');
-
-    const area = window.callcenterLeadZone
-      ? window.callcenterLeadZone(number, storedTimezone).area
-      : '';
-
-    return new Promise(resolve => {
-      const body = `
-        <div class="call-time-confirm">
-          <div class="call-time-confirm-icon"><i data-lucide="clock-3"></i></div>
-          <p class="call-time-confirm-question">It's currently</p>
-          <strong class="call-time-confirm-time">${theirTime}</strong>
-          <p class="call-time-confirm-zone">${zoneLabel}${area ? ' · area code ' + area : ''}</p>
-          <div class="call-time-confirm-status call-time-confirm-${timing.state}">
-            <i data-lucide="${timing.state === 'good' ? 'circle-check' : 'triangle-alert'}"></i>
-            <span>${timing.label}</span>
-          </div>
-          <p class="call-time-confirm-hours">Best calling hours: Monday–Friday · 9:00 AM–5:00 PM their local time.</p>
-        </div>`;
-
-      modal('Are you sure?', body, [
-        { label: 'Cancel', onClick: close => { close(); resolve(false); } },
-        { label: timing.state === 'good' ? 'Call Now' : 'Call Anyway', primary: true, onClick: close => { close(); resolve(true); } }
-      ]);
-    });
-  }
-
-  mainCallButton?.addEventListener('click', async () => {
-    if(callingMethod === 'external') return;
-    if(questionnaireOpen) return;
-
-    if (leadBlockedNotInterested || await refreshNotInterestedStatus()) {
-      showNotInterestedWarning();
-      return;
-    }
-
-    if(callState === 'idle' || callState === 'ended'){
-      unlockRingbackAudio();
-      const confirmed = await confirmCallTime();
-      if (!confirmed) return;
-
-      const transcriptChoice = await confirmLiveTranscriptBeforeCall();
-      if (!transcriptChoice) return;
-
-      await startCall();
-      return;
-    }
-
-    window.SteadyHandsTwilioVoice?.hangup();
-    stopCall();
-    syncMainCallButton();
-    openPostCallFlow();
-  });
-
-  setTimeout(async () => {
-    if (await refreshNotInterestedStatus()) {
-      showNotInterestedWarning();
-    }
-  }, 0);
-
-  document.getElementById('muteBtn')?.addEventListener('click', function(){
-    if(callState !== 'connected') return;
-    userMuted = !userMuted;
-    const actualMuted = window.SteadyHandsTwilioVoice?.setMuted(userMuted);
-    if(typeof actualMuted === 'boolean') userMuted = actualMuted;
-    this.classList.toggle('active', userMuted);
-    this.innerHTML = userMuted
-      ? '<i data-lucide="mic-off"></i><span>Unmute</span>'
-      : '<i data-lucide="mic"></i><span>Mute</span>';
-    lucide.createIcons();
-  });
-
-  window.addEventListener('steadyhands:voice-state', event => {
-    const detail = event.detail || {};
-    const voiceState = detail.state;
-
-    if (voiceState === 'calling') {
-      setState('calling');
-      syncMainCallButton();
-      return;
-    }
-
-    if (voiceState === 'ringing') {
-      setState('ringing');
-      syncMainCallButton();
-      return;
-    }
-
-    if (voiceState === 'connected') {
-      stopRingback();
-      if (detail.callSid) currentCallSid = String(detail.callSid);
-      setState('connected');
-
-      if(liveTranscriptRequested && detail.callSid){
-        const client = window.steadyHandsCRMClient;
-        if(client){
-          client.functions
-            .invoke('twilio-start-transcription', {
-              body: { call_sid: detail.callSid }
-            })
-            .then(({ data, error }) => {
-              if(error || data?.ok === false){
-                console.error('Unable to start Twilio realtime transcription:', error || data);
-                const reason = data?.error
-                  ? (data?.code ? 'Twilio ' + data.code + ': ' + data.error : data.error)
-                  : (error?.message || 'Unknown transcription error');
-                setTranscriptStatus('Call connected · transcription unavailable');
-                alert('Transcription could not start.\n\n' + reason);
-                return;
-              }
-              subscribeToTwilioTranscript(detail.callSid);
-            })
-            .catch(error => {
-              console.error('Unable to start Twilio realtime transcription:', error);
-              setTranscriptStatus('Call connected · transcription unavailable');
-              alert('Transcription could not start.\n\n' + (error?.message || 'Unknown transcription error'));
-            });
-        }
-      }
-
-      syncMainCallButton();
-      return;
-    }
-
-    if (voiceState === 'error') {
-      const numericCode = Number(detail.code || 0);
-
-      // Twilio 31000 is a generic SDK error. If audio already connected,
-      // do not interrupt an otherwise useful call/transcript with a modal
-      // that contains no actionable detail.
-      if(numericCode === 31000 && (callState === 'connected' || callConnectedAt)){
-        console.warn('Twilio generic 31000 after connection:', detail);
-        const currentStatus = document.getElementById('liveTranscriptStatus');
-        if(currentStatus && !/ERROR\b/i.test(currentStatus.textContent || '')){
-          setTranscriptStatus('Call audio ended · transcript retained', false);
-        }
-        return;
-      }
-
-      const code = detail.code ? 'Twilio ' + detail.code + ': ' : '';
-      const parts = [
-        detail.message,
-        detail.description,
-        detail.explanation,
-        ...(Array.isArray(detail.causes) ? detail.causes.slice(0,2) : [])
-      ].filter(Boolean);
-
-      const unique = [...new Set(parts.map(value => String(value).trim()).filter(Boolean))];
-      alert(code + (unique.join('\n\n') || 'The call encountered an error.'));
-      return;
-    }
-
-    if (voiceState === 'ended' && ['calling','ringing','connected'].includes(callState)) {
-      stopCall();
-      syncMainCallButton();
-      if (!questionnaireOpen) openPostCallFlow();
-    }
-  });
-
-  syncMainCallButton();
-
-  document.getElementById('holdBtn')?.addEventListener('click', async function(){
-    if(callState !== 'connected') return;
-
-    const nextHeld = !holdActive;
-    this.disabled = true;
-
-    try{
-      const actualHeld = await window.SteadyHandsTwilioVoice?.setHeld?.(nextHeld);
-      holdActive = typeof actualHeld === 'boolean' ? actualHeld : nextHeld;
-
-      this.classList.toggle('active', holdActive);
-      this.innerHTML = holdActive
-        ? '<i data-lucide="play"></i><span>Resume</span>'
-        : '<i data-lucide="pause"></i><span>Hold</span>';
-
-      // Hold and mute remain independent. The caller hears hold audio while held.
-      if(holdActive) setTranscriptStatus('Call is on hold · hold audio playing', false);
-      else if(liveTranscriptEnabled) setTranscriptStatus('Listening to microphone…', true);
-      else setTranscriptStatus('Live transcript is off');
-    }catch(error){
-      console.error('Unable to change hold state:', error);
-      alert(error?.message || 'Unable to put this call on hold.');
-    }finally{
-      this.disabled = false;
-      lucide.createIcons();
-    }
-  });
-
-  document.getElementById('keypadBtn')?.addEventListener('click', function(){
-    if(callState !== 'connected'){
-      alert('Start the call before using the keypad.');
-      return;
-    }
-
-    document.querySelector('.call-keypad-overlay')?.remove();
-
-    const overlay = document.createElement('div');
-    overlay.className = 'call-keypad-overlay';
-    overlay.innerHTML = `
-      <section class="call-keypad-sheet" role="dialog" aria-modal="true" aria-label="Call keypad">
-        <div class="call-keypad-head">
-          <div>
-            <span class="call-keypad-kicker">DTMF</span>
-            <h2>Keypad</h2>
-          </div>
-          <button class="call-keypad-close" type="button" aria-label="Close keypad"><i data-lucide="x"></i></button>
-        </div>
-        <div class="call-keypad-display" id="callKeypadDisplay">&nbsp;</div>
-        <div class="call-keypad-grid">
-          ${[
-            ['1',''],['2','ABC'],['3','DEF'],
-            ['4','GHI'],['5','JKL'],['6','MNO'],
-            ['7','PQRS'],['8','TUV'],['9','WXYZ'],
-            ['*',''],['0','+'],['#','']
-          ].map(([digit,letters]) => `
-            <button type="button" class="call-keypad-key" data-digit="${digit}">
-              <strong>${digit}</strong>
-              <span>${letters}</span>
-            </button>`).join('')}
-        </div>
-      </section>`;
-
-    document.body.appendChild(overlay);
-    this.classList.add('active');
-
-    const close = () => {
-      overlay.remove();
-      this.classList.remove('active');
-    };
-
-    overlay.querySelector('.call-keypad-close')?.addEventListener('click', close);
-    overlay.addEventListener('click', event => {
-      if(event.target === overlay) close();
-    });
-
-    const display = overlay.querySelector('#callKeypadDisplay');
-
-    overlay.querySelectorAll('[data-digit]').forEach(button => {
-      button.addEventListener('click', () => {
-        const digit = button.dataset.digit || '';
-        if(!digit) return;
-
-        try{
-          window.SteadyHandsTwilioVoice?.sendDigits?.(digit);
-          const current = (display.textContent || '').replace(/\s/g,'');
-          display.textContent = (current + digit).slice(-24);
-        }catch(error){
-          console.error('Unable to send keypad digit:', error);
-          alert(error?.message || 'Unable to send keypad tone.');
-        }
-      });
-    });
-
-    lucide.createIcons();
-  });
-
-  document.getElementById('speakerBtn')?.addEventListener('click', async function(){
-    if(callState !== 'connected') return;
-
-    try{
-      const result = await window.SteadyHandsTwilioVoice?.toggleSpeakerOutput?.();
-
-      if(!result?.supported){
-        alert('This browser does not let websites switch between earpiece and speaker. On iPhone, use the system audio/AirPlay control to change the call output.');
-        return;
-      }
-
-      this.classList.add('active');
-      this.innerHTML = '<i data-lucide="volume-2"></i><span>' + (result.label || 'Speaker') + '</span>';
-      lucide.createIcons();
-    }catch(error){
-      console.error('Unable to switch speaker output:', error);
-      alert(error?.message || 'Unable to switch audio output on this browser.');
-    }
-  });
-
-  function toolSheet(title, body){
-    document.querySelector('.call-tool-overlay')?.remove();
-    const overlay = document.createElement('div');
-    overlay.className = 'call-tool-overlay';
-    overlay.innerHTML = `<section class="call-tool-sheet" role="dialog" aria-modal="true"><div class="call-tool-grabber"></div><div class="call-tool-head"><h2>${title}</h2><button class="call-tool-close" type="button" aria-label="Close"><i data-lucide="x"></i></button></div><div class="call-tool-body">${body}</div></section>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector('.call-tool-close').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
-    lucide.createIcons();
-    return overlay;
-  }
-
-  async function loadLeadDetails(){
-    const c = window.steadyHandsCRMClient;
-    if(!c || !crmId) return null;
-    const { data, error } = await c.from('crm').select('notes,tags,sources,outcome,stage,callbackdate,callbackat').eq('id',crmId).maybeSingle();
-    if(error) console.warn('Unable to load selected lead tools:', error);
-    return data || null;
-  }
-
-  async function copyText(value, message='Copied'){
-    try { await navigator.clipboard.writeText(value); alert(message); }
-    catch { prompt('Copy this:', value); }
-  }
-
-  document.querySelectorAll('[data-call-action]').forEach(btn => btn.addEventListener('click', async () => {
-    const label = btn.dataset.callAction;
-
-    if(label === 'Alerts'){
-      const lead = await loadLeadDetails();
-      const c = window.steadyHandsCRMClient;
-      let existing = [];
-      if(c && crmId){
-        const { data } = await c
-          .from('outreach_notes_alerts')
-          .select('id,title,description,created_at')
-          .eq('crmid',crmId)
-          .eq('kind','alert')
-          .order('created_at',{ascending:false})
-          .limit(20);
-        existing = data || [];
-      }
-
-      const overlay = toolSheet('Alerts', `
-        <div class="call-alert-form">
-          <input class="call-tool-input" id="newAlertTitle" placeholder="Alert title" />
-          <textarea class="call-tool-textarea call-alert-textarea" id="newAlertDescription" placeholder="What should the rep know?"></textarea>
-          <button class="call-tool-primary" id="addLeadAlert" type="button"><i data-lucide="bell-plus"></i> Add Alert</button>
-        </div>
-        <div class="call-alert-list">
-          ${existing.length ? existing.map(item => `
-            <div class="call-tool-row call-alert-row">
-              <i data-lucide="bell"></i>
-              <span><strong>${item.title}</strong>${item.description ? '<small>'+item.description+'</small>' : ''}</span>
-            </div>`).join('') : '<div class="call-tool-empty">No alerts for this lead yet.</div>'}
-        </div>`);
-
-      overlay.querySelector('#addLeadAlert')?.addEventListener('click', async () => {
-        const title = overlay.querySelector('#newAlertTitle').value.trim();
-        const description = overlay.querySelector('#newAlertDescription').value.trim();
-        if(!title) return alert('Add an alert title first.');
-        const client = window.steadyHandsCRMClient;
-        if(!client || !crmId) return alert('Unable to save this alert.');
-
-        const { data: authData } = await client.auth.getSession();
-        const userId = authData?.session?.user?.id;
-        if(!userId) return alert('Please sign in again.');
-
-        const { error } = await client.from('outreach_notes_alerts').insert({
-          crmid: crmId,
-          userid: userId,
-          kind: 'alert',
-          title,
-          description,
-          icon: 'bi-bell-fill',
-          author_name: staffFirstName || ''
-        });
-
-        if(error){
-          console.error('Unable to add alert:',error);
-          return alert('Could not add alert.');
-        }
-        overlay.remove();
-        document.querySelector('[data-call-action="Alerts"]')?.click();
-      });
-      return;
-    }
-
-    if(label === 'Tags'){
-      const lead = await loadLeadDetails();
-      const tagOptions = [
-        'Broken Site','Outdated Site','Site Removed','Already have a website',
-        'Spanish?','Hot Lead','Interested','Call Back','Needs More Info','Skeptical',
-        'No Answer','Left Voicemail','Not Interested','Wrong Number','Conversion','Sold'
-      ];
-
-      let currentTags = [];
-      let value = lead?.tags;
-      if(typeof value === 'string'){
-        try { value = JSON.parse(value); } catch { value = []; }
-      }
-      if(Array.isArray(value)) currentTags = value.filter(x => typeof x === 'string');
-
-      const selected = new Set(currentTags);
-      const overlay = toolSheet('Tags', `
-        <p class="call-tool-help">Tap tags to turn them on or off for this lead.</p>
-        <div class="call-tool-tag-picker">
-          ${tagOptions.map(tag => `<button type="button" class="call-tag-choice ${selected.has(tag)?'selected':''}" data-tag-choice="${tag}"><i data-lucide="check"></i>${tag}</button>`).join('')}
-        </div>
-        <button class="call-tool-primary" id="saveLeadTags" type="button">Save Tags</button>`);
-
-      overlay.querySelectorAll('[data-tag-choice]').forEach(button => {
-        button.addEventListener('click', () => {
-          const tag = button.dataset.tagChoice;
-          if(selected.has(tag)) selected.delete(tag);
-          else selected.add(tag);
-          button.classList.toggle('selected',selected.has(tag));
-        });
-      });
-
-      overlay.querySelector('#saveLeadTags')?.addEventListener('click', async () => {
-        const client = window.steadyHandsCRMClient;
-        if(!client || !crmId) return alert('Unable to save tags.');
-        const { error } = await client.from('crm').update({tags:[...selected]}).eq('id',crmId);
-        if(error){
-          console.error('Unable to save tags:',error);
-          return alert('Could not save tags.');
-        }
-        overlay.remove();
-      });
-      return;
-    }
-
-    if(label === 'Notes'){
-      const lead = await loadLeadDetails();
-      const overlay = toolSheet('Notes', `<textarea class="call-tool-textarea" id="callLeadNotes" placeholder="Add notes…">${lead?.notes || ''}</textarea><button class="call-tool-primary" id="saveCallLeadNotes" type="button">Save Notes</button>`);
-      overlay.querySelector('#saveCallLeadNotes').addEventListener('click', async () => {
-        const c = window.steadyHandsCRMClient;
-        const value = overlay.querySelector('#callLeadNotes').value.trim();
-        if(!c || !crmId) return;
-        const { error } = await c.from('crm').update({notes:value}).eq('id',crmId);
-        if(error) return alert('Could not save notes.');
-        overlay.remove();
-      });
-      return;
-    }
-
-    if(label === 'Send Site Preview'){
-      const message = previewUrl ? `Hi! Here is the website preview we made for ${company}: ${previewUrl}` : '';
-      const overlay = toolSheet('Send Site Preview', previewUrl ? `
-        <div class="call-preview-link">${previewUrl}</div>
-        <button class="call-tool-primary" id="sendPreviewSavedNumber" type="button"><i data-lucide="message-square"></i> Send to This Number</button>
-        <button class="call-tool-secondary" id="choosePreviewDestination" type="button"><i data-lucide="share-2"></i> Choose Where to Send</button>
-        <button class="call-tool-secondary" id="copyPreview" type="button"><i data-lucide="copy"></i> Copy Message</button>
-        <a class="call-tool-secondary call-tool-link" href="${previewUrl}" target="_blank" rel="noopener noreferrer">Open Preview</a>
-      ` : '<div class="call-tool-empty">No site preview is connected to this lead.</div>');
-
-      if(previewUrl){
-        overlay.querySelector('#sendPreviewSavedNumber')?.addEventListener('click', () => {
-          const digits = number.replace(/[^+\d]/g,'');
-          location.href = 'sms:' + digits + '?body=' + encodeURIComponent(message);
-        });
-        overlay.querySelector('#choosePreviewDestination')?.addEventListener('click', async () => {
-          if(navigator.share){
-            try { await navigator.share({title: company + ' website preview',text:message,url:previewUrl}); } catch {}
-          } else {
-            await copyText(message,'Preview message copied');
-          }
-        });
-        overlay.querySelector('#copyPreview')?.addEventListener('click', () => copyText(message,'Preview message copied'));
-      }
-      return;
-    }
-
-    if(label === 'Templates'){
-      const templates = [
-        ['Site Preview Ready', `Hi! I put together a website preview for ${company}. You can view it here: ${previewUrl || '[preview link]'}`],
-        ['Pricing', 'Website development is $100 one-time. Hosting is $20/month, or $30/month with the admin site.'],
-        ['Follow Up', `Hi! Just following up about the website preview for ${company}. Let me know if you have any questions.`],
-        ['Ready to Move Forward', `Hi! If you would like to move forward with the website for ${company}, I can help you get everything set up.`]
-      ];
-      const overlay = toolSheet('Templates', '<div class="call-template-list">' + templates.map((t,i) => `<button class="call-template" type="button" data-template="${i}"><strong>${t[0]}</strong><span>${t[1]}</span><i data-lucide="copy"></i></button>`).join('') + '</div>');
-      overlay.querySelectorAll('[data-template]').forEach(item => item.addEventListener('click', () => copyText(templates[Number(item.dataset.template)][1], 'Template copied')));
-      return;
-    }
-
-    if(label === 'Quick Info'){
-      toolSheet('Quick Info', '<div class="quick-info-pricing"><div><span>Website Development</span><strong>$100</strong><small>One-time</small></div><div><span>Standard Hosting</span><strong>$20</strong><small>per month</small></div><div><span>Hosting + Admin Site</span><strong>$30</strong><small>per month</small></div></div>');
-    }
-  }));
-
-  let speechRecognition = null;
-  let liveTranscriptEnabled = false;
-  let liveTranscriptRequested = false;
-  let liveTranscriptChannel = null;
-  let liveTranscriptPollTimer = null;
-  let liveTranscriptDiagnosticTimer = null;
-  let liveTranscriptLastId = 0;
-  const liveTranscriptSeenIds = new Set();
-  let currentTranscriptCallSid = '';
-  let transcriptStartedAt = null;
-  let transcriptSegments = [];
-  let callConnectedAt = null;
-  let callEndedAt = null;
-  let currentCallSid = '';
-  let transcriptSavedForCall = false;
-
-  function transcriptElapsedSeconds(){
-    const origin = callConnectedAt || transcriptStartedAt;
-    if(!origin) return 0;
-    return Math.max(0, Math.floor((Date.now() - origin) / 1000));
-  }
-
-  function transcriptTime(){
-    const seconds = transcriptElapsedSeconds();
-    return String(Math.floor(seconds/60)).padStart(2,'0') + ':' + String(seconds%60).padStart(2,'0');
-  }
-
-  async function saveCallTranscript({ activityId = null, outcome = '' } = {}){
-    if(transcriptSavedForCall) return true;
-
-    const client = window.steadyHandsCRMClient;
-    if(!client) {
-      console.warn('Unable to save transcript: CRM client is unavailable.');
-      return false;
-    }
-
-    try{
-      const { data: authData, error: authError } = await client.auth.getSession();
-      if(authError) throw authError;
-
-      const userId = authData?.session?.user?.id;
-      if(!userId) throw new Error('No signed-in user.');
-
-      const finalSegments = transcriptSegments
-        .filter(segment => segment && segment.text && !segment.interim)
-        .map(segment => ({
-          speaker: segment.speaker || 'user',
-          start_seconds: Math.max(0, Number(segment.start_seconds) || 0),
-          text: String(segment.text || '').trim()
-        }))
-        .filter(segment => segment.text);
-
-      const plainTranscript = finalSegments
-        .map(segment => (segment.speaker === 'customer' ? 'Customer: ' : 'You: ') + segment.text)
-        .join('\n')
-        .trim();
-
-      const payload = {
-        user_id: userId,
-        crm_id: crmId || null,
-        call_activity_id: activityId || null,
-        company: company || '',
-        contact: contact === '____' ? '' : contact,
-        phone: number === '(000) 000-0000' ? '' : number,
-        started_at: callConnectedAt
-          ? new Date(callConnectedAt).toISOString()
-          : (transcriptStartedAt ? new Date(transcriptStartedAt).toISOString() : null),
-        ended_at: callEndedAt
-          ? new Date(callEndedAt).toISOString()
-          : new Date().toISOString(),
-        duration_seconds: Math.max(0, Number(connectedSeconds) || 0),
-        transcript: plainTranscript,
-        segments: finalSegments,
-        outcome: String(outcome || '')
-      };
-
-      const { data: savedTranscript, error } = await client
-        .from('callcenter_transcripts')
-        .insert(payload)
-        .select('id')
-        .single();
-
-      if(error) throw error;
-
-      transcriptSavedForCall = true;
-
-      const transcriptId = savedTranscript?.id || null;
-
-      if(transcriptId){
-        client.functions
-          .invoke('analyze-call-transcript', {
-            body: { transcript_id: transcriptId }
-          })
-          .then(({ error: analysisError }) => {
-            if(analysisError){
-              console.warn('Transcript coaching analysis failed:', analysisError);
-            }
-          })
-          .catch(analysisError => {
-            console.warn('Transcript coaching analysis failed:', analysisError);
-          });
-      }
-
-      return transcriptId || true;
-    }catch(error){
-      console.error('Unable to save call transcript:', error);
-      return false;
-    }
-  }
-
-  async function pollTwilioTranscript(callSid){
-    const client = window.steadyHandsCRMClient;
-    if(!client || !callSid || currentTranscriptCallSid !== callSid) return;
-
-    try{
-      let query = client
-        .from('callcenter_live_transcript_events')
-        .select('*')
-        .eq('call_sid', callSid)
-        .order('id', { ascending:true });
-
-      if(liveTranscriptLastId > 0){
-        query = query.gt('id', liveTranscriptLastId);
-      }
-
-      const { data, error } = await query.limit(100);
-      if(error) throw error;
-
-      for(const row of data || []){
-        const rowId = Number(row?.id || 0);
-        if(rowId > liveTranscriptLastId) liveTranscriptLastId = rowId;
-        renderTwilioTranscriptEvent(row);
-      }
-    }catch(error){
-      console.warn('Transcript polling failed:', error);
-    }
-  }
-
-  async function subscribeToTwilioTranscript(callSid){
-    const client = window.steadyHandsCRMClient;
-    if(!client || !callSid) return;
-
-    if(liveTranscriptChannel){
-      try{ await client.removeChannel(liveTranscriptChannel); }catch{}
-      liveTranscriptChannel = null;
-    }
-    if(liveTranscriptPollTimer){
-      clearInterval(liveTranscriptPollTimer);
-      liveTranscriptPollTimer = null;
-    }
-
-    liveTranscriptSeenIds.clear();
-    liveTranscriptLastId = 0;
-    currentTranscriptCallSid = callSid;
-    setTranscriptStatus('Listening to both sides of the call…', true);
-
-    await pollTwilioTranscript(callSid);
-    liveTranscriptPollTimer = setInterval(() => pollTwilioTranscript(callSid), 1200);
-
-    liveTranscriptDiagnosticTimer = setTimeout(() => {
-      if(
-        currentTranscriptCallSid === callSid &&
-        liveTranscriptSeenIds.size === 0 &&
-        callState === 'connected'
-      ){
-        setTranscriptStatus(
-          'Twilio accepted transcription, but no webhook events have arrived after 8 seconds.',
-          false
-        );
-        const empty = document.getElementById('liveTranscriptEmpty');
-        if(empty){
-          empty.textContent = 'No Twilio transcription events received yet. The call is connected, but the transcription webhook has not delivered any status or text.';
-        }
-      }
-    }, 8000);
-
-    liveTranscriptChannel = client
-      .channel('live-transcript-' + callSid)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'callcenter_live_transcript_events',
-          filter: 'call_sid=eq.' + callSid
-        },
-        payload => {
-          const row = payload.new || {};
-          const rowId = Number(row?.id || 0);
-          if(rowId > liveTranscriptLastId) liveTranscriptLastId = rowId;
-          renderTwilioTranscriptEvent(row);
-        }
-      )
-      .subscribe(status => {
-        if(status === 'SUBSCRIBED'){
-          setTranscriptStatus('Listening to both sides of the call…', true);
-        }
-      });
-  }
-
-  function renderTwilioTranscriptEvent(eventRow){
-    const eventId = Number(eventRow?.id || 0);
-    if(eventId && liveTranscriptSeenIds.has(eventId)) return;
-    if(eventId) liveTranscriptSeenIds.add(eventId);
-
-    const text = String(eventRow?.text || '').trim();
-    if(!text) return;
-
-    const list = document.getElementById('liveTranscriptList');
-    if(!list) return;
-    document.getElementById('liveTranscriptEmpty')?.remove();
-
-    if(eventRow?.speaker === 'system'){
-      if(liveTranscriptDiagnosticTimer){
-        clearTimeout(liveTranscriptDiagnosticTimer);
-        liveTranscriptDiagnosticTimer = null;
-      }
-
-      const row = document.createElement('div');
-      row.className = 'live-transcript-row transcript-system-row';
-      row.dataset.speaker = 'system';
-      row.innerHTML = '<div class="transcript-meta"><span></span><strong>Transcription Status</strong></div><div class="transcript-bubble muted"></div>';
-      row.querySelector('.transcript-meta span').textContent = transcriptTime();
-      row.querySelector('.transcript-bubble').textContent = text;
-      list.appendChild(row);
-
-      if(/^ERROR\b/i.test(text)){
-        setTranscriptStatus(text, false);
-      } else if(/started/i.test(text)){
-        setTranscriptStatus('Twilio transcription started · waiting for speech', true);
-      } else if(/stopped/i.test(text)){
-        setTranscriptStatus('Twilio transcription stopped', false);
-      }
-
-      row.scrollIntoView({block:'nearest',behavior:'smooth'});
-      return;
-    }
-
-    if(liveTranscriptDiagnosticTimer){
-      clearTimeout(liveTranscriptDiagnosticTimer);
-      liveTranscriptDiagnosticTimer = null;
-    }
-
-    const speakerKey =
-      eventRow?.track === 'outbound_track' ? 'customer' :
-      eventRow?.track === 'inbound_track' ? 'agent' :
-      eventRow?.speaker === 'customer' ? 'customer' : 'agent';
-    const speakerLabel = speakerKey === 'customer' ? 'Customer' : 'You';
-    const interim = !eventRow?.is_final;
-
-    let row = interim
-      ? list.querySelector('.live-transcript-row.interim[data-speaker="' + speakerKey + '"]')
-      : null;
-
-    if(!row){
-      row = document.createElement('div');
-      row.className = 'live-transcript-row' + (interim ? ' interim' : '');
-      row.dataset.speaker = speakerKey;
-      row.innerHTML = '<div class="transcript-meta"><span></span><strong></strong></div><div class="transcript-bubble"></div>';
-      if(speakerKey === 'agent') row.querySelector('.transcript-bubble').classList.add('muted');
-      else row.querySelector('.transcript-bubble').classList.add('prospect');
-      list.appendChild(row);
-    }
-
-    row.querySelector('.transcript-meta span').textContent = transcriptTime();
-    row.querySelector('.transcript-meta strong').textContent = speakerLabel;
-    row.querySelector('.transcript-bubble').textContent = text;
-
-    if(!interim){
-      const existingInterim = list.querySelector('.live-transcript-row.interim[data-speaker="' + speakerKey + '"]');
-      if(existingInterim && existingInterim !== row) existingInterim.remove();
-      row.classList.remove('interim');
-
-      transcriptSegments.push({
-        speaker: speakerKey,
-        start_seconds: transcriptElapsedSeconds(),
-        text,
-        interim: false
-      });
-    }
-
-    row.scrollIntoView({block:'nearest',behavior:'smooth'});
-  }
-
-  function addTranscriptLine(text, interim=false){
-    const list = document.getElementById('liveTranscriptList');
-    if(!list || !text.trim()) return;
-    document.getElementById('liveTranscriptEmpty')?.remove();
-
-    let row = interim ? list.querySelector('.live-transcript-row.interim') : null;
-    if(!row){
-      row = document.createElement('div');
-      row.className = 'live-transcript-row' + (interim ? ' interim' : '');
-      row.innerHTML = '<div class="transcript-meta"><span></span><strong>You</strong></div><div class="transcript-bubble muted"></div>';
-      list.appendChild(row);
-    }
-
-    row.querySelector('.transcript-meta span').textContent = transcriptTime();
-    row.querySelector('.transcript-bubble').textContent = text;
-
-    if(!interim){
-      row.classList.remove('interim');
-
-      transcriptSegments.push({
-        speaker: 'user',
-        start_seconds: transcriptElapsedSeconds(),
-        text: text.trim(),
-        interim: false
-      });
-    }
-
-    row.scrollIntoView({block:'nearest',behavior:'smooth'});
-  }
-
-  function setTranscriptStatus(text,active=false){
-    const status = document.getElementById('liveTranscriptStatus');
-    if(!status) return;
-    status.classList.toggle('active',active);
-    const span = status.querySelector('span');
-    if(span) span.textContent = text;
-  }
-
-  async function enableLiveTranscript(){
-    if(liveTranscriptEnabled && speechRecognition) return true;
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SpeechRecognition){
-      alert('Live speech transcription is not supported by this browser.');
-      return false;
-    }
-
-    try{
-      if(navigator.mediaDevices?.getUserMedia){
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-        stream.getTracks().forEach(track => track.stop());
-      }
-
-      transcriptStartedAt = Date.now();
-      speechRecognition = new SpeechRecognition();
-      speechRecognition.continuous = true;
-      speechRecognition.interimResults = true;
-      speechRecognition.lang = 'en-US';
-
-      speechRecognition.onstart = () => {
-        liveTranscriptEnabled = true;
-        setTranscriptStatus('Listening to microphone…',true);
-        const button = document.getElementById('enableLiveTranscript');
-        if(button) button.innerHTML = '<i data-lucide="mic-off"></i> Stop Live Transcript';
-        lucide.createIcons();
-      };
-
-      speechRecognition.onresult = event => {
-        let interim = '';
-        for(let i=event.resultIndex;i<event.results.length;i++){
-          const text = event.results[i][0]?.transcript || '';
-          if(event.results[i].isFinal) addTranscriptLine(text,false);
-          else interim += text;
-        }
-        const existingInterim = document.querySelector('.live-transcript-row.interim');
-        if(interim) addTranscriptLine(interim,true);
-        else existingInterim?.remove();
-      };
-
-      speechRecognition.onerror = event => {
-        console.warn('Live transcript error:',event.error);
-        if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
-          setTranscriptStatus('Microphone permission is blocked');
-          alert('Microphone access is blocked. Open your browser site settings, set Microphone to Allow, then tap Enable Live Transcript again.');
-        } else {
-          setTranscriptStatus('Live transcript stopped');
-        }
-      };
-
-      speechRecognition.onend = () => {
-        if(liveTranscriptEnabled){
-          liveTranscriptEnabled = false;
-          setTranscriptStatus('Live transcript is off');
-          const button = document.getElementById('enableLiveTranscript');
-          if(button) button.innerHTML = '<i data-lucide="mic"></i> Enable Live Transcript';
-          lucide.createIcons();
-        }
-      };
-
-      speechRecognition.start();
-      return true;
-    }catch(error){
-      console.error('Unable to enable microphone:',error);
-      setTranscriptStatus('Microphone permission is blocked');
-      alert('Microphone access is required. Allow microphone access for this site in your browser settings, then try again.');
-      return false;
-    }
-  }
-
-  document.getElementById('enableLiveTranscript')?.addEventListener('click', function(){
-    if(['calling','ringing','connected'].includes(callState)){
-      if(liveTranscriptRequested){
-        alert('Live transcription is already enabled for this call.');
-      }else{
-        alert('Enable live transcription before starting the call so Twilio can capture both sides.');
-      }
-      return;
-    }
-
-    liveTranscriptRequested = !liveTranscriptRequested;
-    this.innerHTML = liveTranscriptRequested
-      ? '<i data-lucide="captions"></i> Live Transcript On'
-      : '<i data-lucide="mic"></i> Enable Live Transcript';
-    setTranscriptStatus(
-      liveTranscriptRequested ? 'Live transcript will start with the next call' : 'Live transcript is off',
-      liveTranscriptRequested
-    );
-    lucide.createIcons();
-  });
-
-  function openPostCallFlow(){
-    if(questionnaireOpen || document.querySelector('.post-call-overlay')) return;
-    questionnaireOpen = true;
-    const overlay = document.createElement('div');
-    overlay.className = 'post-call-overlay';
-    overlay.innerHTML = `
-      <div class="post-call-sheet" role="dialog" aria-modal="true" aria-label="Complete call">
-        <div class="post-call-progress"><span></span></div>
-        <div class="post-call-stage"></div>
-      </div>`;
-    document.body.appendChild(overlay);
-
-    const stage = overlay.querySelector('.post-call-stage');
-    const progress = overlay.querySelector('.post-call-progress span');
-    const data = { rating:'', outcomes:[], reason:'', tags:[], notes:'', route:'' };
-    let screenIndex = 0;
-    let screens = [];
-
-    const reasonOptions = ['Too expensive','Already has someone','Not a priority','Doesn’t want a website','Bad timing','Not a fit','Other'];
-
-    // These are real CRM tags used as the call result.
-    // Keep the most common options visible and put the rest under More.
-    const outcomeChoices = {
-      Good: [
-        ['Interested', 'sparkles'],
-        ['Call Back', 'phone-forwarded'],
-        ['Needs More Info', 'circle-help'],
-        ['Send Preview', 'monitor'],
-        ['Requested Email', 'mail']
-      ],
-      Bad: [
-        ['Not Interested', 'circle-x'],
-        ['No Answer', 'phone-missed'],
-        ['Left Voicemail', 'voicemail'],
-        ['Busy', 'phone-call'],
-        ['Wrong Number', 'ban']
-      ]
-    };
-
-    const extraOutcomeChoices = {
-      Good: [
-        ['Requested Text', 'message-square'],
-        ['Decision Maker', 'user-check'],
-        ['Hot Lead', 'flame'],
-        ['Conversion', 'badge-check'],
-        ['Sold', 'circle-dollar-sign']
-      ],
-      Bad: [
-        ['Already Has Someone', 'users'],
-        ['Bad Timing', 'clock'],
-        ['Price Concern', 'badge-dollar-sign'],
-        ['Skeptical', 'circle-help'],
-        ['Do Not Call', 'phone-off']
-      ]
-    };
-
-    // Extra descriptive tags only. Do not duplicate Good/Bad call-result tags here.
-    const tagOptions = [
-      'Broken Site',
-      'Outdated Site',
-      'Site Removed',
-      'Already have a website',
-      'No Website',
-      'Spanish?',
-      'Requested Text',
-      'Requested Email',
-      'Decision Maker',
-      'Price Concern'
-    ];
-    let showMoreOutcomes = false;
-
-    function rebuildScreens(){
-      screens = ['rating'];
-      if(data.rating !== "Didn't call") {
-        screens.push('outcome');
-        if(data.outcomes.includes('Not Interested')) screens.push('reason');
-        screens.push('tags');
-        screens.push('notes');
-        screens.push('route');
-      } else {
-        screens.push('notes');
-      }
-    }
-
-    function updateProgress(){
-      const pct = ((screenIndex + 1) / screens.length) * 100;
-      progress.style.width = `${pct}%`;
-    }
-
-    function slideTo(renderFn, direction='forward'){
-      stage.classList.remove('slide-in-right','slide-in-left');
-      stage.classList.add(direction === 'back' ? 'slide-out-right' : 'slide-out-left');
-      setTimeout(() => {
-        renderFn();
-        stage.classList.remove('slide-out-left','slide-out-right');
-        stage.classList.add(direction === 'back' ? 'slide-in-left' : 'slide-in-right');
-        setTimeout(() => stage.classList.remove('slide-in-right','slide-in-left'), 220);
-      }, 170);
-    }
-
-    function navRow({back=true,nextLabel='Continue',nextDisabled=false,onNext}){
-      return `<div class="post-call-nav">
-        ${back ? '<button class="pc-back" type="button"><i data-lucide="chevron-left"></i> Back</button>' : '<span></span>'}
-        <button class="pc-next" type="button" ${nextDisabled?'disabled':''}>${nextLabel}<i data-lucide="chevron-right"></i></button>
-      </div>`;
-    }
-
-    function render(){
-      rebuildScreens();
-      if(screenIndex >= screens.length) screenIndex = screens.length - 1;
-      updateProgress();
-      const screen = screens[screenIndex];
-
-      if(screen === 'rating'){
-        const ratingOptions = [
-          ['thumbs-up','thumbs-up','Good'],
-          ['thumbs-down','thumbs-down','Bad'],
-          ['didnt-call','phone-off',"Didn't call"]
-        ];
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Call complete</span><h2>How did it go?</h2><p>Choose how the call went.</p></div>
-          <div class="pc-rating-grid">
-            ${ratingOptions.map(([cls,icon,label]) => `<button class="pc-rating ${cls} ${data.rating===label?'selected':''}" data-value="${label}" type="button"><i data-lucide="${icon}"></i><span>${label}</span></button>`).join('')}
-          </div>
-          ${navRow({back:false,nextDisabled:!data.rating})}`;
-        stage.querySelectorAll('.pc-rating').forEach(btn => btn.addEventListener('click', () => {
-          if (data.rating !== btn.dataset.value) {
-            data.outcomes = [];
-            data.reason = '';
-            data.route = '';
-            showMoreOutcomes = false;
-          }
-          data.rating = btn.dataset.value;
-          if (data.rating === "Didn't call") data.tags = [];
-          stage.querySelectorAll('.pc-rating').forEach(x => x.classList.toggle('selected', x===btn));
-          stage.querySelector('.pc-next').disabled = false;
-        }));
-      }
-
-      if(screen === 'outcome'){
-        const choices = outcomeChoices[data.rating] || outcomeChoices.Good;
-        const extras = extraOutcomeChoices[data.rating] || [];
-        const visible = showMoreOutcomes ? [...choices, ...extras] : choices;
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Call details</span><h2>What happened?</h2><p>Select everything that applies to this call.</p></div>
-          <div class="pc-option-grid">
-            ${visible.map(([label,icon]) => `<button class="pc-option ${data.outcomes.includes(label)?'selected':''}" data-value="${label}" type="button"><i data-lucide="${icon}"></i><span>${label}</span></button>`).join('')}
-            <button class="pc-option pc-outcome-more" type="button" aria-expanded="${showMoreOutcomes}"><i data-lucide="${showMoreOutcomes ? 'minus' : 'plus'}"></i><span>${showMoreOutcomes ? 'Less' : 'More'}</span></button>
-          </div>
-          ${navRow({back:false,nextDisabled:!data.outcomes.length})}`;
-        stage.querySelectorAll('.pc-option[data-value]').forEach(btn => btn.addEventListener('click', () => {
-          const value = btn.dataset.value;
-          if(data.outcomes.includes(value)) data.outcomes = data.outcomes.filter(x => x !== value);
-          else data.outcomes.push(value);
-
-          if(!data.outcomes.includes('Not Interested')) data.reason = '';
-
-          if (data.outcomes.includes('Not Interested') || data.outcomes.includes('Do Not Call')) {
-            data.route = 'notinterested';
-          } else if (data.outcomes.some(x => /call back|requested text|requested email|needs more info|interested|send preview/i.test(x))) {
-            data.route = 'callback';
-          }
-
-          btn.classList.toggle('selected', data.outcomes.includes(value));
-          stage.querySelector('.pc-next').disabled = !data.outcomes.length;
-        }));
-        stage.querySelector('.pc-outcome-more').addEventListener('click', () => {
-          showMoreOutcomes = !showMoreOutcomes;
-          render();
-        });
-      }
-
-      if(screen === 'reason'){
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Not interested</span><h2>Why weren’t they interested?</h2><p>This helps keep future outreach useful.</p></div>
-          <div class="pc-list-options">
-            ${reasonOptions.map(label => `<button class="pc-list-option ${data.reason===label?'selected':''}" data-value="${label}"><span>${label}</span><i data-lucide="check"></i></button>`).join('')}
-          </div>
-          ${navRow({nextDisabled:!data.reason})}`;
-        stage.querySelectorAll('.pc-list-option').forEach(btn => btn.addEventListener('click', () => {
-          data.reason = btn.dataset.value;
-          stage.querySelectorAll('.pc-list-option').forEach(x => x.classList.toggle('selected', x===btn));
-          stage.querySelector('.pc-next').disabled = false;
-        }));
-      }
-
-      if(screen === 'tags'){
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Extra details</span><h2>Add other tags</h2><p>Add any extra details that were not already captured by the call result.</p></div>
-          <div class="pc-tag-options">
-            ${tagOptions.map(label => `<button class="pc-tag ${data.tags.includes(label)?'selected':''}" data-value="${label}">${label}</button>`).join('')}
-          </div>
-          ${navRow({nextLabel:'Continue'})}`;
-        stage.querySelectorAll('.pc-tag').forEach(btn => btn.addEventListener('click', () => {
-          const value = btn.dataset.value;
-          if(data.tags.includes(value)) data.tags = data.tags.filter(x => x!==value);
-          else data.tags.push(value);
-          btn.classList.toggle('selected');
-        }));
-      }
-
-      if(screen === 'notes'){
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Call notes</span><h2>Anything else?</h2><p>Notes are optional. Add anything you’ll want to remember later.</p></div>
-          <textarea class="pc-notes" placeholder="Add notes (optional)…">${data.notes}</textarea>
-          ${navRow({nextLabel: data.rating === "Didn't call" ? 'Save' : 'Continue'})}`;
-        stage.querySelector('.pc-notes').addEventListener('input', e => data.notes = e.target.value);
-      }
-
-      if(screen === 'route'){
-        stage.innerHTML = `
-          <div class="pc-heading"><span class="pc-kicker">Last step</span><h2>Where should this lead go?</h2><p>Choose what should happen to this lead after this call.</p></div>
-          <div class="pc-option-grid">
-            <button class="pc-option ${data.route==='callback'?'selected':''}" data-route="callback" type="button">
-              <i data-lucide="phone-forwarded"></i><span>Call Back</span>
-            </button>
-            <button class="pc-option ${data.route==='notinterested'?'selected':''}" data-route="notinterested" type="button">
-              <i data-lucide="circle-x"></i><span>Not Interested</span>
-            </button>
-          </div>
-          ${navRow({nextLabel:'Save Call',nextDisabled:!data.route})}`;
-
-        stage.querySelectorAll('[data-route]').forEach(btn => btn.addEventListener('click', () => {
-          data.route = btn.dataset.route;
-          stage.querySelectorAll('[data-route]').forEach(x => x.classList.toggle('selected', x === btn));
-          stage.querySelector('.pc-next').disabled = false;
-        }));
-      }
-
-      const back = stage.querySelector('.pc-back');
-      if(back) back.addEventListener('click', () => {
-        screenIndex = Math.max(0, screenIndex - 1);
-        slideTo(render, 'back');
-      });
-
-      const next = stage.querySelector('.pc-next');
-      if(next) next.addEventListener('click', () => {
-        if(next.disabled) return;
-        if(screen === 'notes' && data.rating === "Didn't call") return showConfirmation();
-        if(screen === 'route') return showConfirmation();
-        rebuildScreens();
-        screenIndex++;
-        slideTo(render, 'forward');
-      });
-      lucide.createIcons();
-    }
-
-    function showConfirmation(){
-      progress.style.width = '100%';
-      stage.className = 'post-call-stage confirmation-stage';
-      stage.innerHTML = `
-        <div class="pc-confirm">
-          <div class="pc-check"><i data-lucide="check"></i></div>
-          <h2>Call saved</h2>
-          <p>Your call result${data.tags.length ? ', tags' : ''}${data.notes.trim() ? ', notes' : ''} and transcript were saved.</p>
-          <div class="pc-confirm-summary">
-            <strong>${data.rating}</strong>
-            ${data.outcomes.length ? `<span>${data.outcomes.join(' • ')}</span>` : ''}
-            ${data.reason ? `<span>${data.reason}</span>` : ''}
-            ${connectedSeconds ? `<span>${Math.floor(connectedSeconds/60)}m ${connectedSeconds%60}s call</span>` : '<span>No connected call time</span>'}
-          </div>
-          <button class="pc-done" type="button">Done</button>
-        </div>`;
-      stage.querySelector('.pc-done').addEventListener('click', async () => {
-        const crmId = new URLSearchParams(location.search).get('crm_id') || null;
-
-        const finalOutcome = [
-          data.rating,
-          ...data.outcomes,
-          data.route === 'callback' ? 'Call Back' : data.route === 'notinterested' ? 'Not Interested' : ''
-        ].filter(Boolean).join(' • ') || "Didn't call";
-
-        // A completed dialing attempt is no longer a new lead, even if nobody answered.
-        // "Didn't call" does not consume the lead; its questionnaire is still logged.
-        if (data.rating !== "Didn't call") {
-          const client = window.steadyHandsCRMClient;
-
-          if (client && crmId && data.route) {
-            const { data: currentLead } = await client
-              .from('crm')
-              .select('notes,tags')
-              .eq('id', crmId)
-              .maybeSingle();
-
-            const noteLine = data.notes.trim()
-              ? '[' + new Date().toLocaleString() + '] ' + data.notes.trim()
-              : '';
-
-            const currentNotes = (currentLead?.notes || '').trim();
-            const nextNotes = noteLine
-              ? [currentNotes, noteLine].filter(Boolean).join('\n')
-              : currentNotes;
-
-            let existingTags = currentLead?.tags || [];
-            if (typeof existingTags === 'string') {
-              try { existingTags = JSON.parse(existingTags); }
-              catch { existingTags = [existingTags]; }
-            }
-            if (!Array.isArray(existingTags)) existingTags = [];
-
-            const mergedTags = [...new Set([
-              ...existingTags.filter(tag => typeof tag === 'string' && tag.trim()),
-              ...data.outcomes,
-              ...data.tags
-            ])];
-
-            const { data: authData, error: authError } = await client.auth.getUser();
-            if (authError || !authData?.user?.id) {
-              alert('Please sign in again before saving your call result.');
-              return;
-            }
-            const crmUpdate = data.route === 'notinterested'
-              ? {
-                  stage: 'notinterested',
-                  callback_owner_id: null,
-                  outcome: 'Not Interested',
-                  lastcalled: new Date().toISOString(),
-                  notes: nextNotes,
-                  tags: mergedTags
-                }
-              : {
-                  stage: 'callback',
-                  callback_owner_id: authData.user.id,
-                  outcome: 'Call Back',
-                  lastcalled: new Date().toISOString(),
-                  notes: nextNotes,
-                  tags: mergedTags
-                };
-
-            const { error } = await client
-              .from('crm')
-              .update(crmUpdate)
-              .eq('id', crmId);
-
-            if (error) {
-              console.error('Unable to update lead after call:', error);
-              return alert('The call was saved, but the lead could not be moved. Please try again.');
-            }
-          }
-
-        }
-
-        const savedActivity = await window.callcenterRecordCall?.({
-          crmId,
-          duration: externalCallLog ? 0 : connectedSeconds,
-          outcome: externalCallLog ? 'External Phone (self-reported) • ' + finalOutcome : finalOutcome,
-          callSid: externalCallLog ? '' : currentCallSid,
-          connectedAt: externalCallLog ? null : callConnectedAt,
-          endedAt: callEndedAt || Date.now()
-        });
-
-        if(!savedActivity){
-          console.warn('Unable to save call activity.');
-        }
-
-        // Save a transcript only when speech was actually captured.
-        if(transcriptSegments.some(segment => segment?.text && !segment?.interim)){
-          const transcriptSaved = await saveCallTranscript({
-            activityId: savedActivity?.id || null,
-            outcome: finalOutcome
-          });
-
-          if(!transcriptSaved){
-            console.warn('Call activity saved, but transcript could not be saved.');
-          }
-        }
-
-        if (data.route === 'notinterested') {
-          leadBlockedNotInterested = true;
-          window.callcenterClearResumeLocation?.();
-        }
-
-        await releaseLeadAfterCall();
-        externalCallLog = false;
-        overlay.remove();
-        questionnaireOpen = false;
-        setState('ended');
-        syncMainCallButton();
-
-        if (leadBlockedNotInterested && mainCallButton) {
-          mainCallButton.disabled = true;
-          mainCallButton.setAttribute('aria-label', 'Client is listed as not interested');
-          mainCallButton.innerHTML = '<i data-lucide="phone-off"></i><span>Not Interested</span>';
-          lucide.createIcons();
-        }
-      });
-      lucide.createIcons();
-    }
-
-    rebuildScreens();
-    render();
-  }
-
-  lucide.createIcons();
 })();
 </script>
-<script src="sale-start.js?v=2" defer></script>
 </body>
 </html>

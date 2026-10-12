@@ -24,6 +24,8 @@
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
   <script src="sidebar.js?v=batch2" defer></script>
+<link rel="stylesheet" href="outreach-reference.css?v=1" />
+<link rel="stylesheet" href="outreach-tools.css?v=integration-2">
 </head>
 <body class="page-outreach">
 <div class="app">
@@ -33,7 +35,32 @@
     </div>
   </header>
 
-  <main class="content outreach-loading"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
+  <main class="content ref-outreach-main" id="refOutreachMain">
+    <div class="ref-outreach-grid">
+      <section class="ref-lead-card" aria-label="Selected prospect">
+        <div class="ref-lead-identity"><div class="ref-business-icon"><i data-lucide="building-2"></i></div><div class="ref-lead-identity-copy"><h2 id="refCompany">Select a prospect</h2><div class="ref-phone" id="refPhone">No phone number</div><div class="ref-status"><span class="ref-green-dot"></span><span id="refStatus">Ready to call</span></div></div></div>
+        <div class="ref-line"></div><div class="ref-call-label">Choose how to call</div>
+        <div class="ref-call-methods"><button type="button" id="refRegularPhone"><i data-lucide="phone"></i><span>Regular<br>Phone</span></button><button type="button" id="refAppPhone" class="ref-primary"><i data-lucide="headset"></i><span>Call Through<br>Outreach</span></button></div>
+      </section>
+      <section class="ref-side-card" aria-label="Lead navigation and timing">
+        <div class="ref-next-buttons"><button type="button" id="refRandomLead"><i data-lucide="shuffle"></i><span>Random Lead</span></button><button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right"></i><span>Next in Queue</span></button></div>
+        <div class="ref-line"></div><div class="ref-time-block"><div class="ref-time-icon"><i data-lucide="clock-3"></i></div><div><div class="ref-muted">Prospect’s local time</div><div class="ref-time" id="refLocalTime">Local time unavailable</div><p>Best hours to call are between Monday - Friday<br class="ref-desktop-only"> 9:00 AM - 5:00 PM</p></div></div>
+        <div class="ref-line"></div><div class="ref-attempts">Contact attempts <span id="refAttempts">—</span></div>
+      </section>
+    </div>
+    <button type="button" class="ref-sale" id="refStartSale"><i data-lucide="handshake"></i><span>Start Sale / Track Customer</span><i data-lucide="arrow-right"></i></button>
+    <div class="ref-tools" aria-label="Call tools">
+      <button type="button" data-ref-tool="alerts"><i data-lucide="bell"></i><span>Alerts</span></button>
+      <button type="button" data-ref-tool="tags"><i data-lucide="tag"></i><span>Tags</span></button>
+      <button type="button" data-ref-tool="notes"><i data-lucide="notebook-pen"></i><span>Notes</span></button>
+      <button type="button" data-ref-tool="preview"><i data-lucide="send"></i><span>Send Site<br>Preview</span></button>
+      <button type="button" data-ref-tool="templates"><i data-lucide="messages-square"></i><span>Templates</span></button>
+      <button type="button" data-ref-tool="quick"><i data-lucide="circle-dollar-sign"></i><span>Quick Info</span></button>
+      <button type="button" data-ref-tool="calendar"><i data-lucide="calendar-plus"></i><span>Add to<br>Calendar</span></button>
+    </div>
+    <p class="ref-message" id="refMessage" role="status" aria-live="polite"></p>
+  </main>
+  <div id="referenceLegacy" class="reference-legacy" aria-hidden="true"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
     <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
       <div>
         <span class="desktop-kicker">OUTREACH</span>
@@ -189,7 +216,7 @@
         <div class="sk-shape sk-phone"></div>
       </div>
     </div>
-  </main><div class="sh-tools-backdrop" id="shToolsBackdrop" hidden></div><aside class="sh-tools-panel" id="shToolsPanel" role="dialog" aria-modal="true" aria-label="Tasks and notifications" tabindex="-1" hidden><div class="sh-tools-head"><h2 id="shToolsTitle">My Tasks</h2><button id="shToolsClose" type="button" aria-label="Close">✕</button></div><div class="sh-tools-body" id="shToolsBody"></div></aside>
+  </div><div class="sh-tools-backdrop" id="shToolsBackdrop" hidden></div><aside class="sh-tools-panel" id="shToolsPanel" role="dialog" aria-modal="true" aria-label="Tasks and notifications" tabindex="-1" hidden><div class="sh-tools-head"><h2 id="shToolsTitle">My Tasks</h2><button id="shToolsClose" type="button" aria-label="Close">✕</button></div><div class="sh-tools-body" id="shToolsBody"></div></aside>
 
   
 </div>
@@ -197,11 +224,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261005-dark-mode"></script>
 <script src="user-data.js?v=20261001-1930"></script>
+<script src="preview-resolver.js?v=20261012-unified"></script>
 <script src="app.js?v=20261011-selected-lead-v11"></script>
 <script src="leads-batch9.js?v=9" defer></script>
 <script src="queue-outreach.js?v=reliable-v1" defer></script>
 <script src="queue-star-sync.js?v=reliable-v1" defer></script>
 <script src="outreach-desktop-redesign.js?v=layout-fix-20261011" defer></script>
 <script src="outreach-tasks.js?v=1" defer></script>
+<script src="outreach-reference.js?v=20261012-stage-popup-fix1" defer></script>
+<script src="outreach-tools.js?v=integration-2" defer></script>
+<script src="outreach-postcall.js?v=integration-2" defer></script>
 </body>
 </html>
