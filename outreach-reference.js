@@ -350,14 +350,8 @@ async function pickAssignedProspect(random) {
       .eq('assigned_user_id', auth.user.id)
       .limit(1000);
     if (error) throw error;
-    const eligible = (data || []).filter(row => {
-      if (!row.id || row.lastcalled) return false;
-      const stage = String(row.stage || '').toLowerCase().replace(/[\s_-]+/g,'');
-      if (['notinterested','callback','followup','retry','sold','client','donotcall','dnc'].includes(stage)) return false;
-      if (/not interested|do not call|call back|callback|follow.?up|sold|no answer|voicemail|busy|wrong number/i.test(String(row.outcome||''))) return false;
-      return true;
-    });
-    if (!eligible.length) { tell('No uncalled assigned prospects available. Check your Leads or Queue page.'); return; }
+    const eligible = (data || []).filter(row => Boolean(row.id));
+    if (!eligible.length) { tell('No assigned prospects found. Check your My Leads page.'); return; }
     const current = card()?.dataset.crmId || sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || '';
     const others = eligible.filter(x => String(x.id) !== String(current));
     const pool = others.length ? others : eligible;

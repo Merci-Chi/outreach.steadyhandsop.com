@@ -2611,13 +2611,9 @@ async function callcenterLoadTerritory() {
 }
 
 function callcenterIsFreshLead(lead) {
-  if (!lead) return false;
-  if (lead.lastcalled) return false;
-  const stage = crmText(lead.stage).trim().toLowerCase().replace(/[\s_-]+/g, '');
-  if (['notinterested','callback','followup','retry','sold','client','donotcall','dnc'].includes(stage)) return false;
-  const outcome = crmText(lead.outcome).toLowerCase();
-  if (/not interested|do not call|call back|callback|follow.?up|sold|no answer|voicemail|busy|wrong number/i.test(outcome)) return false;
-  return true;
+  // Assigned CRM leads must remain selectable even after an attempt or stage change.
+  // Assignment and SALES/active permissions are checked in loadApprovedPreviewCRM.
+  return Boolean(lead && lead.id);
 }
 
 // Batch 2: refresh only lead availability; never reload an ongoing call or the page.
