@@ -15,7 +15,7 @@
 
   <link rel="stylesheet" href="styles.css?v=20261012-my-leads" />
   <link rel="stylesheet" href="sidebar.css?v=batch2" />
-  <link rel="stylesheet" href="my-leads.css?v=20261012-readable-scroll-v2" />
+  <link rel="stylesheet" href="my-leads.css?v=20261012-bulk-queue-v1" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
@@ -91,6 +91,7 @@
             <span id="filterBadge" class="table-filter-count" hidden></span>
             <i data-lucide="chevron-down"></i>
           </button>
+          <button type="button" class="table-filter-button ml-bulk-queue-btn" id="bulkAddToQueueBtn" disabled title="Select leads to add to a queue"><i data-lucide="list-plus"></i><span>Add to Queue</span><span id="bulkQueueCount" class="ml-bulk-count" hidden></span></button>
           <div class="my-pagination-inline" id="paginationTop"></div>
         </div>
 
@@ -266,6 +267,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="auth-guard.js?v=20261005-dark-mode"></script>
   <script src="preview-resolver.js?v=20261012-unified"></script>
-<script src="my-leads.js?v=20261012-queue-icons-v1" defer></script>
+<script src="my-leads.js?v=20261012-bulk-queue-v1" defer></script>
 </body>
 </html>

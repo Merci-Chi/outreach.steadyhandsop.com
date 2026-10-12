@@ -192,6 +192,17 @@
     if (checked) state.selectedRows.add(id);
     else state.selectedRows.delete(id);
     updateHeaderSelectionState();
+    updateBulkQueueButton();
+  }
+
+  function updateBulkQueueButton() {
+    const button = $('#bulkAddToQueueBtn');
+    if (!button) return;
+    const count = state.selectedRows.size;
+    button.disabled = count === 0;
+    button.title = count ? `Add ${count} selected lead${count===1?'':'s'} to a queue` : 'Select leads to add to a queue';
+    const badge = $('#bulkQueueCount');
+    if (badge) {badge.hidden = !count; badge.textContent = String(count);}
   }
 
   function buildRow(row) {
@@ -312,6 +323,7 @@
 
     $('#statOnPage').textContent = formatNum(state.rows.length);
     updateHeaderSelectionState();
+    updateBulkQueueButton();
     bindTableEvents();
     renderPagination();
     refreshIcons();
@@ -772,11 +784,11 @@
     popup.querySelector('.ml-action-dialog').focus();
   }
 
-  async function openQueuePicker(id, company) {
+  async function openQueuePicker(id, company, bulkIds = null) {
     const popup = document.getElementById('mlLeadActionsDialog');
     if (!popup) return;
     const title = popup.querySelector('.ml-action-eyebrow');
-    title.textContent = 'ADD TO QUEUE';
+    title.textContent = bulkIds ? 'ADD SELECTED TO QUEUE' : 'ADD TO QUEUE';
     const region = popup.querySelector('.ml-action-dialog-buttons');
     region.innerHTML = '<p class="ml-queue-message" role="status">Loading your queues…</p>';
     try {
@@ -793,24 +805,54 @@
         const queueId=btn.dataset.queueId;
         const message=region.querySelector('.ml-queue-message');
         btn.disabled=true;
-        message.textContent='Adding contact…';
+        const ids = bulkIds || [id];
+        message.textContent=`Adding ${ids.length} contact${ids.length===1?'':'s'}…`;
         try {
-          const check=await api.from('crm').select('id').eq('id',id).eq('assigned_user_id',user.id).single();
-          if(check.error) throw new Error('This lead is no longer assigned to you.');
-          const existing=await api.from('outreach_queue_items').select('id').eq('queue_id',queueId).eq('crm_id',id).limit(1);
-          if(existing.error) throw existing.error;
-          if(existing.data?.length){message.textContent='This lead is already in that queue.';return;}
+          const existingResult=await api.from('outreach_queue_items').select('crm_id,position').eq('queue_id',queueId);
+          if(existingResult.error) throw existingResult.error;
+          const existingIds=new Set((existingResult.data||[]).map(item=>String(item.crm_id)));
           const last=await api.from('outreach_queue_items').select('position').eq('queue_id',queueId).order('position',{ascending:false}).limit(1);
           if(last.error) throw last.error;
-          const position=Number(last.data?.[0]?.position||0)+1;
-          const result=await api.from('outreach_queue_items').insert({queue_id:queueId,crm_id:String(id),company_name:company,position});
-          if(result.error) throw result.error;
-          message.textContent='Added to queue successfully.';
-          btn.querySelector('span').textContent='Added!';
+          let position=Number(last.data?.[0]?.position||0);
+          let added=0, skipped=0, failed=0;
+          for(const selectedId of ids){
+            if(existingIds.has(String(selectedId))){skipped++;continue;}
+            const row=(assignedCache||[]).find(item=>String(item.id??item.crm_id)===String(selectedId)) || state.rows.find(item=>String(item.id??item.crm_id)===String(selectedId));
+            if(!row){failed++;continue;}
+            const check=await api.from('crm').select('id').eq('id',selectedId).eq('assigned_user_id',user.id).single();
+            if(check.error){failed++;continue;}
+            const name=row.company||row.business_name||row.business||'This lead';
+            const result=await api.from('outreach_queue_items').insert({queue_id:queueId,crm_id:String(selectedId),company_name:name,position:++position});
+            if(result.error){failed++;position--;continue;}
+            added++;existingIds.add(String(selectedId));
+            if(bulkIds)state.selectedRows.delete(String(selectedId));
+          }
+          updateBulkQueueButton();
+          message.textContent=`${added} added${skipped?', '+skipped+' already in queue':''}${failed?', '+failed+' could not be added':''}.`;
+          if(added)btn.querySelector('span').textContent='Completed';
+          if(bulkIds && added)renderTable();
         }catch(err){message.textContent='Could not add lead: '+(err.message||'Unknown error');}
         finally {btn.disabled=false;}
       }));
     }catch(err){region.innerHTML=`<p class="ml-queue-message">${htmlEscape(err.message||'Could not load queues.')}</p>`;}
+  }
+
+
+  function openBulkQueuePicker() {
+    const ids=[...state.selectedRows];
+    if(!ids.length){setStatus('Select at least one lead first.','error');return;}
+    closeLeadActions();
+    const popup=document.createElement('div');
+    popup.id='mlLeadActionsDialog';
+    popup.className='ml-action-overlay';
+    popup.innerHTML=`<section class="ml-action-dialog" role="dialog" aria-modal="true" aria-labelledby="mlActionsTitle" tabindex="-1"><header class="ml-action-dialog-head"><div><span class="ml-action-eyebrow">ADD SELECTED TO QUEUE</span><h2 id="mlActionsTitle">${ids.length} selected lead${ids.length===1?'':'s'}</h2><p>Choose a queue to add these contacts.</p></div><button class="ml-action-close" type="button" data-close-actions aria-label="Close"><i data-lucide="x"></i></button></header><div class="ml-action-dialog-buttons"></div></section>`;
+    document.body.appendChild(popup);
+    document.body.classList.add('ml-actions-open');
+    popup.querySelector('[data-close-actions]').addEventListener('click',closeLeadActions);
+    popup.addEventListener('click',e=>{if(e.target===popup)closeLeadActions();});
+    window.lucide?.createIcons?.({nodes:popup.querySelectorAll('[data-lucide]')});
+    popup.querySelector('.ml-action-dialog').focus();
+    openQueuePicker(ids[0], '', ids);
   }
 
   // Header menus are true dropdowns. Keep them outside the table so scrolling
@@ -896,6 +938,7 @@
 
     const setRadio = (name, value) => {const el = $(`input[name="${name}"][value="${value}"]`); if(el) el.checked=true;};
     const syncSortPopup = () => {setRadio('leadSort', ['newest','oldest','az','za','recent','least'].includes(state.sort)?state.sort:'newest');setRadio('leadContact',state.contactFilter);setRadio('leadPreview',state.previewFilter);};
+    $('#bulkAddToQueueBtn')?.addEventListener('click', openBulkQueuePicker);
     $('#openFiltersBtn')?.addEventListener('click', () => {syncSortPopup();openModal('filtersModal');});
     $('#resetSortFilters')?.addEventListener('click', () => {
       state.sort='newest';state.desc=false;state.contactFilter='all';state.previewFilter='all';

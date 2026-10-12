@@ -645,3 +645,12 @@ body.page-my-leads .table-filter-button:focus-visible {outline:3px solid #9acaff
 body.page-my-leads #statOnPage ~ .info-icon,
 body.page-my-leads #statOnPage ~ .info-circle,
 body.page-my-leads #statOnPage ~ [data-lucide="info"] {display:none!important;}
+
+/* Bulk queue action adjacent to Filters */
+body.page-my-leads .my-table-topbar{justify-content:flex-start;flex-wrap:wrap}
+body.page-my-leads .my-table-topbar #paginationTop{margin-left:auto}
+body.page-my-leads .ml-bulk-queue-btn{gap:7px}
+body.page-my-leads .ml-bulk-queue-btn:disabled{opacity:.48;cursor:not-allowed}
+body.page-my-leads .ml-bulk-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 5px;border-radius:99px;background:rgba(255,255,255,.22);color:#fff;font-size:11px}
+body.page-my-leads .ml-bulk-count[hidden]{display:none}
+@media(max-width:640px){body.page-my-leads .ml-bulk-queue-btn{width:auto!important;min-width:42px;padding:6px 9px!important}body.page-my-leads .ml-bulk-queue-btn>span:not(.ml-bulk-count){display:none}}
