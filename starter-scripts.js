@@ -13,7 +13,7 @@ async function loadSalesperson(){
   const c=getClient();if(!c?.auth?.getUser)return;
   const {data}=await c.auth.getUser();const user=data?.user;if(!user)return;
   const meta=user.user_metadata||{};
-  salesperson=String(meta.display_name||meta.full_name||'').trim();
+  salesperson=String(meta.display_name||meta.full_name||meta.name||user.email?.split('@')[0]||'').trim();
   if(c.from){const {data:profile,error}=await c.from('callcenter_profiles').select('display_name').eq('user_id',user.id).maybeSingle();if(!error&&profile?.display_name)salesperson=String(profile.display_name).trim();}
   render();if(popupIsOpen()){const output=document.getElementById('shPopupScriptText');if(output){const active=document.querySelector('[data-popup-starter].is-active')?.dataset.popupStarter||'no-site';output.textContent=scripts[active](greeting());}}
  }catch(e){console.warn('Starter scripts: unable to load display name',e);}
@@ -27,9 +27,9 @@ function getLead(){
 function greeting(){
  const {contactName,companyName}=getLead();
  const name=salesperson||'[your name]';
- if(contactName)return `Hey ${contactName.split(/\s+/)[0]}, my name is ${name}. I'm calling from Steady Hands.`;
+ if(contactName)return `Hey ${contactName.split(/\s+/)[0]}, My name is ${name}. I'm calling from Steady Hands.`;
  if(companyName)return `Hey, is this ${companyName}? My name is ${name}, and I'm calling from Steady Hands.`;
- return `Hey, my name is ${name}. I'm calling from Steady Hands.`;
+ return `Hey! My name is ${name}. I'm calling from Steady Hands.`;
 }
 function popupIsOpen(){return !!document.querySelector('.sh-script-overlay:not([hidden])');}
 const root=document.querySelector('.sh-starter-card');
