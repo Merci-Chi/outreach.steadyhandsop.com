@@ -459,3 +459,19 @@ body.page-my-leads .ml-followup-card-grid{display:grid;grid-template-columns:rep
 body.page-my-leads .ml-followup-choice{border:1px solid #dce6f2;border-radius:11px;padding:12px 9px;background:#fff;color:#23436d;font-size:13px;font-weight:700;cursor:pointer}
 body.page-my-leads .ml-followup-choice.is-selected{background:#eaf5ff;border-color:#0786ff;color:#006de0}
 @media(max-width:620px){body.page-my-leads .ml-stage-card-grid,body.page-my-leads .ml-followup-card-grid{grid-template-columns:1fr}body.page-my-leads .ml-modal-toolbar .modal-search{flex-basis:100%!important}body.page-my-leads .ml-modal-toolbar .mode-toggle{margin-left:0!important}body.page-my-leads .ml-modal-foot{gap:8px}body.page-my-leads .ml-modal-foot button{min-width:0;flex:1}}
+
+/* Group available Tags by their existing colors, preserving tag counts and selection. */
+body.page-my-leads #tagOptionGrid.modal-option-grid{display:flex!important;flex-direction:column!important;gap:17px!important;align-items:stretch!important;}
+body.page-my-leads .ml-tag-color-section{display:flex;flex-direction:column;gap:9px;min-width:0;}
+body.page-my-leads .ml-tag-color-heading{display:flex;align-items:center;gap:9px;color:#284664;font-size:12px;font-weight:800;letter-spacing:.01em;}
+body.page-my-leads .ml-tag-color-dot{width:12px;height:12px;display:inline-block;border-radius:50%;flex-shrink:0;}
+body.page-my-leads .ml-tag-color-dot.tag-website{background:#387eef;}
+body.page-my-leads .ml-tag-color-dot.tag-call{background:#f39a30;}
+body.page-my-leads .ml-tag-color-dot.tag-special-red{background:#ee5974;}
+body.page-my-leads .ml-tag-color-dot.tag-response{background:#a15beb;}
+body.page-my-leads .ml-tag-color-dot.tag-special-green{background:#41b86e;}
+body.page-my-leads .ml-tag-color-dot.tag-gray{background:#94a3b8;}
+body.page-my-leads .ml-tag-color-total{font-weight:650;font-size:11px;color:#8596ad;}
+body.page-my-leads .ml-tag-color-items{display:flex;flex-wrap:wrap;gap:9px 10px;min-width:0;}
+body.page-my-leads .ml-tag-color-items .modal-option{flex:0 1 auto;min-width:0;}
+html[data-theme="dark"] body.page-my-leads .ml-tag-color-heading{color:#d9e7fa;}

@@ -326,7 +326,7 @@
         const next = Number(btn.dataset.page || state.page);
         if (!Number.isFinite(next) || next < 1 || next > totalPages || next === state.page) return;
         state.page = next;
-        loadLeads();
+        displayCachedLeads();
       }));
     });
   }
@@ -411,7 +411,22 @@
         if (ap !== bp) return ap - bp;
         return String(a.name || '').localeCompare(String(b.name || ''));
       });
-      target.innerHTML = ordered.map(itemMarkup).join('') || '<div class="table-empty-row">No tags found.</div>';
+      const colorSections = [
+        { key: 'tag-website', title: 'Website', subtitle: 'Blue' },
+        { key: 'tag-call', title: 'Call Outcomes', subtitle: 'Orange' },
+        { key: 'tag-special-red', title: 'Not Interested', subtitle: 'Pink' },
+        { key: 'tag-response', title: 'Interest & Questions', subtitle: 'Purple' },
+        { key: 'tag-special-green', title: 'Language', subtitle: 'Green' },
+        { key: 'tag-gray', title: 'Other Tags', subtitle: 'Gray' }
+      ];
+      target.innerHTML = ordered.length ? colorSections.map(section => {
+        const matching = ordered.filter(item => colorClassForTag(item.name) === section.key);
+        if (!matching.length) return '';
+        return `<section class="ml-tag-color-section" aria-label="${htmlEscape(section.title)}">
+          <div class="ml-tag-color-heading"><span class="ml-tag-color-dot ${section.key}" aria-hidden="true"></span><span>${htmlEscape(section.title)}</span><span class="ml-tag-color-total">${matching.length} tags</span></div>
+          <div class="ml-tag-color-items">${matching.map(itemMarkup).join('')}</div>
+        </section>`;
+      }).join('') : '<div class="table-empty-row">No tags found.</div>';
     } else {
       target.innerHTML = options.map(itemMarkup).join('') || `<div class="table-empty-row" style="grid-column:1/-1">No options found.</div>`;
     }
@@ -523,67 +538,113 @@
     });
   }
 
-  async function loadLeads() {
-    setStatus('', 'silent');
-    try {
-      client = client || initClient();
-      const assigned = await fetchAssignedRows();
-      // The pipeline tracks stages separately from CRM; enrich rows only when accessible.
-      try {
-        const ids = assigned.map(row => row.id).filter(Boolean);
-        for(let n=0;n<ids.length;n+=200) {
-          const {data: pipeline, error: pipelineError} = await client.from('sh_pipeline_records').select('crm_id,stage,follow_up_category').in('crm_id',ids.slice(n,n+200));
-          if (pipelineError) break;
-          const byId = new Map((pipeline || []).map(p => [String(p.crm_id),p]));
-          assigned.slice(n,n+200).forEach(row => {const p=byId.get(String(row.id));if(p){row.pipeline_stage=p.stage;row.follow_up_category=p.follow_up_category;}});
-        }
-      } catch (error) { console.warn('Pipeline stages unavailable; using CRM stages.',error); }
-      const filtered = matchedAssignedRows(assigned);
-      state.total = assigned.length;
-      state.matching = filtered.length;
-      state.followups = assigned.filter(r => String(r.stage || '').toLowerCase().includes('follow')).length;
-      // Build live filter options from Supabase CRM records assigned to this
-      // salesperson. The popup renderer expects {name, count} objects, not
-      // strings. Keep counts per lead (not repeated values within one lead).
-      const makeOptions = field => {
-        const counts = new Map();
-        for (const row of assigned) {
-          const raw = field === 'tags' ? arrayify(row.tags) : [...arrayify(row.sources), ...arrayify(row.source)];
-          const unique = new Set(raw.map(value => String(value || '').trim()).filter(Boolean));
-          for (const name of unique) {
-            const key = name.toLocaleLowerCase();
-            const previous = counts.get(key);
-            if (previous) previous.count += 1;
-            else counts.set(key, { name, count: 1 });
-          }
-        }
-        return Array.from(counts.values()).sort((a, b) => a.name.localeCompare(b.name));
-      };
-      state.tagOptions = makeOptions('tags');
-      state.sourceOptions = makeOptions('sources');
-      state.stageOptions = [...new Set(assigned.map(r => r.pipeline_stage || r.stage).filter(Boolean))].sort();
-      const ordered = applyClientSort(filtered);
-      const pageCount = Math.max(1, Math.ceil(filtered.length / state.pageSize));
-      state.page = Math.min(state.page, pageCount);
-      state.rows = ordered.slice((state.page-1)*state.pageSize, state.page*state.pageSize);
-      refreshStats();
-      renderStageOptions();
-      renderModalOptions('tags', $('#tagSearchInput')?.value || '');
-      renderModalOptions('sources', $('#sourceSearchInput')?.value || '');
-      updateToolbarBadges();
-      renderTable();
-    } catch (error) {
-      console.error('Assigned CRM leads failed to load:', error?.message || error, { code: error?.code, details: error?.details, hint: error?.hint });
-      state.rows = [];
-      state.total = state.matching = state.followups = 0;
-      refreshStats();
-      renderTable();
-      setStatus('Could not load your assigned leads: ' + (error?.message || 'Unknown error') + (error?.hint ? ' ' + error.hint : '') + ' Please refresh or contact your administrator.', 'error');
+  // Complete filter catalogs match the Outreach page (index.html / app.js).
+  // Counts and search results are calculated ONLY from assigned leads.
+  const AVAILABLE_TAGS = [
+    'Interested','Call Back','Needs More Info','Send Preview','Requested Email',
+    'Requested Text','Decision Maker','Hot Lead','Conversion','Sold',
+    'Not Interested','No Answer','Left Voicemail','Busy','Wrong Number',
+    'Already Has Someone','Bad Timing','Price Concern','Skeptical','Do Not Call',
+    'Broken Site','Outdated Site','Site Removed','Already have a website',
+    'No Website','Spanish?'
+  ];
+  const AVAILABLE_SOURCES = [
+    'Facebook','Instagram','Nextdoor','Google','Google Maps','Found online',
+    'Yelp','LinkedIn','TikTok','Booksy','Other'
+  ];
+
+  // Only the signed-in salesperson's assigned CRM rows may contribute
+  // to filters, counts, search results, or displayed leads.
+  function makeFilterOptions(rows, field) {
+    const catalog = field === 'tags' ? AVAILABLE_TAGS : AVAILABLE_SOURCES;
+    const counts = new Map(catalog.map(name => [name.toLocaleLowerCase(), { name, count: 0 }]));
+    for (const row of rows) {
+      const values = field === 'tags' ? arrayify(row.tags) : arrayify(row.sources).concat(arrayify(row.source));
+      const unique = new Set(values.map(v =>
+        (typeof v === 'string' ? v : (v?.name || v?.label || '')).trim().toLocaleLowerCase()
+      ).filter(Boolean));
+      for (const key of unique) {
+        const existing = counts.get(key);
+        if (existing) existing.count++;
+        else counts.set(key, { name: [...unique].find(v => v === key) || key, count: 1 });
+      }
     }
+    return [...counts.values()];
+  }
+
+  let assignedCache = null;
+  let leadsRequest = null;
+  function loadAssignedFilterOptions() {
+    const rows = assignedCache || [];
+    state.tagOptions = makeFilterOptions(rows, 'tags');
+    state.sourceOptions = makeFilterOptions(rows, 'sources');
+    renderModalOptions('tags', $('#tagSearchInput')?.value || '');
+    renderModalOptions('sources', $('#sourceSearchInput')?.value || '');
+    updateSelectAllChecks();
+  }
+
+  function displayCachedLeads() {
+    if (!assignedCache) return;
+    const assigned = assignedCache;
+    const filtered = matchedAssignedRows(assigned);
+    state.total = assigned.length;
+    state.matching = filtered.length;
+    state.followups = assigned.filter(r => normalizeStage(r.pipeline_stage || r.stage) === 'follow_up').length;
+    state.stageOptions = [...new Set(assigned.map(r => r.pipeline_stage || r.stage).filter(Boolean))].sort();
+    const ordered = applyClientSort(filtered);
+    const pageCount = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+    state.page = Math.min(state.page, pageCount);
+    state.rows = ordered.slice((state.page-1)*state.pageSize, state.page*state.pageSize);
+    refreshStats();
+    renderStageOptions();
+    updateToolbarBadges();
+    renderTable();
+  }
+
+  async function loadLeads(force = false) {
+    if (assignedCache && !force) { displayCachedLeads(); return; }
+    if (leadsRequest) return leadsRequest;
+    leadsRequest = (async () => {
+      setStatus('', 'silent');
+      try {
+        client = client || initClient();
+        const assigned = await fetchAssignedRows();
+        // Pipeline metadata is fetched in concurrent batches instead of one-by-one.
+        try {
+          const ids = assigned.map(row => row.id).filter(Boolean);
+          const chunks = [];
+          for (let n = 0; n < ids.length; n += 200) chunks.push(ids.slice(n, n+200));
+          for (let n = 0; n < chunks.length; n += 5) {
+            const results = await Promise.all(chunks.slice(n,n+5).map(chunk =>
+              client.from('sh_pipeline_records').select('crm_id,stage,follow_up_category').in('crm_id',chunk)
+            ));
+            const byId = new Map(results.flatMap(result => result.error ? [] : (result.data || [])).map(p => [String(p.crm_id), p]));
+            assigned.forEach(row => { const p = byId.get(String(row.id)); if(p) {row.pipeline_stage=p.stage;row.follow_up_category=p.follow_up_category;} });
+            if (results.some(result => result.error)) break;
+          }
+        } catch(error) { console.warn('Pipeline stages unavailable; using CRM stages.', error); }
+        assignedCache = assigned;
+        loadAssignedFilterOptions();
+        // Display leads immediately. Catalog scanning never blocks the main page.
+        displayCachedLeads();
+      } catch(error) {
+        console.error('Assigned CRM leads failed to load:', error?.message || error, {code:error?.code,details:error?.details,hint:error?.hint});
+        state.rows=[]; state.total=state.matching=state.followups=0;
+        refreshStats(); renderTable();
+        setStatus('Could not load your assigned leads: '+(error?.message || 'Unknown error'), 'error');
+      }
+    })();
+    try { await leadsRequest; } finally { leadsRequest = null; }
+  }
+
+  function ensureFilterOptions() {
+    // No additional Supabase query: reuse only the already-fetched assigned leads.
+    loadAssignedFilterOptions();
   }
 
   function openModal(modalId) {
     $('#modalBackdrop')?.removeAttribute('hidden');
+    if (modalId === 'tagsModal' || modalId === 'sourcesModal') ensureFilterOptions();
     const modal = document.getElementById(modalId);
     if (!modal) return;
     modal.removeAttribute('hidden');
@@ -605,7 +666,7 @@
     searchTimer = setTimeout(() => {
       state.query = $('#leadSearch')?.value.trim() || '';
       state.page = 1;
-      loadLeads();
+      displayCachedLeads();
     }, 220);
   }
 
@@ -707,8 +768,8 @@
     ]));
     const actions = $('.header-actions');
     actions?.addEventListener('click',()=>showHeaderMenu(actions,[
-      {label:'Refresh leads',action:()=>loadLeads()},
-      {label:'Clear filters',action:()=>{state.tags=[];state.sources=[];state.stages=[];state.query='';$('#leadSearch').value='';state.page=1;loadLeads();}}
+      {label:'Refresh leads',action:()=>loadLeads(true)},
+      {label:'Clear filters',action:()=>{state.tags=[];state.sources=[];state.stages=[];state.query='';$('#leadSearch').value='';state.page=1;displayCachedLeads();}}
     ]));
     document.addEventListener('pointerdown',event=>{
       if(activeHeaderMenu && !activeHeaderMenu.contains(event.target) && !event.target.closest('.header-pill')) closeHeaderMenu();
@@ -779,7 +840,7 @@
     $$('[data-apply-modal]').forEach(btn => btn.addEventListener('click', () => {
       state.page = 1;
       closeModals();
-      loadLeads();
+      displayCachedLeads();
     }));
 
     document.addEventListener('click', event => {
