@@ -3255,8 +3255,6 @@ async function loadApprovedPreviewCRM(options = {}) {
       .from('crm')
       .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
       .eq('assigned_user_id', userId)
-      .eq('admin_archived', false)
-      .order('created', { ascending: false })
       .limit(1000);
     if (assignedError) throw assignedError;
     const leads = (assigned || []).filter(callcenterIsFreshLead);
