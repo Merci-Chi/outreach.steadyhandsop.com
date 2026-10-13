@@ -21,7 +21,7 @@
 
       const url = new URL(parsed.href, location.href);
       if (url.origin !== location.origin) return null;
-      if (url.pathname.endsWith('/login.html')) return null;
+      if (url.pathname.endsWith('/login.html') || url.pathname.endsWith('/pause.html')) return null;
 
       return {
         href: url.pathname.split('/').pop() + url.search + url.hash,
@@ -36,7 +36,7 @@
   function saveResumeLocation(href, label = '') {
     try {
       const url = new URL(href, location.href);
-      if (url.origin !== location.origin || url.pathname.endsWith('/login.html')) return;
+      if (url.origin !== location.origin || url.pathname.endsWith('/login.html') || url.pathname.endsWith('/pause.html')) return;
       localStorage.setItem(RESUME_KEY, JSON.stringify({
         href: url.pathname.split('/').pop() + url.search + url.hash,
         label,
@@ -154,6 +154,17 @@
         location.replace('login.html');
         return;
       }
+
+      // Server-backed restriction is checked before onboarding/resume or displaying leads.
+      const {data:pauseData,error:pauseError}=await client.rpc('sh_get_my_access_pause');
+      if(pauseError) throw new Error('Could not verify account access: '+pauseError.message);
+      const pauseStatus=Array.isArray(pauseData)?pauseData[0]:pauseData;
+      if(pauseStatus?.is_paused===true){
+        if(currentPageName()!=='pause.html'){ location.replace('pause.html');return; }
+        document.documentElement.classList.remove('auth-checking');
+        return;
+      }
+      if(currentPageName()==='pause.html'){location.replace('index.html');return;}
 
       // A persistent, account-level first-login check. Existing employees aren't forced
       // through a new password setup after this feature is deployed.
