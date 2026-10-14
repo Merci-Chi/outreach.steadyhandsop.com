@@ -77,7 +77,7 @@ function openRegularPhonePopup(phone){
       <p>Call this prospect using your phone.</p>
       <div class="ref-phone-number" id="refPhonePopupNumber"></div>
       <div class="ref-phone-actions"><a id="refOpenDialer" class="ref-phone-dialer" href="#">Open Dialer</a>
-      <button type="button" id="refCopyPhone">Copy Phone Number</button></div><div class="ref-regular-call-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px"><button type="button" id="refCopyCallStart">Start</button><button type="button" id="refCopyCallEnd" disabled>End</button><strong id="refCopyCallElapsed" role="timer" aria-label="Call elapsed time" style="font-variant-numeric:tabular-nums">00:00</strong></div><p class="ref-phone-feedback">Start when the call begins; End when it finishes to save the time and outcome.</p>
+      <button type="button" id="refCopyPhone">Copy Phone Number</button></div><div class="ref-copy-call-actions"><button type="button" id="refCopyCallStart" class="ref-copy-call-button ref-copy-call-start" aria-pressed="false">▶ Start</button><button type="button" id="refCopyCallEnd" class="ref-copy-call-button ref-copy-call-end" aria-pressed="false" disabled>■ End</button><strong id="refCopyCallElapsed" role="timer" aria-label="Call elapsed time">00:00</strong></div><p class="ref-phone-feedback">Start when the call begins; End when it finishes to save the time and outcome.</p>
       <p id="refPhonePopupFeedback" class="ref-phone-feedback" role="status" aria-live="polite"></p>
     </div>`;
     document.body.append(popup);
@@ -102,8 +102,8 @@ function openRegularPhonePopup(phone){
         $('#refPhonePopupFeedback').textContent='Phone number copied. Press Start when the call begins.';
       }catch{$('#refPhonePopupFeedback').textContent='Unable to copy automatically. Please select the number above.';}
     });
-    $('#refCopyCallStart').addEventListener('click',()=>{const lead=currentLead();if(!lead){$('#refPhonePopupFeedback').textContent='Select a prospect first.';return;}if(regularCall&&regularCall.id!==lead.id){$('#refPhonePopupFeedback').textContent='End your current call first.';return;}beginRegularCall(lead);renderRegularCall();});
-    $('#refCopyCallEnd').addEventListener('click',()=>{if(!regularCall)return;finishRegularCall(true);if(!regularCall)popup.hidden=true;});
+    $('#refCopyCallStart').addEventListener('click',()=>{const lead=currentLead();if(!lead){$('#refPhonePopupFeedback').textContent='Select a prospect first.';return;}if(regularCall&&regularCall.id!==lead.id){$('#refPhonePopupFeedback').textContent='End your current call first.';return;}beginRegularCall(lead);renderRegularCall();$('#refPhonePopupFeedback').textContent='Timer running. Press End when your call is finished.';});
+    $('#refCopyCallEnd').addEventListener('click',()=>{if(!regularCall)return;const start=$('#refCopyCallStart'),end=$('#refCopyCallEnd');end.classList.add('is-ending');end.setAttribute('aria-pressed','true');finishRegularCall(true);if(!regularCall){popup.hidden=true;}else{end.classList.remove('is-ending');end.setAttribute('aria-pressed','false');$('#refPhonePopupFeedback').textContent='Could not finish the call. Try End again.';}renderRegularCall();});
   }
   popup.dataset.phone=number;
   $('#refPhonePopupNumber').textContent=number;
@@ -150,7 +150,7 @@ function renderRegularCall(){
   $('#refRegularElapsed').textContent=hours?`${String(hours).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}:${String(secs).padStart(2,'0')}`:`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
  }
  const start=$('#refCopyCallStart'),end=$('#refCopyCallEnd'),elapsed=$('#refCopyCallElapsed');
- if(start&&end&&elapsed){const lead=currentLead();const same=!!regularCall&&!!lead&&regularCall.id===lead.id;start.disabled=!!regularCall;end.disabled=!same;const seconds=same?Math.max(0,Math.floor((Date.now()-regularCall.startedAt)/1000)):0;const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;elapsed.textContent=h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+ if(start&&end&&elapsed){const lead=currentLead();const same=!!regularCall&&!!lead&&regularCall.id===lead.id;start.disabled=!!regularCall;end.disabled=!same;start.classList.toggle('is-active',same);end.classList.toggle('is-ready',same);start.setAttribute('aria-pressed',String(same));if(!same){end.setAttribute('aria-pressed','false');end.classList.remove('is-ending');}const seconds=same?Math.max(0,Math.floor((Date.now()-regularCall.startedAt)/1000)):0;const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;elapsed.textContent=h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
 }
 function beginRegularCall(lead){
  if(regularCall)return;
