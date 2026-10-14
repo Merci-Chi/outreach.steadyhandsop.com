@@ -299,3 +299,18 @@ body.page-outreach .ref-regular-call-actions #refRegularDidNotCall{border-color:
 body.page-outreach .ref-status .ref-green-dot,
 body.page-outreach .ref-status .ref-green-dot.ref-red-dot,
 body.page-outreach .ref-status .ref-green-dot.ref-neutral-dot { box-shadow:none !important; filter:none !important; animation:none !important; }
+
+/* Clearly interactive manual-call stopwatch controls. */
+body.page-outreach .ref-copy-call-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0 8px}
+body.page-outreach .ref-copy-call-button{appearance:none;min-width:100px;min-height:46px;border-radius:12px;border:2px solid transparent;padding:10px 18px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.24),0 7px 15px rgba(0,0,0,.12);transition:transform .12s ease,box-shadow .12s ease,filter .12s ease,opacity .12s ease}
+body.page-outreach #refCopyCallStart{background:#16803b;border-color:#0e6530}
+body.page-outreach #refCopyCallEnd{background:#d52c35;border-color:#aa1925}
+body.page-outreach .ref-copy-call-button:not(:disabled):hover{filter:brightness(1.08)}
+body.page-outreach .ref-copy-call-button:not(:disabled):active,
+body.page-outreach .ref-copy-call-button.is-active,
+body.page-outreach .ref-copy-call-button.is-ending{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.3),inset 0 3px 8px rgba(0,0,0,.22);filter:brightness(.9)}
+body.page-outreach .ref-copy-call-button:disabled{opacity:.46;cursor:not-allowed;box-shadow:none}
+body.page-outreach #refCopyCallStart.is-active{opacity:1;background:#116c32}
+body.page-outreach #refCopyCallEnd.is-ready{opacity:1}
+body.page-outreach .ref-copy-call-button:focus-visible{outline:3px solid #fbbf24;outline-offset:3px}
+body.page-outreach #refCopyCallElapsed{font-variant-numeric:tabular-nums;font-size:23px;font-weight:850;letter-spacing:.04em;min-width:75px;text-align:center;color:inherit}
