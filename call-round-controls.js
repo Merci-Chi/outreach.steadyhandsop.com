@@ -27,5 +27,5 @@
   });
 
   update(false);
-  window.addEventListener('steadyhands:call-lead-ready', () => update(false));
+  window.addEventListener('steadyhands:call-lead-ready', () => update(button.dataset.callState === 'active'));
 })();

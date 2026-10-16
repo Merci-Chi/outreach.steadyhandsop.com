@@ -9,13 +9,24 @@ function currentLead(){
  if(digits.length<10)return null;
  return {c,number,company:c.querySelector('.lead-title h2')?.textContent?.trim()||'',contact:c.querySelector('.lead-title .name')?.textContent?.trim()||'',role:c.querySelector('.lead-title .role')?.textContent?.trim()||'',preview:c.dataset.previewUrl||c.querySelector('.preview-link')?.href||'',timezone:c.dataset.timezone||'',id:c.dataset.crmId};
 }
-function linkCall(mode){
+let checkingCaller = false;
+async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
  try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
  if(mode==='regular'){openRegularPhonePopup(number);return;}
- // Calling through Outreach requires administrator setup; never open call.html here.
- openOutreachSetupPopup();
+ if(checkingCaller)return;
+ checkingCaller=true;
+ const button=$('#refAppPhone');if(button)button.disabled=true;
+ tell('Checking your approved calling number…');
+ try{
+  const caller=await window.SteadyHandsApprovedCaller();
+  if(!caller){tell('');openOutreachSetupPopup();return;}
+  const params=new URLSearchParams({crm_id:id,number,company,contact,role,preview,timezone});
+  window.location.assign('call.html?'+params.toString());
+ }catch(error){tell(error.message||'Unable to check phone approval. Please try again.');}
+ finally{checkingCaller=false;if(button)button.disabled=false;}
+
 }
 
 function openOutreachSetupPopup(){
@@ -28,7 +39,7 @@ function openOutreachSetupPopup(){
     overlay.innerHTML=`<div class="ref-phone-dialog ref-setup-dialog" role="dialog" aria-modal="true" aria-labelledby="refSetupTitle" aria-describedby="refSetupDescription">
       <button type="button" class="ref-phone-close" id="refSetupClose" aria-label="Close">×</button>
       <h2 id="refSetupTitle">Call Through Outreach setup required</h2>
-      <p id="refSetupDescription">You need to verify your phone number before calling through Outreach. Please contact your administrator to get set up.</p>
+      <p id="refSetupDescription">No approved calling number is assigned to your account. Ask your administrator to assign an enabled Twilio number and mark it Twilio Ready.</p>
       <div class="ref-setup-actions">
         <button type="button" class="ref-setup-contact" id="refSetupContact">Contact Administrator</button>
         <button type="button" class="ref-setup-cancel" id="refSetupCancel">Cancel</button>
