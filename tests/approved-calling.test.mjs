@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFile} from 'node:fs/promises';
+const helper=await readFile(new URL('../approved-caller.js',import.meta.url),'utf8');
+const controller=await readFile(new URL('../call-voice-controller.js',import.meta.url),'utf8');
+function checker({assignment={phone_number_id:'number'},number={id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'},error=null}={}) {
+ const queries=[];
+ const window={steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'signed-in-user'}}})},from(table){
+  const query={select(){return query},eq(column,value){queries.push([table,column,value]);return query},maybeSingle:async()=>({data:table==='callcenter_phone_assignments'?assignment:number,error})};return query;
+ }}};
+ vm.runInNewContext(helper,{window});
+ return {window,queries};
+}
+test('approved assignment works without personal SMS verification and scopes lookup to signed-in user',async()=>{
+ const {window,queries}=checker();
+ assert.equal((await window.SteadyHandsApprovedCaller()).phone_number,'+17025550101');
+ assert.deepEqual(queries,[['callcenter_phone_assignments','user_id','signed-in-user'],['callcenter_phone_numbers','id','number']]);
+});
+for(const [name,options] of [
+ ['unassigned',{assignment:null}],['disabled',{number:{phone_number:'+17025550101',active:false,twilio_status:'ready'}}],
+ ['pending',{number:{phone_number:'+17025550101',active:true,twilio_status:'pending'}}],['missing number',{number:null}]
+])test(name+' cannot call',async()=>assert.equal(await checker(options).window.SteadyHandsApprovedCaller(),null));
+test('database error fails closed',async()=>assert.rejects(checker({error:{message:'denied'}}).window.SteadyHandsApprovedCaller(),/Unable to check/));
+test('approval is fetched again after admin changes',async()=>{
+ const number={phone_number:'+17025550101',active:true,twilio_status:'pending'};
+ const {window}=checker({number});
+ assert.equal(await window.SteadyHandsApprovedCaller(),null);
+ number.twilio_status='ready';assert(await window.SteadyHandsApprovedCaller());
+ number.active=false;assert.equal(await window.SteadyHandsApprovedCaller(),null);
+});
+function callPage(approved) {
+ const handlers={},events=[],calls=[];
+ const nodes={refMessage:{textContent:''},refEndCall:{disabled:false}};
+ const window={addEventListener(name,fn){handlers[name]=fn},dispatchEvent(event){events.push(event)},
+  steadyHandsCallLead:{id:'lead',number:'+17025550102',company:'Prospect'},
+  SteadyHandsApprovedCaller:async()=>approved,
+  SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>calls.push(args),hangup(){calls.push('hangup')}}};
+ vm.runInNewContext(controller,{window,document:{getElementById:id=>nodes[id]},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args.detail}}});
+ return {handlers,events,calls,nodes};
+}
+test('call button starts Twilio for approved assigned number without sending a spoofable From',async()=>{
+ const page=callPage({phone_number:'+17025550101'});
+ await page.handlers['steadyhands:start-call-request']();
+ assert.equal(page.calls.length,1);assert.equal(page.calls[0][0],'+17025550102');
+ assert.equal(page.calls[0][1].crmId,'lead');assert(!('From' in page.calls[0][1]));
+ assert.equal(page.events.at(-1).detail.active,true);
+});
+test('direct call page cannot start Twilio without approval',async()=>{
+ const page=callPage(null);await page.handlers['steadyhands:start-call-request']();
+ assert.equal(page.calls.length,0);assert.match(page.nodes.refMessage.textContent,/No approved calling number/);
+});
