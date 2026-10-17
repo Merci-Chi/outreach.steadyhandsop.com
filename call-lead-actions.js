@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   function open(action,trigger) {
-    const lead=window.steadyHandsCallLead;
+    const lead=window.steadyHandsCallLead || {id:document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId,company:document.getElementById('refCompany')?.textContent};
     if (!lead?.id || document.getElementById('leadActionDialog')) return;
     const dnc=action==='dnc';
     const dialog=document.createElement('dialog');dialog.id='leadActionDialog';dialog.className='lead-action-dialog';

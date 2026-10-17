@@ -13,6 +13,9 @@ let checkingCaller = false;
 async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
+ if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
+ if(!await window.SteadyHandsReviewBeforeCall(id))return;
+ if(currentLead()?.id!==id){tell('The selected prospect changed. Review the new prospect first.');return;}
  try{await window.SteadyHandsLeadDisposition.ensureCallable(id);}catch(error){tell(error.message);return;}
  try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
  if(mode==='regular'){openRegularPhonePopup(number);return;}
@@ -96,7 +99,8 @@ function openRegularPhonePopup(phone){
     const close=()=>{
       popup.hidden=true;
       const process=popup.querySelector('.outreach-process');
-      if(process)document.querySelector('#refOutreachMain')?.append(process);
+      if(process)window.SteadyHandsRestoreProcess?.(process);
+      window.dispatchEvent(new CustomEvent('steadyhands:process-mode',{detail:{guided:false}}));
       $('#refRegularPhone')?.focus();
     };
     $('#refPhoneClose').addEventListener('click',close);
@@ -128,6 +132,7 @@ function openRegularPhonePopup(phone){
   const process=document.querySelector('.outreach-process');
   if(process)popup.querySelector('.regular-call-shell').append(process);
   popup.hidden=false;
+  window.dispatchEvent(new CustomEvent('steadyhands:process-mode',{detail:{guided:true}}));
   renderRegularCall();
   $('#refCopyCallStart').focus();
 }
@@ -174,6 +179,7 @@ function beginRegularCall(lead){
  if(regularCall)return;
  regularCall={id:lead.id,company:lead.company,startedAt:Date.now()};
  savePendingRegularCall();renderRegularCall();
+ window.dispatchEvent(new CustomEvent('steadyhands:regular-call-state',{detail:{active:true,id:lead.id}}));
 }
 function finishRegularCall(wasCalled){
  if(!regularCall)return;
@@ -192,6 +198,7 @@ function finishRegularCall(wasCalled){
   const opened=opener(detail);
   if(opened===false){tell('Unable to open the questionnaire. Please try again.');return;}
   regularCall=null;savePendingRegularCall();renderRegularCall();
+  window.dispatchEvent(new CustomEvent('steadyhands:regular-call-state',{detail:{active:false,id:current.id}}));
  }catch(ex){console.error('Post-call questionnaire failed to open',ex);tell('Could not open the questionnaire. Refresh and try again.');}
 }
 
