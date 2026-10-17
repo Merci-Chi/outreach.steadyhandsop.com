@@ -4,7 +4,7 @@ const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const client=()=>window.steadyHandsCRMClient;
 const lead=()=>$('#selectedLeadTop .lead-card');
-const id=()=>lead()?.dataset.crmId||'';
+const id=()=>window.steadyHandsCallLead?.id||lead()?.dataset.crmId||'';
 const f=()=>({name:$('#refCompany')?.textContent||'Prospect',phone:$('#refPhone')?.textContent||'',preview:lead()?.dataset.previewUrl||lead()?.querySelector('.preview-link')?.href||''});
 const msg=(root,t)=>{const p=$('.sh-sheet-status',root);if(p)p.textContent=t;};
 const ic=()=>window.lucide?.createIcons?.();
