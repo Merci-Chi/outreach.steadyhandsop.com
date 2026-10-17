@@ -39,17 +39,17 @@
   </header>
 
 <main class="content" id="refOutreachMain">
-    <table id="workflowLayout" role="presentation" width="100%" cellpadding="8"><colgroup><col width="33%"><col width="67%"></colgroup><tbody><tr><td valign="top" id="workflowDialer"><div class="process-workspace"><section class="ref-lead-card" aria-label="Selected prospect">
+    <table id="workflowLayout" role="presentation" width="100%" cellpadding="8"><colgroup><col width="33%"><col width="67%"></colgroup><tbody><tr><td valign="top" id="workflowDialer"><section class="ref-side-card" aria-label="Lead navigation">
+        <div class="ref-muted">Choose another prospect</div><div class="ref-next-buttons"><button type="button" id="refRandomLead"><i data-lucide="shuffle"></i><span>Random Lead</span></button><button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right"></i><span>Next in Queue</span></button></div>
+        </section>
+    <div class="process-workspace"><section class="ref-lead-card" aria-label="Selected prospect">
         <div class="ref-lead-identity"><div class="ref-business-icon"><i data-lucide="building-2"></i></div><div class="ref-lead-identity-copy"><h2 id="refCompany">Select a prospect</h2><div class="ref-phone" id="refPhone">No phone number</div><div class="ref-status"><span class="ref-green-dot"></span><span id="refStatus">Ready to call</span></div></div></div>
-        <div class="ref-line"></div><div class="ref-call-label">Choose how to call</div>
-        <div class="ref-call-methods"><button type="button" id="refRegularPhone"><i data-lucide="phone"></i><span>Regular call</span></button><button type="button" id="refAppPhone" class="ref-primary"><i data-lucide="headset"></i><span>Call Through<br>Outreach</span></button></div>
-      </section>
-      </div><section class="ref-side-card" aria-label="Lead navigation and timing">
-        <div class="ref-next-buttons"><button type="button" id="refRandomLead"><i data-lucide="shuffle"></i><span>Random Lead</span></button><button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right"></i><span>Next in Queue</span></button></div>
         <div class="ref-line"></div><div class="ref-time-block"><div class="ref-time-icon"><i data-lucide="clock-3"></i></div><div><div class="ref-muted">Prospect’s local time</div><div class="ref-time" id="refLocalTime">Local time unavailable</div><p>Best hours to call are between Monday - Friday<br class="ref-desktop-only"> 9:00 AM - 5:00 PM</p></div></div>
         <div class="ref-line"></div><div class="ref-attempts">Contact attempts <span id="refAttempts">—</span></div>
+      <div class="ref-line"></div><div class="ref-call-label">Choose how to call</div>
+        <div class="ref-call-methods"><button type="button" id="refRegularPhone"><i data-lucide="phone"></i><span>Regular call</span></button><button type="button" id="refAppPhone" class="ref-primary"><i data-lucide="headset"></i><span>Call Through<br>Outreach</span></button></div>
       </section>
-    <section class="ref-lead-actions" aria-label="Lead actions"><div class="ref-tools" aria-label="Call tools">
+      </div><section class="ref-lead-actions" aria-label="Lead actions"><div class="ref-tools" aria-label="Call tools">
       <button type="button" data-ref-tool="alerts"><i data-lucide="bell"></i><span>Alerts</span></button>
       <button type="button" data-ref-tool="tags"><i data-lucide="tag"></i><span>Tags</span></button>
       <button type="button" data-ref-tool="notes"><i data-lucide="notebook-pen"></i><span>Notes</span></button>
