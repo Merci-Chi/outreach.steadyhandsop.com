@@ -1,6 +1,6 @@
-body.page-outreach #refOutreachMain.ref-outreach-main{display:grid!important;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;max-width:1800px;}
+body.page-outreach #refOutreachMain.ref-outreach-main{display:grid!important;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start;max-width:1800px;}
 .process-workspace{min-width:0;}
-.outreach-process{background:#fff;color:#102945;border:1px solid #d7e2ef;border-radius:16px;padding:20px;min-width:0;}
+.outreach-process{background:#fff;color:#102945;border:1px solid #d7e2ef;border-radius:16px;padding:14px;min-width:0;}
 .outreach-process header{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .outreach-process h2{font-size:16px;letter-spacing:.08em;margin:0;}
 #processProgress{border-radius:20px;background:#e4f3ff;color:#0877dc;padding:5px 10px;font-size:12px;font-weight:800;}
@@ -32,3 +32,32 @@ html[data-theme=dark] .outreach-process :is(li,input,textarea){border-color:#385
 html[data-theme=dark] .outreach-process li>p,html[data-theme=dark] #processLead{color:#adc1d9;}
 
 @media(max-width:720px){.process-workspace{display:flex;flex-direction:column;gap:10px;}}
+
+/* Phone-sized call workspace with the process beside the dialer. */
+body.page-outreach.page-call #refOutreachMain.ref-outreach-main{max-width:720px;grid-template-columns:minmax(0,390px) 260px;gap:14px;}
+body.page-call .process-workspace .ref-outreach-grid{display:flex!important;flex-direction:column;gap:14px;}
+body.page-call .process-workspace{width:100%;max-width:390px;justify-self:center;}
+body.page-call .process-workspace .ref-lead-card{padding:20px 16px;min-height:450px;}
+body.page-call .ref-lead-identity{flex-direction:column;text-align:center;gap:12px;}
+body.page-call .ref-lead-identity-copy{width:100%;}
+body.page-call .ref-status{justify-content:center;font-size:12px;flex-wrap:wrap;}
+body.page-call .ref-active-clock{text-align:center;}
+body.page-call .ref-business-icon{width:76px;height:76px;flex-basis:76px;}
+body.page-call .ref-business-icon svg{width:40px;height:40px;}
+body.page-call .ref-lead-identity h2{font-size:22px;}
+body.page-call .ref-phone{font-size:25px;}
+body.page-call .ref-active-controls.ref-five-controls{grid-template-columns:repeat(2,minmax(0,1fr)) 76px repeat(2,minmax(0,1fr));gap:3px;margin-top:24px;}
+body.page-call .ref-control-circle{width:43px;height:43px;}
+body.page-call .ref-control-circle svg{width:21px;height:21px;}
+body.page-call .ref-round-phone{width:74px;height:74px;}
+body.page-call .ref-call-control,body.page-call .ref-phone-action-label{font-size:11px;}
+body.page-call .ref-review-column .ref-transcript-card{min-height:220px;}
+.regular-call-shell{display:grid;grid-template-columns:minmax(0,390px) 260px;gap:14px;align-items:start;max-height:calc(100dvh - 32px);overflow-y:auto;width:min(664px,100%);}
+#refPhonePopup .ref-phone-dialog{width:100%;box-sizing:border-box;min-height:400px;}
+#refPhonePopup .outreach-process{width:100%;box-sizing:border-box;}
+#refPhonePopup .ref-copy-call-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+#refPhonePopup .ref-copy-call-actions button{min-height:44px;}
+@media(min-width:701px){body.page-outreach.page-call #refOutreachMain.ref-outreach-main{display:grid!important;}body.page-call .outreach-process{order:initial;}}
+@media(max-width:700px){body.page-outreach.page-call #refOutreachMain.ref-outreach-main{display:flex!important;max-width:414px;margin:auto;}.regular-call-shell{grid-template-columns:minmax(0,390px);width:min(390px,100%);}#refPhonePopup{padding:12px;}#refPhonePopup .outreach-process{order:initial;}}
+
+body.page-call .call-back-nav{grid-column:1 / -1;}
