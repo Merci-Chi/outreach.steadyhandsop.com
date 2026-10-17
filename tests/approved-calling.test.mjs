@@ -35,9 +35,10 @@ function callPage(approved) {
  const window={addEventListener(name,fn){handlers[name]=fn},dispatchEvent(event){events.push(event)},
   steadyHandsCallLead:{id:'lead',number:'+17025550102',company:'Prospect'},
   SteadyHandsApprovedCaller:async()=>approved,
+  SteadyHandsReviewBeforeCall:async()=>true,
   SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>calls.push(args),hangup(){calls.push('hangup')}}};
  vm.runInNewContext(controller,{window,document:{getElementById:id=>nodes[id]},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args.detail}}});
- return {handlers,events,calls,nodes};
+ return {handlers,events,calls,nodes,window};
 }
 test('call button starts Twilio for approved assigned number without sending a spoofable From',async()=>{
  const page=callPage({phone_number:'+17025550101'});
@@ -49,4 +50,13 @@ test('call button starts Twilio for approved assigned number without sending a s
 test('direct call page cannot start Twilio without approval',async()=>{
  const page=callPage(null);await page.handlers['steadyhands:start-call-request']();
  assert.equal(page.calls.length,0);assert.match(page.nodes.refMessage.textContent,/No approved calling number/);
+});
+
+test('canceling pre-call review prevents the dialer from starting',async()=>{
+ const page=callPage({phone_number:'+17025550101'});page.window.SteadyHandsReviewBeforeCall=async()=>false;
+ await page.handlers['steadyhands:start-call-request']();assert.equal(page.calls.length,0);assert.equal(page.nodes.refEndCall.disabled,false);
+});
+test('missing review module fails closed with a useful message',async()=>{
+ const page=callPage({phone_number:'+17025550101'});delete page.window.SteadyHandsReviewBeforeCall;
+ await page.handlers['steadyhands:start-call-request']();assert.equal(page.calls.length,0);assert.match(page.nodes.refMessage.textContent,/Prospect review is still loading/);
 });
