@@ -59,45 +59,67 @@
   window.SteadyHandsReviewBeforeCall = id => {
     if(reviewPending)return reviewPending;
     reviewPending=new Promise(resolve=>{
-      const dialog=make('dialog',null,'lead-action-dialog call-tool-sheet');
+      const dialog=make('dialog',null,'lead-action-dialog sh-tool-sheet');
       dialog.setAttribute('aria-labelledby','precallTitle');
-      const title=make('h2','Before you call');title.id='precallTitle';
-      const notes=make('p','Loading prospect notes…');
-      const homework=make('section');homework.append(make('h3','Do your homework'),make('p','It’s best to do your homework. Briefly search each client online before calling.'),make('p','Don’t rely solely on notes, it’s not just about the numbers.'),make('p','Look at their website and social media, if available. Mention something real to warm up the conversation.'),make('blockquote','“I saw you on Instagram…”'),make('small','Only mention a profile or post you actually reviewed.'));
-      const details=make('section'), feedback=make('p');feedback.setAttribute('role','status');
-      const ack=make('input');ack.type='checkbox';
-      const ackLabel=make('label','I’ve reviewed the notes and prospect details');ackLabel.prepend(ack);
-      const footer=make('footer'), cancel=make('button','Back'), proceed=make('button','Reviewed — continue to call','primary');
+      dialog.setAttribute('aria-describedby','precallSubtitle');
+      const header=make('header',null,'sh-tools-head sh-sheet-head');
+      const heading=make('div'),title=make('h2','Before you call');title.id='precallTitle';
+      const subtitle=make('p','Review the prospect, then make the conversation personal.','sh-sheet-help');subtitle.id='precallSubtitle';
+      heading.append(title,subtitle);
+      const close=make('button','×','sh-sheet-x');close.type='button';close.setAttribute('aria-label','Close pre-call review');
+      header.append(heading,close);
+      const body=make('div',null,'sh-sheet-body app-modal-body');
+      const notesCard=make('section',null,'sh-alert-row');
+      const notesTitle=make('h3','Notes to review','modal-label');notesTitle.id='precallNotesTitle';
+      const notes=make('textarea',null,'sh-sheet-input');notes.readOnly=true;notes.rows=3;notes.value='Loading prospect notes…';notes.setAttribute('aria-labelledby','precallNotesTitle');
+      notesCard.append(notesTitle,notes);
+      const details=make('section',null,'sh-prices');details.setAttribute('aria-label','Company information');
+      const researchLinks=make('div',null,'sh-tag-options');
+      const homework=make('section',null,'sh-alert-row');
+      homework.append(make('h3','Do your homework','modal-label'),make('p','It’s best to do your homework. Briefly search each client online before calling.','sh-sheet-help'),make('p','Don’t rely solely on notes, it’s not just about the numbers.','sh-sheet-help'),make('p','Look at their website and social media, if available. Mention something real to warm up the conversation.','sh-sheet-help'),make('div','“I saw you on Instagram…”','sh-preview-url'),make('small','Only mention a profile or post you actually reviewed.','sh-sheet-help'));
+      homework.append(researchLinks);
+      const feedback=make('p',null,'sh-sheet-status');feedback.setAttribute('role','status');
+      const ack=make('input');ack.type='checkbox';ack.id='precallAcknowledged';ack.disabled=true;
+      const ackLabel=make('div',null,'cc-check'),ackText=make('label','I’ve reviewed the notes and prospect details');ackText.htmlFor=ack.id;ackLabel.append(ack,ackText);
+      const footer=make('div',null,'sh-alert-row');footer.setAttribute('role','group');footer.setAttribute('aria-label','Call review actions');
+      const actions=make('div',null,'app-modal-actions');
+      const cancel=make('button','Back','modal-action'),proceed=make('button','Continue to call','modal-action primary');
       cancel.type=proceed.type='button';proceed.disabled=true;
-      footer.append(cancel,proceed);dialog.append(title,make('h3','Notes to review'),notes,homework,details,ackLabel,feedback,footer);document.body.append(dialog);
+      actions.append(cancel,proceed);footer.append(ackLabel,feedback,actions);
+      body.append(notesCard,details,homework);dialog.append(header,body,footer);document.body.append(dialog);
       let loaded=false,accepted=false;
       ack.onchange=()=>proceed.disabled=!loaded||!ack.checked;
-      cancel.onclick=()=>dialog.close();
+      cancel.onclick=close.onclick=()=>dialog.close();
       proceed.onclick=()=>{
         if(loaded&&ack.checked&&leadId()===id){accepted=true;dialog.close();}
         else feedback.textContent='The selected prospect changed. Close this review and try again.';
       };
       dialog.addEventListener('close',()=>{dialog.remove();reviewPending=null;resolve(accepted);},{once:true});
-      dialog.showModal();cancel.focus();
+      dialog.showModal();close.focus();
       core.load(window.steadyHandsCRMClient,id).then(({row})=>{
         if(!dialog.isConnected)return;
-        notes.textContent=row.notes||'No notes are on file. Review the business online before calling.';
+        notes.value=row.notes||'No notes are on file. Review the business online before calling.';
         const address=[row.address||row.street_address||row.street,row.city,row.state||row.state_code,row.zip||row.postal_code].filter(Boolean).join(', ');
         for(const [label,value] of [['Company name',row.company||row.name],['Address',address],['Phone number',row.phone]]) {
-          const line=make('p'),copy=make('button','Copy','sh-template-copy');copy.type='button';copy.disabled=!value;
-          line.append(make('strong',label+': '),document.createTextNode(value||'Not on file'),copy);
-          copy.onclick=async()=>{try{await navigator.clipboard.writeText(value);feedback.textContent=label+' copied.';}catch{feedback.textContent='Copy unavailable. Select the text to copy it.';}};
+          const line=make('div',null,'sh-template-row'),valueCopy=make('div');
+          valueCopy.append(make('b',label),make('small',value||'Not on file'));
+          const copy=make('button','Copy','sh-template-copy');copy.type='button';copy.disabled=!value;copy.setAttribute('aria-label','Copy '+label.toLowerCase());
+          const copyActions=make('div',null,'sh-template-actions');copyActions.append(copy);line.append(valueCopy,copyActions);
+          copy.onclick=async()=>{
+            try{await navigator.clipboard.writeText(value);copy.textContent='Copied';feedback.textContent=label+' copied.';}
+            catch{feedback.textContent='Copy unavailable. Select the text to copy it.';}
+          };
           details.append(line);
         }
-        const search=make('a','Search company online','sh-sheet-secondary');search.href='https://www.google.com/search?q='+encodeURIComponent([row.company,row.city,row.state_code].filter(Boolean).join(' '));search.target='_blank';search.rel='noopener noreferrer';details.append(search);
+        const search=make('a','Search company online','sh-tag-pill');search.href='https://www.google.com/search?q='+encodeURIComponent([row.company,row.city,row.state_code].filter(Boolean).join(' '));search.target='_blank';search.rel='noopener noreferrer';researchLinks.append(search);
         let profiles=0;
         for(const field of ['website','instagram','instagram_url','facebook','facebook_url','linkedin','linkedin_url']) {
           const value=row[field];if(typeof value!=='string')continue;
-          try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol))continue;const link=make('a',field.replace('_url',''),'sh-sheet-secondary');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';details.append(link);profiles++;}catch{}
+          try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol))continue;const link=make('a',field.replace('_url',''),'sh-tag-pill');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';researchLinks.append(link);profiles++;}catch{}
         }
-        if(!profiles)details.append(make('p','No website or social profile links are on file. Search the business and verify any profile before mentioning it.'));
-        loaded=true;proceed.disabled=!ack.checked;
-      }).catch(error=>{notes.textContent='Prospect review could not be loaded.';feedback.textContent=error.message;});
+        if(!profiles)homework.append(make('p','No website or social profile links are on file. Search the business and verify any profile before mentioning it.','sh-sheet-help'));
+        loaded=true;ack.disabled=false;proceed.disabled=!ack.checked;
+      }).catch(error=>{notes.value='Prospect review could not be loaded.';feedback.textContent=error.message;});
     });
     return reviewPending;
   };
