@@ -214,7 +214,7 @@ function recommendedCallStatus(c, fallbackZone=''){
 }
 
 async function chooseTool(key){const c=card();if(!c){tell('Select a lead first.');return;}if(key==='calendar'){const b=c.querySelector('.calendar-btn');if(b){b.click();return;}}
-if(key==='preview'){const tab=window.open('about:blank','_blank');try{const url=await window.SteadyHandsPreviews.resolveCRM(c.dataset.crmId);if(tab)tab.location.replace(url);else window.location.assign(url);}catch(e){if(tab)tab.close();tell(e.message||'No verified site preview available.');}return;}
+if(key==='preview'){if(typeof window.steadyHandsOpenOutreachTool==='function')window.steadyHandsOpenOutreachTool('preview');else tell('Preview sharing is still loading. Refresh Outreach and try again.');return;}
 if(key==='notes'){const el=$('#workspaceQuickNotesInput');if(el){el.focus();el.scrollIntoView({behavior:'smooth'});return;}}
 if(key==='quick'){const pane=$('#shCallInfo');if(pane){pane.scrollIntoView({behavior:'smooth'});tell('Lead details shown in Call Information.');return;}}
 const b=c.querySelector('.call-btn[data-select-lead]');if(b){b.click();return;}tell('Open the call workspace to use this tool.');}
@@ -416,3 +416,4 @@ mobile.addEventListener?.('change',arrangeMobileTools);
 const original=$('#selectedLeadTop');if(original)new MutationObserver(()=>requestAnimationFrame(()=>{update();renderRegularCall();})).observe(original,{childList:true,subtree:false});update();renderRegularCall();timer=setInterval(update,30000);window.lucide?.createIcons?.();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
+
