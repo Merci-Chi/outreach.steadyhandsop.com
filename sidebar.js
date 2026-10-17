@@ -7,6 +7,7 @@
  const mobile=()=>matchMedia('(max-width: 899px)').matches;
  function init(){
   const app=document.querySelector('.app');if(!app||document.querySelector('#shSidebar'))return;
+  document.body.classList.add('sh-sidebar-collapsed');
   const drawer=document.createElement('aside');drawer.id='shSidebar';drawer.className='sh-sidebar';drawer.setAttribute('aria-label','Main navigation');
   drawer.innerHTML=`<div class="sh-sidebar-brand"><img src="images/icon-192.png" alt=""/><span>Steady Hands</span><button type="button" class="sh-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><i data-lucide="panel-left-close"></i></button></div><nav class="sh-sidebar-links" aria-label="App pages">${items.map(([label,url,icon])=>`<a href="${url}" class="sh-sidebar-link${url===active?' active':''}" ${url===active?'aria-current="page"':''} title="${label}"><i data-lucide="${icon}"></i><span>${label}</span></a>`).join('')}</nav><div class="sh-sidebar-foot"><i data-lucide="circle-user-round"></i><span>My Account</span></div>`;
   const backdrop=document.createElement('button');backdrop.type='button';backdrop.className='sh-sidebar-backdrop';backdrop.setAttribute('aria-label','Close menu');
@@ -21,11 +22,18 @@
   drawer.querySelector('.sh-sidebar-collapse').addEventListener('click',()=>{
     if(mobile()){close();return}
     document.body.classList.toggle('sh-sidebar-collapsed');
-    try{localStorage.setItem('sh-sidebar-collapsed',document.body.classList.contains('sh-sidebar-collapsed')?'1':'0')}catch{}
-    drawer.querySelector('.sh-sidebar-collapse').innerHTML=document.body.classList.contains('sh-sidebar-collapsed')?'<i data-lucide="panel-left-open"></i>':'<i data-lucide="panel-left-close"></i>';
+    syncCollapseButton();
     window.lucide?.createIcons?.();
   });
-  try{if(localStorage.getItem('sh-sidebar-collapsed')==='1')document.body.classList.add('sh-sidebar-collapsed')}catch{}
+  function syncCollapseButton(){
+    const collapsed=document.body.classList.contains('sh-sidebar-collapsed');
+    const button=drawer.querySelector('.sh-sidebar-collapse');
+    button.innerHTML=collapsed?'<i data-lucide="panel-left-open"></i>':'<i data-lucide="panel-left-close"></i>';
+    button.setAttribute('aria-label',collapsed?'Expand sidebar':'Collapse sidebar');
+    button.title=collapsed?'Expand sidebar':'Collapse sidebar';
+    button.setAttribute('aria-expanded',String(!collapsed));
+  }
+  syncCollapseButton();
   drawer.querySelectorAll('a').forEach(a=>a.addEventListener('click',close));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
   let touchStart=null;
