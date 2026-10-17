@@ -576,7 +576,7 @@
   // Counts and search results are calculated ONLY from assigned leads.
   const AVAILABLE_TAGS = [
     'Interested','Call Back','Needs More Info','Send Preview','Requested Email',
-    'Requested Text','Decision Maker','Hot Lead','Conversion','Sold',
+    'Requested Text','Decision Maker','Hot Lead','Warm Lead','Cold Lead','Conversion','Sold',
     'Not Interested','No Answer','Left Voicemail','Busy','Wrong Number',
     'Already Has Someone','Bad Timing','Price Concern','Skeptical','Do Not Call',
     'Broken Site','Outdated Site','Site Removed','Already have a website',
