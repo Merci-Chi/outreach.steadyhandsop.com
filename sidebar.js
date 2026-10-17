@@ -51,3 +51,6 @@
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
+// Inbound reception is enabled explicitly by the signed-in user on each page.
+import('./inbound-calling.js?v=20261017').catch(error => console.warn('Incoming calling module unavailable:',error));

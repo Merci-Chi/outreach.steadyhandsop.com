@@ -1,0 +1,6 @@
+# Both functions perform authentication themselves: Twilio signature / user JWT.
+[functions.twilio-inbound]
+verify_jwt = false
+
+[functions.twilio-inbound-session]
+verify_jwt = false
