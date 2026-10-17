@@ -4,7 +4,7 @@
   const panel = document.querySelector('.outreach-process');
   if (!panel) return;
   const $ = selector => panel.querySelector(selector);
-  const selectedId = () => document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId || '';
+  const selectedId = () => window.steadyHandsCallLead?.id || document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId || '';
   const checks = [...panel.querySelectorAll('[data-process-step]')];
   let userId = '', leadId = '', state = {}, busy = false, revision = 0;
   const key = id => `steadyhands-process-v1:${userId}:${id}`;
@@ -113,6 +113,7 @@
   $('#processStatus').addEventListener('click', () => checkStatus());
   const selected = document.querySelector('#selectedLeadTop');
   if (selected) new MutationObserver(syncLead).observe(selected, {childList: true, subtree: true, attributes: true, attributeFilter: ['data-crm-id']});
+  window.addEventListener('steadyhands:call-lead-ready', syncLead);
   window.addEventListener('storage', event => { if (leadId && event.key === key(leadId)) { leadId = ''; syncLead(); } });
   window.addEventListener('focus', () => { if (leadId && userId) checkStatus(); });
   syncLead();

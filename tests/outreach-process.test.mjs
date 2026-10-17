@@ -4,16 +4,16 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source = await readFile(new URL('../outreach-process.js', import.meta.url), 'utf8');
 const tick = () => new Promise(resolve => setImmediate(resolve));
-async function setup() {
+async function setup({callLead = null, missingCard = false} = {}) {
   const element = () => ({value:'',textContent:'',disabled:false,checked:false,events:{},classList:{toggle(){}},addEventListener(type,fn){this.events[type]=fn;},closest(){return this;},focus(){}});
   const checks = Array.from({length:6},element), fields = {};
   for (const id of ['processFeedback','processPhone','processNotes','processProgress','processSend','processDevelopment','processStatus','processSteps','processLead']) fields['#'+id]=element();
   const panel={querySelector:s=>fields[s],querySelectorAll:()=>checks};
   const card={dataset:{crmId:'one'}}, storage=new Map(),writes=[];
   let observer;
-  const document={querySelector:s=>s==='.outreach-process'?panel:s==='#selectedLeadTop .lead-card'?card:s==='#refCompany'?{textContent:'Business'}:{}};
+  const document={querySelector:s=>s==='.outreach-process'?panel:s==='#selectedLeadTop .lead-card'?(missingCard ? null : card):s==='#refCompany'?{textContent:'Business'}:{}};
   const row={tags:[],stage:'outreach',assigned_user_id:'agent'};
-  const window={addEventListener(){},steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'agent'}}})},from(){return {select(){return this;},eq(){return this;},single:async()=>({data:row})};}},SteadyHandsLeadDisposition:{save:async(...args)=>writes.push(args)}};
+  const window={steadyHandsCallLead:callLead,addEventListener(){},steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'agent'}}})},from(){return {select(){return this;},eq(){return this;},single:async()=>({data:row})};}},SteadyHandsLeadDisposition:{save:async(...args)=>writes.push(args)}};
   vm.runInNewContext(source,{document,window,localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},MutationObserver:class{constructor(fn){observer=fn;}observe(){}}});
   await tick();
   const check=async i=>{checks[i-1].checked=true;await checks[i-1].events.change();};
@@ -34,4 +34,11 @@ test('invalid number cannot complete collection; progress is scoped to account a
 test('status button reads the actual CRM stage and outcome',async()=>{
  const s=await setup();s.row.tags=['Development Team'];s.row.stage='review';s.row.outcome='Design in progress';await s.fields['#processStatus'].events.click();
  assert.equal(s.fields['#processDevelopment'].textContent,'CRM status: review · Design in progress');assert(s.checks[4].checked);
+});
+
+test('dialer loads the transferred call lead without a legacy CRM card',async()=>{
+ const s=await setup({callLead:{id:'call-lead'},missingCard:true});
+ assert.equal(s.fields['#processSteps'].disabled,false);
+ await s.fill('processPhone','2135550100');
+ assert([...s.storage.keys()].includes('steadyhands-process-v1:agent:call-lead'));
 });
