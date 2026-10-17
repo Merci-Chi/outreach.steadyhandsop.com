@@ -83,23 +83,27 @@ function openRegularPhonePopup(phone){
   let popup=$('#refPhonePopup');
   if(!popup){
     popup=document.createElement('div');popup.id='refPhonePopup';popup.className='ref-phone-modal';popup.hidden=true;
-    popup.innerHTML=`<div class="ref-phone-dialog" role="dialog" aria-modal="true" aria-labelledby="refPhoneDialogTitle">
+    popup.innerHTML=`<div class="regular-call-shell" role="dialog" aria-modal="true" aria-labelledby="refPhoneDialogTitle"><div class="ref-phone-dialog">
       <button type="button" class="ref-phone-close" id="refPhoneClose" aria-label="Close">×</button>
-      <h2 id="refPhoneDialogTitle">Regular Phone</h2>
+      <h2 id="refPhoneDialogTitle">Regular call</h2>
       <p>Call this prospect using your phone.</p>
       <div class="ref-phone-number" id="refPhonePopupNumber"></div>
       <div class="ref-phone-actions"><a id="refOpenDialer" class="ref-phone-dialer" href="#">Open Dialer</a>
       <button type="button" id="refCopyPhone">Copy Phone Number</button></div><div class="ref-copy-call-actions"><button type="button" id="refCopyCallStart" class="ref-copy-call-button ref-copy-call-start" aria-pressed="false">▶ Start</button><button type="button" id="refCopyCallEnd" class="ref-copy-call-button ref-copy-call-end" aria-pressed="false" disabled>■ End</button><strong id="refCopyCallElapsed" role="timer" aria-label="Call elapsed time">00:00</strong></div><p class="ref-phone-feedback">Start when the call begins; End when it finishes to save the time and outcome.</p>
       <p id="refPhonePopupFeedback" class="ref-phone-feedback" role="status" aria-live="polite"></p>
-    </div>`;
+    </div></div>`;
     document.body.append(popup);
-    const close=()=>{popup.hidden=true;$('#refRegularPhone')?.focus();};
+    const close=()=>{
+      popup.hidden=true;
+      const process=popup.querySelector('.outreach-process');
+      if(process)document.querySelector('#refOutreachMain')?.append(process);
+      $('#refRegularPhone')?.focus();
+    };
     $('#refPhoneClose').addEventListener('click',close);
     $('#refOpenDialer').addEventListener('click',()=>{
       const lead=currentLead();
       if(!lead)return;
       beginRegularCall(lead);
-      close();
     });
     popup.addEventListener('click',e=>{if(e.target===popup)close();});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!popup.hidden)close();});
@@ -115,12 +119,14 @@ function openRegularPhonePopup(phone){
       }catch{$('#refPhonePopupFeedback').textContent='Unable to copy automatically. Please select the number above.';}
     });
     $('#refCopyCallStart').addEventListener('click',()=>{const lead=currentLead();if(!lead){$('#refPhonePopupFeedback').textContent='Select a prospect first.';return;}if(regularCall&&regularCall.id!==lead.id){$('#refPhonePopupFeedback').textContent='End your current call first.';return;}beginRegularCall(lead);renderRegularCall();$('#refPhonePopupFeedback').textContent='Timer running. Press End when your call is finished.';});
-    $('#refCopyCallEnd').addEventListener('click',()=>{if(!regularCall)return;const start=$('#refCopyCallStart'),end=$('#refCopyCallEnd');end.classList.add('is-ending');end.setAttribute('aria-pressed','true');finishRegularCall(true);if(!regularCall){popup.hidden=true;}else{end.classList.remove('is-ending');end.setAttribute('aria-pressed','false');$('#refPhonePopupFeedback').textContent='Could not finish the call. Try End again.';}renderRegularCall();});
+    $('#refCopyCallEnd').addEventListener('click',()=>{if(!regularCall)return;const start=$('#refCopyCallStart'),end=$('#refCopyCallEnd');end.classList.add('is-ending');end.setAttribute('aria-pressed','true');finishRegularCall(true);if(!regularCall){$('#refPhonePopupFeedback').textContent='Call finished. Continue with the development handoff below.';}else{end.classList.remove('is-ending');end.setAttribute('aria-pressed','false');$('#refPhonePopupFeedback').textContent='Could not finish the call. Try End again.';}renderRegularCall();});
   }
   popup.dataset.phone=number;
   $('#refPhonePopupNumber').textContent=number;
   $('#refOpenDialer').href='tel:'+number.replace(/[^+0-9]/g,'');
   $('#refPhonePopupFeedback').textContent='';
+  const process=document.querySelector('.outreach-process');
+  if(process)popup.querySelector('.regular-call-shell').append(process);
   popup.hidden=false;
   renderRegularCall();
   $('#refCopyCallStart').focus();
@@ -140,7 +146,7 @@ function ensureRegularCallPanel(){
  let panel=$('#refRegularCallTracker');
  if(!panel){
   panel=document.createElement('div');panel.id='refRegularCallTracker';panel.className='ref-regular-call-tracker';panel.hidden=true;
-  panel.innerHTML=`<div class="ref-regular-call-time"><span class="ref-regular-call-label">Regular Phone · Elapsed time</span><strong id="refRegularElapsed">00:00</strong></div><div class="ref-regular-call-actions"><button type="button" id="refRegularFinish">Finish Call</button><button type="button" id="refRegularDidNotCall">Didn't Call</button></div>`;
+  panel.innerHTML=`<div class="ref-regular-call-time"><span class="ref-regular-call-label">Regular call · Elapsed time</span><strong id="refRegularElapsed">00:00</strong></div><div class="ref-regular-call-actions"><button type="button" id="refRegularFinish">Finish Call</button><button type="button" id="refRegularDidNotCall">Didn't Call</button></div>`;
   methods.insertAdjacentElement('afterend',panel);
   $('#refRegularFinish').addEventListener('click',()=>finishRegularCall(true));
   $('#refRegularDidNotCall').addEventListener('click',()=>finishRegularCall(false));
