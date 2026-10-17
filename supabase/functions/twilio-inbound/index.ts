@@ -1,6 +1,27 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
-import {response,hangup,browserDial,cellphoneDial,screen,voicemail,answered,acceptedCell} from './routing.mjs';
+const identity = userId => 'sh_inbound_' + userId;
+const escapeXML = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+const response = inner => '<?xml version="1.0" encoding="UTF-8"?><Response>' + inner + '</Response>';
+const hangup = () => response('<Hangup/>');
+function endpoint(base, stage, parent='') {
+  const url=new URL(base);url.searchParams.set('stage',stage);if(parent)url.searchParams.set('parent',parent);return url.toString();
+}
+function browserDial(base, call, settings={}) {
+  return response(`<Dial answerOnBridge="true" timeout="${settings.outreach_ring_seconds||15}" action="${escapeXML(endpoint(base,'browser-ended'))}" method="POST"><Client><Identity>${escapeXML(identity(call.user_id))}</Identity><Parameter name="businessNumber" value="${escapeXML(call.to_number)}"/></Client></Dial>`);
+}
+function cellphoneDial(base, call, settings) {
+  return response(`<Dial answerOnBridge="true" timeout="${settings.cellphone_ring_seconds||20}" callerId="${escapeXML(call.to_number)}" action="${escapeXML(endpoint(base,'cell-ended'))}" method="POST"><Number url="${escapeXML(endpoint(base,'screen',call.call_sid))}" method="POST">${escapeXML(settings.cellphone_number)}</Number></Dial>`);
+}
+function screen(base,parent) {
+  return response(`<Gather numDigits="1" timeout="7" action="${escapeXML(endpoint(base,'accept-cell',parent))}" method="POST"><Say>Steady Hands callback. Press 1 to accept this call.</Say></Gather><Hangup/>`);
+}
+function voicemail(base,greeting) {
+  return response(`<Say>${escapeXML(greeting||'Thank you for calling Steady Hands. Please leave your name, number, and message after the beep.')}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
+}
+const answered = status => status==='completed';
+const acceptedCell = (status,call) => answered(status) && call.cellphone_accepted===true;
+
 const xml=(body:string,status=200)=>new Response(body,{status,headers:{'Content-Type':'text/xml; charset=utf-8'}});
 Deno.serve(async req=>{
  if(req.method!=='POST')return new Response('Method not allowed',{status:405});

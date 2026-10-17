@@ -32,7 +32,7 @@ supabase functions deploy twilio-inbound --no-verify-jwt
 supabase functions deploy twilio-inbound-session --no-verify-jwt
 ```
 
-Alternatively deploy each folder using your Supabase deployment workflow, including `twilio-inbound/routing.mjs`, which is shared by both functions. The repository's `supabase/config.toml` disables the gateway JWT check for these two functions only. This is necessary for Twilio webhooks and modern publishable keys. The functions still authenticate every request themselves: `twilio-inbound` validates the Twilio signature and Account SID; `twilio-inbound-session` verifies the user's JWT and current active role.
+Alternatively, in Supabase → Edge Functions → Deploy a new function → Via Editor, paste the matching `index.ts` for each function. Both function entrypoints are self-contained; the editor does not need any shared local imports. The repository's `supabase/config.toml` disables the gateway JWT check for these two functions only. This is necessary for Twilio webhooks and modern publishable keys. The functions still authenticate every request themselves: `twilio-inbound` validates the Twilio signature and Account SID; `twilio-inbound-session` verifies the user's JWT and current active role.
 
 ## 4. Set the Twilio number's incoming webhook
 

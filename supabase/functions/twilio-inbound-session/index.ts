@@ -1,6 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
-import {identity} from '../twilio-inbound/routing.mjs';
+const identity = (userId:string) => 'sh_inbound_' + userId;
 const origin='https://outreach.steadyhandsop.com';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const json=(body:any,status=200)=>new Response(JSON.stringify(body),{status,headers});

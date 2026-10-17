@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {identity} from '../supabase/functions/twilio-inbound/routing.mjs';
-const source=(await readFile(new URL('../supabase/functions/twilio-inbound-session/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/:(?:any|Response)\b/g,'').replace("audio.headers.get('location')!","audio.headers.get('location')");
+const source=(await readFile(new URL('../supabase/functions/twilio-inbound-session/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/:(?:any|Response|string)\b/g,'').replace("audio.headers.get('location')!","audio.headers.get('location')");
 function setup({active=true,validAuth=true}={}){
  const rows={team_permissions:[{user_id:'agent',role:'ADMIN',active,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],callcenter_phone_assignments:[{user_id:'agent',phone_number_id:'number'}],callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102'}],outreach_inbound_calls:[{user_id:'other',call_sid:'other-call',recording_sid:'RE'+'1'.repeat(32)}]};
  let issued,handler,dbAccess=0;
