@@ -86,7 +86,7 @@
       const cancel=make('button','Back','modal-action'),proceed=make('button','Continue to call','modal-action primary');
       cancel.type=proceed.type='button';proceed.disabled=true;
       actions.append(cancel,proceed);footer.append(ackLabel,feedback,actions);
-      body.append(notesCard,details,homework);dialog.append(header,body,footer);document.body.append(dialog);
+      body.append(notesCard,details,homework,footer);dialog.append(header,body);document.body.append(dialog);
       let loaded=false,accepted=false;
       ack.onchange=()=>proceed.disabled=!loaded||!ack.checked;
       cancel.onclick=close.onclick=()=>dialog.close();
