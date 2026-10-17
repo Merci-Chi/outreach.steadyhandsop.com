@@ -23,10 +23,11 @@
 <link rel="stylesheet" href="queue.css?v=queue-b2" />
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=mobile-bottom-fix-20261012" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
-  <script src="sidebar.js?v=inbound-20261017" defer></script>
+  <script src="sidebar.js?v=collapsed-20261017" defer></script>
 <link rel="stylesheet" href="outreach-reference.css?v=press-buttons-20261014" />
 <link rel="stylesheet" href="outreach-tools.css?v=integration-2">
 <link rel="stylesheet" href="starter-scripts.css?v=2">
+<link rel="stylesheet" href="outreach-process.css?v=20261017">
 </head>
 <body class="page-outreach">
 <div class="app">
@@ -37,6 +38,7 @@
   </header>
 
   <main class="content ref-outreach-main" id="refOutreachMain">
+    <div class="process-workspace">
     <div class="ref-outreach-grid">
       <section class="ref-lead-card" aria-label="Selected prospect">
         <div class="ref-lead-identity"><div class="ref-business-icon"><i data-lucide="building-2"></i></div><div class="ref-lead-identity-copy"><h2 id="refCompany">Select a prospect</h2><div class="ref-phone" id="refPhone">No phone number</div><div class="ref-status"><span class="ref-green-dot"></span><span id="refStatus">Ready to call</span></div></div></div>
@@ -60,8 +62,8 @@
       <button type="button" data-ref-tool="calendar"><i data-lucide="calendar-plus"></i><span>Add to<br>Calendar</span></button>
     </div>
     <p class="ref-message" id="refMessage" role="status" aria-live="polite"></p>
-
-
+</div>
+<aside class="outreach-process" aria-labelledby="processTitle"><header><h2 id="processTitle">PROCESS</h2><span id="processProgress">0 / 6</span></header><p id="processLead">Select a prospect to begin.</p><fieldset id="processSteps" disabled><legend class="process-sr-only">Outreach process checklist</legend><ol><li><label class="process-step"><input type="checkbox" data-process-step="1" aria-label="Step 1: Explain the process"><span class="process-number">1</span><strong>Explain the process</strong></label><p>Explain that every site is custom to the lead’s business needs.</p><blockquote>“I’d like to explain the process for you. Every site is completely customizable to your business needs.”</blockquote></li><li><label class="process-step"><input type="checkbox" data-process-step="2" aria-label="Step 2: Offer a preview and references"><span class="process-number">2</span><strong>Offer a preview and references</strong></label><blockquote>“I will have my development team create a preview for you, you can expect it within the hour. This, again, would just be a preview so you have something in mind of what to expect. In the meantime, I will send you a link with all of our current references. Is this a good phone number to text?”</blockquote></li><li><label class="process-step"><input type="checkbox" data-process-step="3" aria-label="Step 3: Collect a textable number"><span class="process-number">3</span><strong>Collect a textable number</strong></label><label class="process-field" for="processPhone">Textable phone number</label><input id="processPhone" type="tel" autocomplete="tel" maxlength="30" placeholder="Enter confirmed number"></li><li><label class="process-step"><input type="checkbox" data-process-step="4" aria-label="Step 4: Finish the call"><span class="process-number">4</span><strong>Finish the call</strong></label></li><li><label class="process-step"><input type="checkbox" data-process-step="5" aria-label="Step 5: Send to development team"><span class="process-number">5</span><strong>Send to development team</strong></label><label class="process-field" for="processNotes">Business needs / handoff notes</label><textarea id="processNotes" rows="2" maxlength="3000" placeholder="What should the development team build?"></textarea><button type="button" id="processSend">Send to development team</button></li><li><label class="process-step"><input type="checkbox" data-process-step="6" aria-label="Step 6: Await status from the development team"><span class="process-number">6</span><strong>Await status from the development team</strong></label><button type="button" id="processStatus">Check development status</button><p id="processDevelopment" role="status" aria-live="polite">Not sent to development yet.</p></li></ol></fieldset><p id="processFeedback" role="status" aria-live="polite"></p></aside>
   </main>
   <div id="referenceLegacy" class="reference-legacy" aria-hidden="true"><section class="sh-tools-overview" aria-label="Task overview"><button type="button" data-sh-open="tasks" id="shTaskToday">Tasks: —</button><button type="button" data-sh-open="tasks" id="shTaskCallbacks">Follow-ups: —</button><button type="button" data-sh-open="notices" id="shTaskUnread">Unread: —</button></section>
     <div class="desktop-outreach-heading desktop-queue-heading" aria-hidden="true">
@@ -240,5 +242,6 @@
 <script src="outreach-tools.js?v=warm-cold-20261017" defer></script>
 <script src="starter-scripts.js?v=3" defer></script>
 <script src="outreach-postcall.js?v=lucide-icons-20261014" defer></script>
+<script src="outreach-process.js?v=20261017" defer></script>
 </body>
 </html>
