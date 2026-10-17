@@ -2,6 +2,7 @@ import { Device } from 'https://esm.sh/@twilio/voice-sdk@2.18.5';
 
 let device = null;
 let activeCall = null;
+let starting = false;
 let tokenRefreshPromise = null;
 let userMuted = false;
 let held = false;
@@ -200,7 +201,7 @@ function bindCall(call) {
 }
 
 async function start(destination, metadata = {}) {
-  if (activeCall) throw new Error('A call is already active.');
+  if (activeCall || starting || window.SteadyHandsInboundVoice?.isActive()) throw new Error('A call is already active or incoming.');
   userMuted = false;
   held = false;
 
@@ -209,6 +210,8 @@ async function start(destination, metadata = {}) {
     throw new Error('This lead does not have a valid phone number.');
   }
 
+  starting = true;
+  try {
   if (!window.SteadyHandsLeadDisposition) throw new Error('Lead status checks are still loading. Please try again.');
   await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId);
   await requestMicrophonePermission();
@@ -229,6 +232,9 @@ async function start(destination, metadata = {}) {
   activeCall = call;
   bindCall(call);
   return call;
+  } finally {
+    starting = false;
+  }
 }
 
 function hangup() {
@@ -407,7 +413,7 @@ function sendDigits(digits) {
 }
 
 function isActive() {
-  return Boolean(activeCall);
+  return Boolean(activeCall || starting);
 }
 
 window.SteadyHandsTwilioVoice = {
