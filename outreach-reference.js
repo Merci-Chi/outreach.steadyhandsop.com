@@ -13,6 +13,7 @@ let checkingCaller = false;
 async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
+ try{await window.SteadyHandsLeadDisposition.ensureCallable(id);}catch(error){tell(error.message);return;}
  try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
  if(mode==='regular'){openRegularPhonePopup(number);return;}
  if(checkingCaller)return;
@@ -362,11 +363,11 @@ async function pickAssignedProspect(random) {
     const {data:auth,error:authError} = await client.auth.getUser();
     if (authError || !auth?.user?.id) throw new Error('Please sign in again.');
     const {data, error} = await client.from('crm')
-      .select('id,company,phone,lastcalled,stage,outcome')
+      .select('id,company,phone,lastcalled,stage,outcome,tags')
       .eq('assigned_user_id', auth.user.id)
       .limit(1000);
     if (error) throw error;
-    const eligible = (data || []).filter(row => Boolean(row.id));
+    const eligible = (data || []).filter(row => Boolean(row.id) && !window.SteadyHandsLeadDisposition.blocked(row));
     if (!eligible.length) { tell('No assigned prospects found. Check your My Leads page.'); return; }
     const current = card()?.dataset.crmId || sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || '';
     const others = eligible.filter(x => String(x.id) !== String(current));
