@@ -22,7 +22,8 @@
         if(dnc)window.SteadyHandsTwilioVoice?.hangup();
         const message=document.getElementById('refMessage');
         if(message)message.textContent=dnc?'Saved: DO NOT CALL. Further Outreach calls are blocked.':'Sent to Development Team for review as a warm lead.';
-        trigger.textContent=dnc?'DO NOT CALL — SAVED':'Sent to Development ✓';trigger.disabled=true;
+        trigger.querySelector('span').textContent=dnc?'Do Not Call':'Sent to Development';
+        trigger.setAttribute('aria-label',dnc?'Do Not Call — saved':'Sent to Development — saved');trigger.disabled=true;
         dialog.close();
       } catch(error) {status.textContent='Not saved: '+error.message;saving=false;buttons.forEach(b=>b.disabled=false);}
     };
