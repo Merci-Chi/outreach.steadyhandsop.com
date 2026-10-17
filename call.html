@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
   <script src="sidebar.js?v=batch2" defer></script>
-<link rel="stylesheet" href="call.css?v=lead-actions-20261017" />
+<link rel="stylesheet" href="call.css?v=action-tiles-20261017" />
 <link rel="stylesheet" href="outreach-tools.css?v=integration-2"><link rel="stylesheet" href="starter-scripts.css?v=2"></head>
 <body class="page-outreach">
 <div class="app">
@@ -69,11 +69,9 @@
       <button type="button" data-ref-tool="preview"><i data-lucide="send"></i><span>Send Site<br>Preview</span></button>
       <button type="button" data-ref-tool="quick"><i data-lucide="circle-dollar-sign"></i><span>Quick Info</span></button>
       <button type="button" data-ref-tool="calendar"><i data-lucide="calendar-plus"></i><span>Add to<br>Calendar</span></button>
+      <button type="button" id="refDoNotCall" class="ref-dnc" aria-haspopup="dialog"><i data-lucide="phone-off"></i><span>Do Not Call</span></button>
+      <button type="button" id="refSendTo" aria-haspopup="dialog"><i data-lucide="arrow-right"></i><span>Send to</span></button>
     </div>
-          <div class="ref-disposition-actions">
-            <button type="button" id="refDoNotCall" class="ref-dnc" aria-haspopup="dialog"><i data-lucide="phone-off"></i><span>DO NOT CALL</span></button>
-            <button type="button" id="refSendTo" class="ref-send-to" aria-haspopup="dialog"><span>Send to</span><i data-lucide="arrow-right"></i></button>
-          </div>
         </section>
       <section class="ref-side-card ref-transcript-card" aria-label="Live transcript">
         <div class="ref-transcript-header"><h2>Live transcript</h2><span class="ref-transcript-indicator" id="refTranscriptStatus">Waiting for call</span></div>
@@ -260,7 +258,7 @@ try {
 <script src="call-round-controls.js?v=20261016-state" defer></script>
 <script src="lead-disposition.js?v=20261017" defer></script>
 <script src="outreach-tools.js?v=call-lead-20261017" defer></script>
-<script src="call-lead-actions.js?v=20261017" defer></script>
+<script src="call-lead-actions.js?v=action-tiles-20261017" defer></script>
 <script src="approved-caller.js?v=20261016" defer></script>
 <script type="module" src="twilio-voice.js?v=20261017-dnc"></script>
 <script src="call-voice-controller.js?v=20261016" defer></script>
