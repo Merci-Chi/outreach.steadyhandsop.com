@@ -43,10 +43,10 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='preview'?'S
  }
  if(k==='tags'){
  let tags=l.tags;if(typeof tags==='string'){try{tags=JSON.parse(tags)}catch{tags=[]}}if(!Array.isArray(tags))tags=[];const chosen=new Set(tags);
- // Live catalog is the sole source of available tags; keep legacy lead tags visible so they can be removed.
+ // Always offer lead temperature alongside the live catalog and existing lead tags.
  const {data:catalog,error:catalogError}=await client().from('crm_filter_catalog').select('name').eq('kind','tag').order('name');
  if(catalogError)throw Error('Unable to load tags from Supabase: '+catalogError.message);
- const options=[...new Set([...(catalog||[]).map(x=>x.name).filter(Boolean),...tags])];
+ const options=[...new Set(['Warm Lead','Cold Lead',...(catalog||[]).map(x=>x.name).filter(Boolean),...tags])];
  m=sheet('Tags',`<p class="sh-sheet-help">Tap tags to turn them on or off for this lead.</p><div class="sh-tag-options">${options.map(x=>`<button class="sh-tag-pill ${chosen.has(x)?'selected':''}" type="button" data-tag="${esc(x)}"><span class="sh-tag-check">✓</span>${esc(x)}</button>`).join('')}</div><button class="sh-sheet-primary" id="shSaveTags">Save Tags</button>`);
  m.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{const x=b.dataset.tag;if(chosen.has(x))chosen.delete(x);else chosen.add(x);b.classList.toggle('selected',chosen.has(x))});
  $('#shSaveTags',m).onclick=async()=>{const b=$('#shSaveTags',m);b.disabled=true;const {data:auth}=await client().auth.getUser();const {error:e}=await client().from('crm').update({tags:[...chosen]}).eq('id',id()).eq('assigned_user_id',auth.user.id);b.disabled=false;if(e)error(m,e);else{msg(m,'Tags saved.');setTimeout(close,500)}};return;
