@@ -33,8 +33,15 @@
     const detail = event.detail || {};
     if (['calling','ringing','connected'].includes(detail.state)) state(true);
     if (detail.state === 'connected') message('Call connected.');
-    if (detail.state === 'ended') { state(false); message('Call ended.'); }
-    if (detail.state === 'error') { state(false); message(detail.message || 'The call failed.'); }
+    if (detail.state === 'preparing') message(detail.message || 'Preparing browser calling…');
+    if (detail.state === 'ended') {
+      state(false);
+      if (detail.reason !== 'error') message('Call ended.');
+    }
+    if (detail.state === 'error') {
+      state(false);
+      message((detail.code ? 'Calling error ' + detail.code + ': ' : '') + (detail.message || 'The call failed.'));
+    }
   });
   document.getElementById('refMute')?.addEventListener('click', event => {
     const voice = window.SteadyHandsTwilioVoice;

@@ -111,7 +111,21 @@ async function fetchToken() {
     body: {}
   });
 
-  if (error) throw error;
+  if (error) {
+    // Supabase puts the function's useful rejection reason in the response body.
+    // The default FunctionsHttpError only says that a non-2xx response occurred.
+    let message = '';
+    try {
+      const response = error.context?.clone();
+      const body = await response?.json();
+      message = typeof body?.error === 'string' ? body.error :
+        typeof body?.message === 'string' ? body.message : '';
+    } catch {}
+    const status = error.context?.status;
+    if (!message && status === 401) message = 'Your calling session has expired. Sign out and sign in again.';
+    if (!message && status === 404) message = 'The outbound calling service is unavailable. Ask your administrator to check the twilio-voice-token deployment.';
+    throw new Error(message || 'Unable to authorize browser calling. ' + (error.message || 'Please try again.'));
+  }
   if (!data?.token) throw new Error(data?.error || 'Twilio token was not returned.');
   return data.token;
 }
@@ -214,9 +228,10 @@ async function start(destination, metadata = {}) {
   try {
   if (!window.SteadyHandsLeadDisposition) throw new Error('Lead status checks are still loading. Please try again.');
   await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId);
-  await requestMicrophonePermission();
-
+  emit('preparing', { message: 'Authorizing browser calling…' });
   const readyDevice = await ensureDevice();
+  emit('preparing', { message: 'Enabling microphone…' });
+  await requestMicrophonePermission();
   const agentUserId = await fetchAuthenticatedUserId();
   emit('calling');
 
