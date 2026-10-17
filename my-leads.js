@@ -269,7 +269,7 @@
     return !!(row.lastcalled || row.callbackat || row.outcome && String(row.outcome).trim() && !['notstarted','not_started','new'].includes(String(row.outcome).toLowerCase()));
   }
 
-  function hasPreview(row) { return !!(String(row.previewurl || '').trim() || String(row.sitekey || '').trim()); }
+  function hasPreview(row) { return !!String(row.sitekey || '').trim(); }
 
   function createdValue(row) {
     const date = Date.parse(row.created_at || row.createdat || row.assigned_at || '');
@@ -1029,3 +1029,4 @@
     bootstrap();
   }
 })();
+
