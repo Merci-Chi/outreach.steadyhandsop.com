@@ -170,7 +170,7 @@
       if(pauseStatus?.is_paused===true){
         if(currentPageName()!=='pause.html'){
           const {data:assignedAction,error:assignmentError}=await client.from('outreach_action_assignments')
-            .select('id').eq('user_id',data.session.user.id).eq('status','assigned').maybeSingle();
+            .select('id').eq('user_id',data.session.user.id).eq('status','assigned').limit(1).maybeSingle();
           if(!assignmentError && assignedAction){location.replace('action-needed.html?open=1');return;}
           location.replace('pause.html');return;
         }

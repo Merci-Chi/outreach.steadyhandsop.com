@@ -8,18 +8,22 @@
     if (error || !data?.user) throw new Error('Please sign in again.');
     return {client,userId:data.user.id};
   }
-  async function load() {
+  async function load(selectedId) {
     const {client,userId} = await session();
-    const {data:assignment,error} = await client.from('outreach_action_assignments')
-      .select('id,user_id,status,assigned_at,completed_at')
-      .eq('user_id',userId).in('status',['assigned','completed']).maybeSingle();
+    const assignmentId=selectedId||new URLSearchParams(window.location.search).get('assignment');
+    let query=client.from('outreach_action_assignments')
+      .select('id,user_id,status,assigned_at,completed_at,choose_start_date,current_basis,start_date')
+      .eq('user_id',userId).in('status',['assigned','completed']);
+    if(assignmentId)query=query.eq('id',assignmentId);
+    else query=query.order('status',{ascending:true}).order('assigned_at',{ascending:false}).order('id',{ascending:false}).limit(1);
+    const {data:assignment,error}=await query.maybeSingle();
     if (error) throw new Error('Action Needed is unavailable. Please contact your administrator.');
     if (!assignment) return {assignment:null};
-    const {data:associate,error:associateError} = await client.from('outreach_associates')
-      .select('user_id,current_basis,start_date').eq('user_id',userId).single();
-    if (associateError || !associate) throw new Error('Your associate record is unavailable. Please contact your administrator.');
+    // Agreement and start date belong to this assignment, even when others exist.
+    const associate={user_id:userId,current_basis:assignment.current_basis,start_date:assignment.start_date};
     return {assignment,associate};
   }
+
   async function submit(assignmentId,state) {
     const {client} = await session();
     const {data,error} = await client.rpc('outreach_action_submit_v2',{
@@ -30,7 +34,7 @@
       p_shift_start_minutes:state.start,
       p_preferred_weekly_hours:state.hours,
       p_quota_acknowledged:state.quotaAcknowledged === true,
-      p_confirmed_start_date:state.path==='hourly' ? state.startDate : null,
+      p_confirmed_start_date:state.path==='hourly'||state.chooseStartDate ? state.startDate : null,
       p_phone_setup:state.phoneSetup,
       p_us_phone_number:state.phoneSetup==='needs_number' ? null : state.phoneNumber
     });
@@ -49,5 +53,13 @@
     if (data !== next) throw new Error('Could not confirm your new start date. Reload before trying again.');
     return data;
   }
-  window.OutreachActions = {load,submit,extend};
+  async function list(){
+    const {client,userId}=await session();
+    const {data,error}=await client.from('outreach_action_assignments').select('id,status,assigned_at,completed_at')
+      .eq('user_id',userId).in('status',['assigned','completed'])
+      .order('assigned_at',{ascending:false}).order('id',{ascending:false});
+    if(error)throw error;
+    return data||[];
+  }
+  window.OutreachActions = {load,list,submit,extend};
 })();

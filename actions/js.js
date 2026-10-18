@@ -53,9 +53,11 @@
     }else if(step==='quota'){
       show('Confirm the trial requirement.','<p>If you cannot meet <strong>2 sales per week</strong>, you may no longer be eligible to continue on the hourly wage path or move forward with employment.</p><label class="check"><input id="quota-ack" type="checkbox" '+(state.quotaAcknowledged?'checked':'')+'><span>I understand the minimum quota and eligibility requirement.</span></label>','path',()=>{if(!body.querySelector('#quota-ack').checked)return invalid('Please acknowledge the trial requirement.');state.quotaAcknowledged=true;go('startDate');},'Proceed →');
     }else if(step==='agreementReminder'){
-      show('Contact your administrator.','<p>Please contact your administrator to request an updated <strong>commission + bonus agreement</strong>.</p>','path',()=>go('localZone'),'Proceed →');
+      show('Contact your administrator.','<p>Please contact your administrator to request an updated <strong>commission + bonus agreement</strong>.</p>','path',()=>go(state.chooseStartDate?'startDate':'localZone'),'Proceed →');
+    }else if(step==='startDate'&&!state.startDate){
+      show('Choose your start date.','<p>No start date has been set. Select the weekday and date that work for you.</p>',state.basis==='commission'?null:state.path==='hourly'?'quota':'agreementReminder',()=>go('weekday'));
     }else if(step==='startDate'){
-      show('Confirm your start date.',`<p>Your current scheduled start date is:</p><div class="notice"><strong class="start-date">${dateLabel(state.startDate)}</strong></div><button type="button" class="secondary extend-button" id="extend-start">Need more time? Extend your start date</button>`,'quota',()=>go('localZone'),'Confirm & continue →');
+      show('Confirm your start date.',`<p>Your current scheduled start date is:</p><div class="notice"><strong class="start-date">${dateLabel(state.startDate)}</strong></div><button type="button" class="secondary extend-button" id="extend-start">Need more time? Extend your start date</button>`,state.basis==='commission'?null:state.path==='hourly'?'quota':'agreementReminder',()=>go('localZone'),'Confirm & continue →');
       body.querySelector('#extend-start').onclick=()=>go('weekday');
     }else if(step==='weekday'){
       show('Which weekday works for you?',`<label class="field" for="preferred-day">Preferred day</label><select id="preferred-day">${['Monday','Tuesday','Wednesday','Thursday','Friday'].map((day,i)=>`<option value="${i+1}" ${state.weekday===i+1?'selected':''}>${day}</option>`).join('')}</select>`,'startDate',()=>{state.weekday=Number(body.querySelector('#preferred-day').value);go('newDate');});
@@ -63,7 +65,7 @@
       const available=dates().options(state.weekday,state.startDate,today());
       show('Choose your new start date.',available.length?`<label class="field" for="new-start-date">Available dates</label><select id="new-start-date">${available.map(value=>`<option value="${value}">${dateLabel(value)}</option>`).join('')}</select><small class="help">Later weekdays through ${dateLabel(dates().limitDate(today()))}. Dates use Pacific time.</small>`:'<p>No later dates are available for this weekday within the next four months. Go back and choose another weekday.</p>','weekday',available.length?saveDate:null,'Confirm new start date');
     }else if(step==='localZone'){
-      show('What is your local timezone?','<div id="local-zone-picker"></div>',state.basis==='commission'?null:state.path==='hourly'?'startDate':'agreementReminder',()=>{
+      show('What is your local timezone?','<div id="local-zone-picker"></div>',state.chooseStartDate?'startDate':state.basis==='commission'?null:state.path==='hourly'?'startDate':'agreementReminder',()=>{
         const selected=body.querySelector('#local-zone').value;
         if(!selected)return invalid('Choose your continent, country, state/area and timezone.');
         state.localZone=selected;go('workZone');
@@ -83,7 +85,7 @@
       const input=body.querySelector('#us-number');
       input.oninput=()=>{input.value=formatPhone(input.value);state.phoneNumber=input.value;};
     }else if(step==='done'){
-      show('Great, preference completed.',`<p>Your answers have been submitted to your administrator.</p><dl class="summary"><div><dt>Selected path</dt><dd>${state.path==='hourly'?'Hourly wage':'Commission + bonus'}</dd></div>${state.path==='hourly'?`<div><dt>Start date</dt><dd>${dateLabel(state.startDate)}</dd></div>`:''}<div><dt>Preferred window</dt><dd>${span(state.workZone)}<br>${esc(zoneName(state.workZone))}</dd></div><div><dt>Weekly schedule</dt><dd>2 hours per day, Monday–Friday (10 hours per week)</dd></div><div><dt>US number</dt><dd>${phoneLabel()}${state.phoneSetup==='needs_number'?'':'<br>'+esc(normalizePhone(state.phoneNumber))}</dd></div></dl><p>After each shift, report your time worked, daily updates, and warm leads directly to your administrator. Your official hours form will include timezone conversion.</p>${state.phoneSetup==='needs_number'?'<p>Your administrator will follow up about a US calling number.</p>':''}`,null,close,'Done');
+      show('Great, preference completed.',`<p>Your answers have been submitted to your administrator.</p><dl class="summary"><div><dt>Selected path</dt><dd>${state.path==='hourly'?'Hourly wage':'Commission + bonus'}</dd></div>${state.path==='hourly'||state.chooseStartDate?`<div><dt>Start date</dt><dd>${dateLabel(state.startDate)}</dd></div>`:''}<div><dt>Preferred window</dt><dd>${span(state.workZone)}<br>${esc(zoneName(state.workZone))}</dd></div><div><dt>Weekly schedule</dt><dd>2 hours per day, Monday–Friday (10 hours per week)</dd></div><div><dt>US number</dt><dd>${phoneLabel()}${state.phoneSetup==='needs_number'?'':'<br>'+esc(normalizePhone(state.phoneNumber))}</dd></div></dl><p>After each shift, report your time worked, daily updates, and warm leads directly to your administrator. Your official hours form will include timezone conversion.</p>${state.phoneSetup==='needs_number'?'<p>Your administrator will follow up about a US calling number.</p>':''}`,null,close,'Done');
     }
   }
   function lock(value){busy=value;dialog.querySelectorAll('button,input,select').forEach(el=>el.disabled=value);}
@@ -96,11 +98,11 @@
   }
   async function open(options={}){
     if(busy)return;
-    const {assignment,associate}=await window.OutreachActions.load();
+    const {assignment,associate}=await window.OutreachActions.load(options.assignmentId);
     if(!assignment||assignment.status!=='assigned')throw new Error('This questionnaire must be assigned to your account and still awaiting a response.');
     ensureDialog();returnFocus=document.activeElement;onComplete=options.onComplete;
-    state={assignmentId:assignment.id,basis:associate.current_basis,path:associate.current_basis==='commission'?'commission':'',startDate:associate.start_date,quotaAcknowledged:false,weekday:1,localZone:Intl.DateTimeFormat().resolvedOptions().timeZone||zones[0][0],workZone:zones[0][0],start:540,hours:10,phoneSetup:'',phoneNumber:'',error:''};
-    step=state.basis==='commission'?'localZone':'welcome';
+    state={assignmentId:assignment.id,chooseStartDate:assignment.choose_start_date===true,basis:associate.current_basis,path:associate.current_basis==='commission'?'commission':'',startDate:associate.start_date,quotaAcknowledged:false,weekday:1,localZone:Intl.DateTimeFormat().resolvedOptions().timeZone||zones[0][0],workZone:zones[0][0],start:540,hours:10,phoneSetup:'',phoneNumber:'',error:''};
+    step=state.basis==='commission'?(state.chooseStartDate?'startDate':'localZone'):'welcome';
     document.body.classList.add('questionnaire-open');if(!dialog.open)dialog.showModal();render();
   }
   window.OutreachQuestionnaire={open,close};
