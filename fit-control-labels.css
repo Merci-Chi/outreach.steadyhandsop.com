@@ -1,0 +1,9 @@
+/* Label typography only; existing controls retain their appearance and dimensions. */
+:is(body.page-outreach, body.page-call) :is(.ref-call-methods button, .ref-tools button, .ref-sale, #outreachLeadDock button) > span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
