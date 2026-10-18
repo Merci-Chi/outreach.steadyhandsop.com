@@ -11,9 +11,6 @@
   const dateLabel=value=>new Intl.DateTimeFormat('en-US',{timeZone:'UTC',weekday:'long',month:'long',day:'numeric',year:'numeric'}).format(dates().parse(value));
   const offset=(zone,date=referenceDate())=>new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'longOffset'}).formatToParts(date).find(p=>p.type==='timeZoneName').value;
   const zoneName=zone=>zones.find(x=>x[0]===zone)?.[1]||zone.replaceAll('_',' ');
-  function zoneOptions(selected){
-    return zones.map(([id,label,name])=>`<option value="${esc(id)}" ${id===selected?'selected':''}>${esc(label)} (${offset(id)}) · ${esc(name)}</option>`).join('');
-  }
 
   function instant(minutes){const w=referenceDate(),base=Date.UTC(w.getUTCFullYear(),w.getUTCMonth(),w.getUTCDate(),0,minutes);let result=new Date(base);for(let i=0;i<3;i++){const match=offset(state.workZone,result).match(/GMT([+-])(\d{2}):(\d{2})/);const delta=match?(match[1]==='-'?-1:1)*(Number(match[2])*60+Number(match[3])):0;result=new Date(base-delta*60000);}return result;}
   function span(zone){const f=d=>new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'numeric',minute:'2-digit'}).format(d);return `${f(instant(state.start))} – ${f(instant(state.start+120))}`;}
@@ -68,12 +65,13 @@
     }else if(step==='localZone'){
       show('What is your local timezone?','<div id="local-zone-picker"></div>',state.basis==='commission'?null:state.path==='hourly'?'startDate':'agreementReminder',()=>{
         const selected=body.querySelector('#local-zone').value;
-        if(!selected)return invalid('Choose your country, area and timezone.');
+        if(!selected)return invalid('Choose your continent, country, state/area and timezone.');
         state.localZone=selected;go('workZone');
       });
-      window.SteadyHandsTimezonePicker.mount(body.querySelector('#local-zone-picker'),state.localZone,value=>{state.localLocation=value;state.localZone=value.zone;if(value.zone){state.error='';body.querySelector('.status').textContent='';}},referenceDate(),state.localLocation);
+      window.SteadyHandsTimezonePicker.mount(body.querySelector('#local-zone-picker'),state.localZone,value=>{state.localLocation=value;state.localZone=value.zone;body.querySelector('#question-next').disabled=!value.confirmed;if(value.zone){state.error='';body.querySelector('.status').textContent='';}},referenceDate(),state.localLocation);
     }else if(step==='workZone'){
-      show('Which work timezone do you prefer?',`<label class="field" for="work-zone">Work timezone</label><select id="work-zone">${zoneOptions(state.workZone)}</select><small class="help">Monday–Friday, 9:00 AM–5:00 PM in your chosen work timezone.</small>`,'localZone',()=>{state.workZone=body.querySelector('#work-zone').value;go('window');});
+      show('Which work timezone do you prefer?',`<div class="zone-button-grid work-zone-buttons" role="group" aria-label="Work timezone">${zones.map(([id,label,name])=>`<button type="button" class="zone-card ${id===state.workZone?'is-selected':''}" data-work-zone="${id}" aria-pressed="${id===state.workZone}"><strong>${esc(label)} (${esc(offset(id).replace(/([+-])0(\d)/,'$1$2').replace(/:00$/,''))})</strong><small>${esc(name)}</small></button>`).join('')}</div><input type="hidden" id="work-zone" value="${esc(state.workZone)}"><small class="help">Monday–Friday, 9:00 AM–5:00 PM in your chosen work timezone.</small>`,'localZone',()=>{state.workZone=body.querySelector('#work-zone').value;go('window');});
+      for(const button of body.querySelectorAll('[data-work-zone]'))button.addEventListener('click',()=>{state.workZone=button.dataset.workZone;render();});
     }else if(step==='window'){
       show('Choose your two-hour window.',`<div class="schedule"><div class="time-window"><strong id="work-time">${span(state.workZone)}</strong><span class="pill">2 hours</span></div><label for="shift-start">Drag to choose your start time.</label><div class="slider"><div class="rail"><div id="shift-block" class="block"></div></div><input type="range" id="shift-start" min="540" max="900" step="15" value="${state.start}" aria-label="Two-hour shift start"></div><div class="scale"><span>9:00 AM</span><span>5:00 PM</span></div><p class="conversion">In your timezone (${esc(zoneName(state.localZone))})<strong id="local-time" aria-live="polite">${span(state.localZone)}</strong></p></div><small class="help">Conversion for the week of ${dateLabel(referenceDate().toISOString().slice(0,10))}.</small>`,'workZone',()=>go('phone'));
       const update=()=>{body.querySelector('#shift-block').style.setProperty('--shift',`${(state.start-540)/360*300}%`);body.querySelector('#work-time').textContent=span(state.workZone);body.querySelector('#local-time').textContent=span(state.localZone);body.querySelector('#shift-start').setAttribute('aria-valuetext',span(state.workZone));};

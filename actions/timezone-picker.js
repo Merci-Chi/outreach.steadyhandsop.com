@@ -10,82 +10,88 @@
     if(!canonicalCache.has(zone)){try{canonicalCache.set(zone,new Intl.DateTimeFormat('en-US',{timeZone:zone}).resolvedOptions().timeZone);}catch{canonicalCache.set(zone,null);}}
     return canonicalCache.get(zone);
   };
+  const continents=[['NA','North America'],['SA','South America'],['EU','Europe'],['AF','Africa'],['AS','Asia'],['OC','Oceania'],['AN','Antarctica'],['ZZ','Worldwide / UTC']];
+  const continentCodes={
+    NA:'AG AI AW BB BL BM BQ BS BZ CA CR CU CW DM DO GD GL GP GT HN HT JM KN KY LC MF MQ MS MX NI PA PM PR SV SX TC TT US VC VG VI',
+    SA:'AR BO BR CL CO EC FK GF GY PE PY SR UY VE GS',
+    EU:'AD AL AT AX BA BE BG BY CH CY CZ DE DK EE ES FI FO FR GB GG GI GR HR HU IE IM IS IT JE LI LT LU LV MC MD ME MK MT NL NO PL PT RO RS RU SE SI SJ SK SM UA VA',
+    AF:'AO BF BI BJ BW CD CF CG CI CM CV DJ DZ EG EH ER ET GA GH GM GN GQ GW IO KE KM LR LS LY MA MG ML MR MU MW MZ NA NE NG RE RW SC SD SH SL SN SO SS ST SZ TD TF TG TN TZ UG YT ZA ZM ZW',
+    AS:'AE AF AM AZ BD BH BN BT CN GE HK ID IL IN IQ IR JO JP KG KH KP KR KW KZ LA LB LK MM MN MO MV MY NP OM PH PK PS QA SA SG SY TH TJ TL TM TR TW UZ VN YE',
+    OC:'AS AU CC CK CX FJ FM GU KI MH MP NC NF NR NU NZ PF PG PN PW SB TK TO TV UM VU WF WS',
+    AN:'AQ',ZZ:'ZZ'
+  };
+  const continentFor=code=>Object.keys(continentCodes).find(id=>continentCodes[id].split(' ').includes(code));
+  // US states include border areas with different clock rules as separate timezone choices.
+  const usStates={
+    Alabama:['Chicago'],Alaska:['Anchorage','Juneau','Sitka','Metlakatla','Yakutat','Nome','Adak'],Arizona:['Phoenix','Denver'],Arkansas:['Chicago'],California:['Los_Angeles'],Colorado:['Denver'],Connecticut:['New_York'],Delaware:['New_York'],'District of Columbia':['New_York'],Florida:['New_York','Chicago'],Georgia:['New_York'],Hawaii:['Pacific/Honolulu'],Idaho:['Boise','Los_Angeles'],Illinois:['Chicago'],Indiana:['Indiana/Indianapolis','Indiana/Knox','Indiana/Marengo','Indiana/Petersburg','Indiana/Tell_City','Indiana/Vevay','Indiana/Vincennes','Indiana/Winamac'],Iowa:['Chicago'],Kansas:['Chicago','Denver'],Kentucky:['Kentucky/Louisville','Kentucky/Monticello','Chicago'],Louisiana:['Chicago'],Maine:['New_York'],Maryland:['New_York'],Massachusetts:['New_York'],Michigan:['Detroit','Menominee'],Minnesota:['Chicago'],Mississippi:['Chicago'],Missouri:['Chicago'],Montana:['Denver'],Nebraska:['Chicago','Denver'],Nevada:['Los_Angeles','Denver'],'New Hampshire':['New_York'],'New Jersey':['New_York'],'New Mexico':['Denver'],'New York':['New_York'],'North Carolina':['New_York'],'North Dakota':['Chicago','North_Dakota/Beulah','North_Dakota/Center','North_Dakota/New_Salem','Denver'],Ohio:['New_York'],Oklahoma:['Chicago'],Oregon:['Los_Angeles','Boise'],Pennsylvania:['New_York'],'Rhode Island':['New_York'],'South Carolina':['New_York'],'South Dakota':['Chicago','Denver'],Tennessee:['Chicago','New_York'],Texas:['Chicago','Denver'],Utah:['Denver'],Vermont:['New_York'],Virginia:['New_York'],Washington:['Los_Angeles'],'West Virginia':['New_York'],Wisconsin:['Chicago'],Wyoming:['Denver']
+  };
   function catalog(selected){
     const countries=new Map();
     for(const [code,zone,area] of rows){
       if(!canonical(zone))continue;
-      if(!countries.has(code))countries.set(code,{id:code,label:names[code],areas:new Map()});
+      if(!countries.has(code))countries.set(code,{id:code,label:names[code],continent:continentFor(code),areas:new Map()});
       const areas=countries.get(code).areas;
       if(!areas.has(area))areas.set(area,{id:area,label:area,zones:[]});
       areas.get(area).zones.push({id:zone,label:zone.split('/').slice(1).join(' / ').replaceAll('_',' ')});
     }
-    // Preserve an unusual browser timezone without assigning it to a guessed country.
+    const us=countries.get('US');
+    us.areas=new Map(Object.entries(usStates).map(([name,ids])=>[name,{id:name,label:name,zones:ids.map(id=>id.startsWith('Pacific/')?id:'America/'+id).filter(canonical).map(id=>({id,label:id.split('/').slice(1).join(' / ').replaceAll('_',' ')}))}]));
     const extra=[{id:'UTC',label:'Coordinated Universal Time'}];
     if(selected&&canonical(selected)&&!rows.some(([,zone])=>canonical(zone)===canonical(selected)))extra.push({id:selected,label:selected.replaceAll('_',' ')});
-    countries.set('ZZ',{id:'ZZ',label:'Other / UTC',areas:new Map([['Universal',{id:'Universal',label:'Universal / fixed timezone',zones:extra}]])});
+    countries.set('ZZ',{id:'ZZ',label:'Worldwide / UTC',continent:'ZZ',areas:new Map([['Universal',{id:'Universal',label:'Universal / fixed timezone',zones:extra}]])});
     return [...countries.values()].sort((a,b)=>a.label.localeCompare(b.label));
   }
   function locate(countries,selected){
     for(const country of countries)for(const area of country.areas.values()){
       const zone=area.zones.find(z=>z.id===selected||canonical(z.id)===canonical(selected));
-      if(zone)return {country:country.id,area:area.id,zone:zone.id};
+      if(zone)return {continent:country.continent,country:country.id,area:area.id,zone:zone.id};
     }
-    return {country:'',area:'',zone:''};
+    return {continent:'',country:'',area:'',zone:''};
+  }
+  const shortName=(zone,date)=>new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'short'}).formatToParts(date).find(p=>p.type==='timeZoneName').value;
+  const gmtOffset=(zone,date)=>new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'longOffset'}).formatToParts(date).find(p=>p.type==='timeZoneName').value.replace(/^GMT$/,'GMT+0').replace(/([+-])0(\d)/,'$1$2').replace(/:00$/,'');
+  function timezoneLabel(zone,reference=new Date()){
+    const year=reference.getUTCFullYear();
+    const winter=shortName(zone,new Date(Date.UTC(year,0,15))),summer=shortName(zone,new Date(Date.UTC(year,6,15)));
+    let name=[...new Set([winter,summer])].join('/');
+    if(/^GMT/.test(name))name=new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'longGeneric'}).formatToParts(reference).find(p=>p.type==='timeZoneName').value;
+    return `${name} (${gmtOffset(zone,reference)})`;
   }
   function mount(host,selected,onChange,reference=new Date(),saved){
     const countries=catalog(selected);
     let value=saved?{...saved}:locate(countries,selected);
-    let expanded=value.zone?'':value.country?'area':'country';
-    function render(focus){
-      const country=countries.find(c=>c.id===value.country);
+    if(!value.continent)value.continent=countries.find(c=>c.id===value.country)?.continent||'';
+    let active=value.confirmed?'timezone':'continent';
+    const steps=[['continent','Continent'],['country','Country'],['area','State / area'],['timezone','Timezone']];
+    function render(focus=false){
+      const country=countries.find(c=>c.id===value.country&&c.continent===value.continent);
       const areas=country?[...country.areas.values()].sort((a,b)=>a.label.localeCompare(b.label)):[];
       const area=areas.find(a=>a.id===value.area);
-      const zones=area?.zones||[];
-      function panel(id,number,label,items,current,enabled,placeholder){
-        const chosen=items.find(item=>item.id===current);
-        return `<details class="zone-step" id="zone-${id}" ${expanded===id&&enabled?'open':''}><summary ${enabled?'': 'aria-disabled="true"'}><span class="zone-number">${number}</span><span><span class="zone-step-label">${label}</span><strong>${esc(chosen?.label||placeholder)}</strong></span><span class="zone-chevron" aria-hidden="true">⌄</span></summary>${enabled?`<div class="zone-menu"><label class="zone-search-label" for="zone-search-${id}">Search ${label.toLowerCase()}</label><input type="search" id="zone-search-${id}" class="zone-search" placeholder="Search ${label.toLowerCase()}…" autocomplete="off"><div class="zone-options" role="group" aria-label="${label}">${items.map(item=>`<button type="button" class="zone-option" data-kind="${id}" data-value="${esc(item.id)}" aria-pressed="${item.id===current}"><span>${esc(item.label)}</span>${item.offset?`<small>${esc(item.offset)}</small>`:''}<span class="zone-check" aria-hidden="true">${item.id===current?'✓':''}</span></button>`).join('')}</div><p class="zone-empty" id="zone-empty-${id}" role="status" hidden>No matches. Try another search.</p></div>`:''}</details>`;
+      // Collapse locations with identical present/future clock rules into one readable timezone button.
+      const grouped=new Map();
+      for(const zone of area?.zones||[]){
+        const label=timezoneLabel(zone.id,reference);
+        const signature=label+'|'+[0,3,6,9].map(month=>gmtOffset(zone.id,new Date(Date.UTC(reference.getUTCFullYear(),month,15)))).join('|');
+        if(!grouped.has(signature))grouped.set(signature,{id:zone.id,label,locations:[]});
+        const group=grouped.get(signature);group.locations.push(zone.label);
+        if(canonical(zone.id)===canonical(value.zone))group.id=zone.id;
       }
-      const timezoneItems=zones.map(zone=>({...zone,offset:new Intl.DateTimeFormat('en-US',{timeZone:zone.id,timeZoneName:'longOffset'}).formatToParts(reference).find(p=>p.type==='timeZoneName')?.value||'UTC'}));
-      host.innerHTML=`<p class="zone-intro">Choose your country, then narrow down to your area and timezone.</p><div class="zone-picker">${panel('country',1,'Country',countries,value.country,true,'Select your country')}${panel('area',2,'Area',areas,value.area,!!country,'Choose a country first')}${panel('timezone',3,'Timezone',timezoneItems,value.zone,!!area,'Choose an area first')}</div><input type="hidden" id="local-zone" value="${esc(value.zone)}"><small class="help" id="zone-selection-status" role="status">${value.zone?`Selected: ${esc(value.zone)}. Offsets shown for your scheduled week.`:'Choose a timezone to continue.'}</small>`;
-      for(const kind of ['country','area','timezone']){
-        const details=host.querySelector('#zone-'+kind);
-        details.querySelector('summary').addEventListener('click',event=>{
-          if((kind==='area'&&!country)||(kind==='timezone'&&!area)){event.preventDefault();return;}
-          // Keep the custom menu inside the popup and only open one list at a time.
-          expanded=details.open?'':kind;
-          for(const other of ['country','area','timezone'])if(other!==kind)host.querySelector('#zone-'+other).open=false;
-        });
-        details.addEventListener('keydown',event=>{
-          if(event.key==='Escape'&&details.open){
-            event.preventDefault();event.stopPropagation();details.open=false;expanded='';details.querySelector('summary').focus();
-          }
-        });
-        const search=host.querySelector('#zone-search-'+kind);
-        if(search)search.addEventListener('input',()=>{
-          const query=search.value.trim().toLocaleLowerCase();let count=0;
-          for(const option of host.querySelectorAll(`[data-kind="${kind}"]`)){
-            option.hidden=!option.textContent.toLocaleLowerCase().includes(query);
-            if(!option.hidden)count++;
-          }
-          host.querySelector('#zone-empty-'+kind).hidden=count>0;
-        });
-      }
-      for(const button of host.querySelectorAll('.zone-option'))button.addEventListener('click',()=>{
-        const kind=button.dataset.kind,id=button.dataset.value;
-        if(kind==='country'){
-          value={country:id,area:'',zone:''};expanded='area';
-          const next=[...countries.find(c=>c.id===id).areas.values()];
-          if(next.length===1){value.area=next[0].id;expanded='timezone';if(next[0].zones.length===1){value.zone=next[0].zones[0].id;expanded='';}}
-        }else if(kind==='area'){
-          value.area=id;value.zone='';expanded='timezone';
-          const next=areas.find(a=>a.id===id).zones;
-          if(next.length===1){value.zone=next[0].id;expanded='';}
-        }else{value.zone=id;expanded='';}
-        onChange({...value});render(expanded?'zone-search-'+expanded:'zone-'+kind);
+      const lists={continent:continents.map(([id,label])=>({id,label})),country:countries.filter(c=>c.continent===value.continent),area:areas,timezone:[...grouped.values()]};
+      const index=steps.findIndex(([id])=>id===active);
+      const enabled={continent:true,country:!!value.continent,area:!!country,timezone:!!area};
+      host.innerHTML=`<p class="zone-intro">Pick your location in four quick steps.</p><nav class="zone-progress" aria-label="Timezone selection steps">${steps.map(([id,label],i)=>`<button type="button" class="zone-stage ${active===id?'is-active':''}" data-step="${id}" ${enabled[id]?'':'disabled'} ${active===id?'aria-current="step"':''}><span>${i+1}</span>${label}</button>`).join('')}</nav><div class="zone-context">${[continents.find(([id])=>id===value.continent)?.[1],country?.label,area?.label].filter(Boolean).map(esc).join(' · ')}</div><h2 class="zone-heading" id="zone-heading" tabindex="-1">${index+1}. Choose your ${steps[index][1].toLowerCase()}</h2><div class="zone-button-grid" role="group" aria-labelledby="zone-heading">${lists[active].map(item=>`<button type="button" class="zone-card ${item.id===(active==='timezone'?value.zone:value[active])?'is-selected':''}" data-kind="${active}" data-value="${esc(item.id)}" aria-pressed="${item.id===(active==='timezone'?value.zone:value[active])}"><strong>${esc(item.label)}</strong>${active==='timezone'?`<small>${esc(item.locations.join(' · '))}</small>`:''}</button>`).join('')}</div><input type="hidden" id="local-zone" value="${esc(value.zone)}"><small class="help" id="zone-selection-status" role="status">${value.zone?`Selected: ${esc(timezoneLabel(value.zone,reference))}.`:'Select a timezone to continue.'}</small>${active==='timezone'?'<small class="help">GMT offset is for your scheduled week; daylight saving changes are handled automatically.</small>':''}`;
+      for(const button of host.querySelectorAll('[data-step]'))button.addEventListener('click',()=>{active=button.dataset.step;render(true);});
+      for(const button of host.querySelectorAll('.zone-card'))button.addEventListener('click',()=>{
+        const id=button.dataset.value;
+        if(active==='continent'){value={continent:id,country:'',area:'',zone:'',confirmed:false};active='country';}
+        else if(active==='country'){value={continent:value.continent,country:id,area:'',zone:'',confirmed:false};active='area';}
+        else if(active==='area'){value.area=id;value.zone='';value.confirmed=false;active='timezone';}
+        else{value.zone=id;value.confirmed=true;}
+        onChange({...value});render(true);
       });
-      if(focus){const target=host.querySelector('#'+focus);(target?.querySelector('summary')||target)?.focus();}
+      if(focus)host.querySelector('#zone-heading').focus();
     }
     onChange({...value});render();
   }
-  window.SteadyHandsTimezonePicker={mount,catalog,locate};
+  window.SteadyHandsTimezonePicker={mount,catalog,locate,timezoneLabel};
 })();

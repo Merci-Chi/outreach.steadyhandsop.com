@@ -21,7 +21,7 @@ function harness(basis='commission',submit=async()=>({})){let dialog;const liste
  const picker=window.SteadyHandsTimezonePicker;
  picker.mount=(host,selected,onChange,reference,saved)=>{
   const value=saved||picker.locate(picker.catalog(selected),selected);
-  onChange(value);host.innerHTML='<input type="hidden" id="local-zone" value="'+value.zone+'">';
+  onChange({...value,confirmed:true});host.innerHTML='<input type="hidden" id="local-zone" value="'+value.zone+'">';
  };
  vm.runInContext(read('actions/js.js'),c);
  return {window,calls,open:()=>window.OutreachQuestionnaire.open(),get body(){return dialog.querySelector('#question-body')},get dialog(){return dialog},node(id){return this.body.querySelector('#'+id)},next(){return this.node('question-next').click()},choose(name,value){this.body.all().filter(x=>x.name===name).forEach(x=>x.checked=x.value===value)}};
@@ -61,7 +61,7 @@ test('local timezone selector groups worldwide zones by country and area; work z
  const picker=h.window.SteadyHandsTimezonePicker,countries=picker.catalog('Asia/Kathmandu');
  assert(countries.length>200);
  for(const [zone,code] of [['Africa/Johannesburg','ZA'],['America/Sao_Paulo','BR'],['Asia/Manila','PH'],['Asia/Tokyo','JP'],['Australia/Sydney','AU'],['Europe/London','GB'],['Pacific/Auckland','NZ'],['UTC','ZZ'],['Asia/Katmandu','NP'],['America/Indianapolis','US']])assert.equal(picker.locate(countries,zone).country,code,zone);
- h.next();assert.equal((h.body.innerHTML.match(/<option /g)||[]).length,3);
+ h.next();assert.equal((h.body.innerHTML.match(/data-work-zone=/g)||[]).length,3);
 });
 
 test('US number input autoformats typing and paste and limits digits',async()=>{
@@ -75,9 +75,18 @@ test('timezone country mappings retain separate areas and accept modern and lega
  const h=harness();await h.open();const picker=h.window.SteadyHandsTimezonePicker;
  const countries=picker.catalog('UTC');
  const us=countries.find(c=>c.id==='US');
- assert(us.areas.has('Pacific'));assert(us.areas.has('Eastern'));assert(us.areas.has('Arizona'));
- assert(us.areas.get('Eastern').zones.some(z=>z.id==='America/New_York'));
- assert(us.areas.get('Eastern').zones.length<15);
+ assert(us.areas.has('California'));assert(us.areas.has('New York'));assert(us.areas.has('Arizona'));assert.equal(us.areas.size,51);
+ assert(us.areas.get('New York').zones.some(z=>z.id==='America/New_York'));
+ assert(us.areas.get('New York').zones.length<15);
  for(const [zone,code] of [['Asia/Kathmandu','NP'],['Asia/Kolkata','IN'],['Europe/Kyiv','UA'],['America/Indiana/Indianapolis','US']])assert.equal(picker.locate(countries,zone).country,code);
  const extra=picker.catalog('Etc/GMT+5');assert.equal(picker.locate(extra,'Etc/GMT+5').country,'ZZ');
+});
+
+test('timezone picker offers every country under a continent and uses readable GMT labels',async()=>{
+ const h=harness();await h.open();const picker=h.window.SteadyHandsTimezonePicker;
+ const countries=picker.catalog('UTC');assert(countries.every(c=>c.continent));
+ for(const [zone,continent] of [['America/Los_Angeles','NA'],['America/Sao_Paulo','SA'],['Europe/London','EU'],['Africa/Johannesburg','AF'],['Asia/Manila','AS'],['Australia/Sydney','OC'],['Antarctica/Casey','AN'],['UTC','ZZ']])assert.equal(picker.locate(countries,zone).continent,continent);
+ assert.equal(picker.timezoneLabel('America/Los_Angeles',new Date('2026-10-19T00:00:00Z')),'PST/PDT (GMT-7)');
+ assert.match(picker.timezoneLabel('Asia/Kathmandu',new Date('2026-10-19T00:00:00Z')),/GMT\+5:45/);
+ assert.match(picker.timezoneLabel('America/Los_Angeles',new Date('2026-01-19T00:00:00Z')),/GMT-8/);
 });
