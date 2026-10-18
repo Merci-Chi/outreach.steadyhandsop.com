@@ -34,9 +34,20 @@
     label.style.maxWidth = `${available}px`;
     const original = number(getComputedStyle(label).fontSize);
     // nowrap preserves explicit <br> lines while preventing extra word/letter wrapping.
-    const natural = label.scrollWidth;
-    if (natural > available) {
-      label.style.fontSize = `${Math.max(9, Math.floor(original * available / natural * 10) / 10)}px`;
+    const fits = () => label.scrollWidth <= Math.min(available, label.clientWidth) && label.clientWidth > 0;
+    if (!fits() && label.clientWidth > 0) {
+      // Flex layout can give the label less space than the button-based estimate.
+      // Measure after each change rather than assuming a single scale calculation fits.
+      let low = 0;
+      let high = original;
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const size = (low + high) / 2;
+        label.style.fontSize = `${size}px`;
+        if (fits()) low = size;
+        else high = size;
+      }
+      // Round down with a little room for fractional Safari layout/font metrics.
+      label.style.fontSize = `${Math.max(0.1, Math.floor(low * 10) / 10)}px`;
     }
   }
   function fitAll() {
