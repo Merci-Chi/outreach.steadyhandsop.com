@@ -2,10 +2,35 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id), escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stages=[['called','Called','phone'],['follow_up','Follow-up','messages-square'],['portal_link_sent','Portal Link Sent','send'],['account_created','Account Created','user-check'],['reviewing_site','Reviewing Site','eye'],['ready_to_buy','Ready to Buy','badge-check']];
+const processSteps=['Explain the process','Offer a preview and references','Collect a textable number','Finish the call','Send to development team','Await status from the development team'];
+let processChecks=new Map(),processLoaded=false;
 const categories=['Interested','Unsure','Needs More Info','Not Now','Budget Concerns'];
 let db, uid, records=[],commissions=[],sales=[],history=[],targets=[],teamWeekly=null,filter='all',search='',page=20,loading=false,selectedCategory='';
 const stamp=x=>x?new Date(x).toLocaleString():'Not recorded';
 const active =()=>db?.auth?.getUser();
+function processStage(record){
+ if(!record.crm_id)return 'Process: No linked prospect';
+ if(!processLoaded)return 'Process: Loading…';
+ const checked=processChecks.get(String(record.crm_id))||new Set();
+ const next=processSteps.findIndex((_,i)=>!checked.has(i+1));
+ return next<0?'Process complete · 6 / 6':`Process: Step ${next+1} / 6 — ${processSteps[next]} · ${checked.size} / 6 complete`;
+}
+async function loadProcessChecks(){
+ const ids=[...new Set(records.map(r=>r.crm_id).filter(Boolean))],next=new Map();
+ try{
+  // Only request linked prospects. CRM assignment RLS still governs every row.
+  for(let start=0;start<ids.length;start+=100){
+   const batch=ids.slice(start,start+100);
+   for(let offset=0;;offset+=500){
+    const {data,error}=await db.from('outreach_process_checks').select('crm_id,step_no,is_checked').in('crm_id',batch).order('crm_id').order('step_no').range(offset,offset+499);
+    if(error)throw error;
+    for(const row of data||[]){if(row.is_checked===true&&Number(row.step_no)>=1&&Number(row.step_no)<=6){const id=String(row.crm_id);if(!next.has(id))next.set(id,new Set());next.get(id).add(Number(row.step_no));}}
+    if((data||[]).length<500)break;
+   }
+  }
+  processChecks=next;processLoaded=true;
+ }catch(error){console.warn('Process stages will retry:',error);setTimeout(load,5000);}
+}
 function render(){
  const list=records.filter(r=>(filter==='all'||r.stage===filter)&&(!selectedCategory||r.follow_up_category===selectedCategory)&&[r.company_name,r.contact_name,r.phone,r.crm_id].some(x=>String(x||'').toLowerCase().includes(search)));
  const counts=k=>records.filter(r=>r.stage===k).length;
@@ -13,7 +38,7 @@ function render(){
  $('salesMetrics').innerHTML=[['Ready to Buy',counts('ready_to_buy'),'users'],['Awaiting Payment',waiting.length,'clock'],['Pending Commission',pending.length,'badge-check'],['Paid Out',complete.length,'wallet']].map(([name,n,icon])=>`<div class="pipeline-stat"><i data-lucide="${icon}"></i><strong>${n}</strong><span>${name}</span></div>`).join('');
  $('pipelineStages').innerHTML=`<button class="pipeline-stage ${filter==='all'?'selected':''}" data-stage="all"><span class="pipeline-stage-icon"><i data-lucide="layout-grid"></i></span><span class="pipeline-stage-copy"><b>All My Sales</b></span><strong>${records.length}</strong></button>`+stages.map(([id,name,icon],i)=>`<div class="pipeline-stage-group"><button class="pipeline-stage ${filter===id?'selected':''}" data-stage="${id}"><span class="pipeline-stage-number">${i+1}</span><span class="pipeline-stage-copy"><b>${name}</b></span><strong>${counts(id)}</strong><i data-lucide="chevron-right"></i></button>${id==='follow_up'?`<div class="pipeline-followups">${categories.map(c=>`<button type="button" class="sh-followup-filter ${selectedCategory===c?'selected':''}" data-category="${escape(c)}"><span>${escape(c)}</span><strong>${records.filter(r=>r.stage==='follow_up'&&r.follow_up_category===c).length}</strong></button>`).join('')}</div>`:''}</div>`).join('');
  $('pipelineOther').innerHTML='';$('pipelineListTitle').textContent=filter==='all'?'Contacts':stages.find(s=>s[0]===filter)?.[1]||'Contacts';$('salesCount').textContent=`${list.length} contact${list.length===1?'':'s'}`;
- $('salesList').innerHTML=list.slice(0,page).map(r=>{const h=history.filter(x=>x.pipeline_id===r.id).slice(0,12);return `<article class="pipeline-client"><div class="pipeline-client-top"><div class="pipeline-avatar"><i data-lucide="building-2"></i></div><div class="pipeline-client-name"><h4>${escape(r.company_name||'Unnamed business')}</h4><small>${escape(r.contact_name||r.phone||'Contact')}</small></div><span class="pipeline-chip">${escape(stages.find(s=>s[0]===r.stage)?.[1]||r.stage)}</span></div><p class="pipeline-next">${r.follow_up_category?`<b>${escape(r.follow_up_category)}</b> · `:''}${escape(r.notes||'No notes yet')}</p><details><summary>Track this prospect <i data-lucide="chevron-down"></i></summary><div class="pipeline-detail"><label>Pipeline stage<select data-stage-input="${r.id}">${stages.map(([k,name])=>`<option value="${k}" ${r.stage===k?'selected':''}>${escape(name)}</option>`).join('')}</select></label><label class="sh-followup-category" ${r.stage!=='follow_up'?'hidden':''}>Follow-up category<select data-category-input="${r.id}"><option value="">Choose a category</option>${categories.map(c=>`<option value="${escape(c)}" ${r.follow_up_category===c?'selected':''}>${escape(c)}</option>`).join('')}</select></label><label>Follow-up date & time<input type="datetime-local" data-followup="${r.id}" value="${r.follow_up_at?new Date(new Date(r.follow_up_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):''}"></label><label>Notes<textarea data-notes="${r.id}" rows="2">${escape(r.notes||'')}</textarea></label><button type="button" data-save="${r.id}">Save changes</button><p class="sh-save-status" data-message="${r.id}" role="status"></p><h4>Change history</h4>${h.length?`<ol>${h.map(e=>`<li>${escape(e.old_stage||'New')} → ${escape(e.new_stage)} ${e.new_category?'('+escape(e.new_category)+')':''} · ${stamp(e.created_at)}</li>`).join('')}</ol>`:'<p>No previous changes</p>'}</div></details></article>`}).join('')||'<div class="pipeline-empty"><strong>No contacts in this stage yet</strong></div>';
+ $('salesList').innerHTML=list.slice(0,page).map(r=>{const h=history.filter(x=>x.pipeline_id===r.id).slice(0,12);return `<article class="pipeline-client"><div class="pipeline-client-top"><div class="pipeline-avatar"><i data-lucide="building-2"></i></div><div class="pipeline-client-name"><h4>${escape(r.company_name||'Unnamed business')}</h4><small>${escape(r.contact_name||r.phone||'Contact')}</small></div><span class="pipeline-chip">${escape(stages.find(s=>s[0]===r.stage)?.[1]||r.stage)}</span></div><p class="pipeline-next pipeline-process-stage">${escape(processStage(r))}</p><p class="pipeline-next">${r.follow_up_category?`<b>${escape(r.follow_up_category)}</b> · `:''}${escape(r.notes||'No notes yet')}</p><details><summary>Track this prospect <i data-lucide="chevron-down"></i></summary><div class="pipeline-detail"><label>Pipeline stage<select data-stage-input="${r.id}">${stages.map(([k,name])=>`<option value="${k}" ${r.stage===k?'selected':''}>${escape(name)}</option>`).join('')}</select></label><label class="sh-followup-category" ${r.stage!=='follow_up'?'hidden':''}>Follow-up category<select data-category-input="${r.id}"><option value="">Choose a category</option>${categories.map(c=>`<option value="${escape(c)}" ${r.follow_up_category===c?'selected':''}>${escape(c)}</option>`).join('')}</select></label><label>Follow-up date & time<input type="datetime-local" data-followup="${r.id}" value="${r.follow_up_at?new Date(new Date(r.follow_up_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):''}"></label><label>Notes<textarea data-notes="${r.id}" rows="2">${escape(r.notes||'')}</textarea></label><button type="button" data-save="${r.id}">Save changes</button><p class="sh-save-status" data-message="${r.id}" role="status"></p><h4>Change history</h4>${h.length?`<ol>${h.map(e=>`<li>${escape(e.old_stage||'New')} → ${escape(e.new_stage)} ${e.new_category?'('+escape(e.new_category)+')':''} · ${stamp(e.created_at)}</li>`).join('')}</ol>`:'<p>No previous changes</p>'}</div></details></article>`}).join('')||'<div class="pipeline-empty"><strong>No contacts in this stage yet</strong></div>';
  $('pipelineMore').hidden=list.length<=page;
  const goal=targets.find(t=>t.scope_key===uid)||targets.find(t=>t.scope_key==='default')||{weekly_goal:2,monthly_goal:8};
  // Company reporting uses Pacific calendar weeks, Monday 00:00 to next Monday 00:00.
@@ -27,11 +52,12 @@ function render(){
 }
 async function load(){if(loading)return;loading=true;try{
  db=window.steadyHandsCRMClient;if(!db){$('salesSync').textContent='Connecting…';setTimeout(load,700);return}
- const {data:{user},error:authError}=await active();if(authError||!user)throw new Error('Please sign in to Outreach');uid=user.id;
+ const {data:{user},error:authError}=await active();if(authError||!user)throw new Error('Please sign in to Outreach');if(uid!==user.id){processChecks=new Map();processLoaded=false;}uid=user.id;
  const all=async(table,fields,where={})=>{let items=[];for(let offset=0;offset<5000;offset+=500){let q=db.from(table).select(fields).range(offset,offset+499);for(const [k,v] of Object.entries(where))q=q.eq(k,v);const {data,error}=await q;if(error)throw new Error(table+': '+error.message);items.push(...data);if(data.length<500)break}return items};
  const [a,b,c,d,e]=await Promise.allSettled([all('sh_pipeline_records','*',{salesperson_user_id:uid}),all('callcenter_commissions','crm_id,status,user_id',{user_id:uid}),all('outreach_sales','status,confirmed_at,salesperson_user_id',{salesperson_user_id:uid}),all('sh_pipeline_history','pipeline_id,old_stage,new_stage,old_category,new_category,created_at',{salesperson_user_id:uid}),all('sh_sales_target_settings','scope_key,weekly_goal,monthly_goal')]);
  if(a.status==='rejected')throw a.reason;records=a.value;commissions=b.status==='fulfilled'?b.value:[];sales=c.status==='fulfilled'?c.value:[];history=d.status==='fulfilled'?d.value:[];targets=e.status==='fulfilled'?e.value:[];
- const teamResult=await db.rpc('sh_team_weekly_confirmed_sales');teamWeekly=!teamResult.error&&Number.isFinite(Number(teamResult.data))?Number(teamResult.data):null;if(teamResult.error)console.warn('Team weekly sales RPC unavailable:',teamResult.error.message);
+ render();
+ const [teamResult]=await Promise.all([db.rpc('sh_team_weekly_confirmed_sales'),loadProcessChecks()]);teamWeekly=!teamResult.error&&Number.isFinite(Number(teamResult.data))?Number(teamResult.data):null;if(teamResult.error)console.warn('Team weekly sales RPC unavailable:',teamResult.error.message);
  $('salesSync').textContent=`Updated ${new Date().toLocaleTimeString()}${[b,c,d,e].some(x=>x.status==='rejected')?' · Some metrics unavailable':''}`;render();
  window.dispatchEvent(new CustomEvent('sh:pipeline-contacts-updated',{detail:records.map(r=>({id:r.id,crm_id:r.crm_id,company_name:r.company_name,contact_name:r.contact_name,phone:r.phone,email:r.email,preview_url:r.preview_url,sitekey:r.sitekey}))}));
  }catch(err){$('salesSync').textContent='Unable to sync';$('salesList').textContent=err.message;console.error(err)}finally{loading=false}}
