@@ -16,52 +16,35 @@ function setup(){
  const request=(stage='incoming',form={},query='',signature='valid')=>handler(new Request(base+(stage==='incoming'?'':'?stage='+stage+query),{method:'POST',headers:{'X-Twilio-Signature':signature,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({AccountSid:account,CallSid:parent,To:'+17025550101',From:'+17025550103',...form})}));
  return {request,rows,access:()=>dbAccess};
 }
-test('signed incoming callback routes assigned ADMIN through browser, cell and business voicemail',async()=>{
- const s=setup();assert.match(await (await s.request()).text(),/<Client>/);
- assert.match(await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text(),/<Number/);
- await s.request('screen',{CallSid:child},'&parent='+parent);
- assert.match(await (await s.request('cell-ended',{DialCallStatus:'completed'})).text(),/<Record /);
+test('signed calls ring Outreach without saved routing or a personal number',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings=[];assert.match(await (await s.request()).text(),/<Client>/);
+ const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();assert.match(xml,/<Record /);assert.doesNotMatch(xml,/<Number/);
 });
-test('accepted cellphone call completes without voicemail',async()=>{
- const s=setup();await s.request();await s.request('browser-ended',{DialCallStatus:'busy'});await s.request('screen',{CallSid:child},'&parent='+parent);
- await s.request('accept-cell',{CallSid:child,Digits:'1'},'&parent='+parent);
- const xml=await (await s.request('cell-ended',{DialCallStatus:'completed'})).text();assert(!xml.includes('<Record'));assert.equal(s.rows.outreach_inbound_calls[0].answered_via,'cellphone');
+test('busy, failed and unanswered browser calls go straight to voicemail despite legacy cellphone',async()=>{
+ for(const status of ['busy','failed','no-answer','canceled']){
+  const s=setup();s.rows.callcenter_profiles[0].phone='+17025550104';await s.request();
+  const xml=await (await s.request('browser-ended',{DialCallStatus:status})).text();assert.match(xml,/<Record /);assert.doesNotMatch(xml,/<Number/);
+ }
 });
-test('a screening callback for the wrong child cannot accept the call',async()=>{
- const s=setup();await s.request();await s.request('screen',{CallSid:child},'&parent='+parent);
- await s.request('accept-cell',{CallSid:parent,Digits:'1'},'&parent='+parent);
+test('successful browser conversation hangs up without voicemail',async()=>{
+ const s=setup();await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'completed'})).text();assert.doesNotMatch(xml,/<Number|<Record/);assert.equal(s.rows.outreach_inbound_calls[0].answered_via,'outreach');
+});
+test('explicit disabled routing sends to business voicemail',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;const xml=await (await s.request()).text();assert.match(xml,/<Record /);assert.doesNotMatch(xml,/<Client>|<Number/);
+});
+test('stale cellphone callbacks cannot accept or bridge a personal-number leg',async()=>{
+ const s=setup();await s.request();for(const stage of ['screen','accept-cell']){
+  const xml=await (await s.request(stage,{CallSid:child,Digits:'1'},'&parent='+parent)).text();assert.match(xml,/<Hangup/);assert.doesNotMatch(xml,/<Number|<Gather/);
+ }
  assert.equal(s.rows.outreach_inbound_calls[0].cellphone_accepted,false);
 });
-test('successful browser conversation does not ring cellphone',async()=>{
- const s=setup();await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'completed'})).text();assert(!xml.includes('<Number'));assert(!xml.includes('<Record'));assert.equal(s.rows.outreach_inbound_calls[0].answered_via,'outreach');
-});
-test('invalid signature and wrong account are rejected before any database access',async()=>{
+test('invalid signature and wrong account are denied before database reads',async()=>{
  const s=setup();assert.equal((await s.request('incoming',{},'','invalid')).status,403);assert.equal((await s.request('incoming',{AccountSid:'other'})).status,403);assert.equal(s.access(),0);
 });
-test('disabled number cannot create an incoming call record',async()=>{
- const s=setup();s.rows.callcenter_phone_numbers[0].active=false;const xml=await (await s.request()).text();assert(!xml.includes('<Client>'));assert.equal(s.rows.outreach_inbound_calls.length,0);
+test('disabled numbers cannot create incoming records',async()=>{
+ const s=setup();s.rows.callcenter_phone_numbers[0].active=false;assert.doesNotMatch(await (await s.request()).text(),/<Client>/);assert.equal(s.rows.outreach_inbound_calls.length,0);
 });
-test('completed recording is attached privately to the original call',async()=>{
+test('completed recordings stay attached to the original incoming call',async()=>{
  const s=setup();await s.request();await s.request('recorded',{RecordingStatus:'completed',RecordingSid:'RE'+'3'.repeat(32),RecordingDuration:'12'});
  assert.equal(s.rows.outreach_inbound_calls[0].status,'voicemail');assert.equal(s.rows.outreach_inbound_calls[0].recording_duration,12);
-});
-
-test('an assigned number forwards to the agent profile cellphone when routing settings are absent',async()=>{
- const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone='(702) 555-0102';
- assert.match(await (await s.request()).text(),/<Client>/);
- const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
- assert.match(xml,/>\+17025550102<\/Number>/);assert.doesNotMatch(xml,/>\+17025550103<\/Number>/);
- assert.equal(s.rows.outreach_inbound_calls[0].from_number,'+17025550103');
-});
-test('explicit disabled routing still goes to voicemail instead of profile cellphone',async()=>{
- const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;s.rows.callcenter_profiles[0].phone='+17025550104';
- const xml=await (await s.request()).text();assert.match(xml,/<Record /);assert.doesNotMatch(xml,/<Client>|<Number/);
-});
-test('profile fallback never forwards to managed numbers or invalid personal phone values',async()=>{
- for(const phone of ['anonymous','+17025550101','+17025550109']){
-  const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone=phone;
-  s.rows.callcenter_phone_numbers.push({id:'other',phone_number:'+17025550109'});
-  const initial=await (await s.request()).text();assert.match(initial,/<Record /);assert.doesNotMatch(initial,/<Number/);
-  assert.doesNotMatch(await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text(),/<Number/);
- }
 });
