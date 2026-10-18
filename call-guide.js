@@ -29,10 +29,7 @@
       note:'Verify feasibility before discussing price. Understand their budget, who makes the decision, and when it matters.'},
     {label:'Value Case', title:'The Presentation — When BAA Checks Out',
       lines:['Based on everything you’ve told me: a complete website — designed, built, mobile-ready, launched for you — is $100, one time. Hosting starts at $20/month: we keep it fast, online, and maintained, and support is a phone call away. Against the [their gap number] a month you described — you see the math. And here’s the part owners like most: you see a preview of YOUR site before anything goes live.'],
-      note:'Use the needs and estimates they shared. Only present the offer after the BAA check.'},
-    {label:'Next-Step Close', title:'Agree on the Next Step',
-      lines:['Want me to get your preview started this week?'],
-      note:'Ask once, then stop talking and listen. If they agree, continue into the process to confirm the preview, textable number, and development handoff.'}
+      note:'Use the needs and estimates they shared. Only present the offer after the BAA check.'}
   ];
   const objections = [
     {id:'busy',label:'I’m busy right now',title:'“I’m busy right now.”',
@@ -47,9 +44,14 @@
   ];
   function mount({process,leadId}) {
     const make=(tag,text,className)=>{const el=document.createElement(tag);if(text)el.textContent=text;if(className)el.className=className;return el;};
-    const header=process.querySelector('header'), fieldset=process.querySelector('#processSteps');
+    const header=process.querySelector('header'),fieldset=process.querySelector('#processSteps');
     const checklist=[...fieldset.querySelectorAll('ol > li')];
-    let guided=document.body.classList.contains('page-call'),cursor=0,opener=0,currentLead=leadId();
+    let guided=document.body.classList.contains('page-call'),cursor=0,activeStage=0,opener=0,currentLead=leadId(),stageTrigger=null,responseTrigger=null;
+    const allLinks=[];
+    const stageDialog=make('dialog',null,'call-guide-dialog');stageDialog.id='call-conversation-popup';
+    stageDialog.setAttribute('aria-labelledby','call-conversation-title');
+    const dialogHeader=make('div',null,'call-popup-head'),dialogTitle=make('h2','Conversation guide'),closeStage=make('button','×','call-popup-close');
+    dialogTitle.id='call-conversation-title';closeStage.type='button';closeStage.setAttribute('aria-label','Close conversation guide');dialogHeader.append(dialogTitle,closeStage);
     const guide=make('section',null,'call-guide');guide.setAttribute('aria-label','Conversation guide');
     const cards=stages.map((stage,i)=>{
       const card=make('section',null,'call-guide-card');card.id=`call-guide-step-${i+1}`;
@@ -68,69 +70,81 @@
       card.querySelector('h4').textContent=item.title;card.querySelector('blockquote').textContent=item.script;card.querySelector('.call-guide-note').textContent=item.note;
       card.querySelectorAll('[data-opener]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.opener)===opener)));
     }
-    fieldset.before(guide);
-    const labels=[...stages.map(s=>s.label),...checklist.map(step=>step.querySelector('strong').textContent)];
+    const responses=make('dialog',null,'call-guide-dialog call-objection-responses');responses.id='call-objection-response';responses.setAttribute('aria-labelledby','call-response-title');
+    const responseHeader=make('div',null,'call-popup-head'),responseTitle=make('h2'),closeResponseButton=make('button','×','call-popup-close');
+    responseTitle.id='call-response-title';responseTitle.tabIndex=-1;closeResponseButton.type='button';closeResponseButton.setAttribute('aria-label','Close response');responseHeader.append(responseTitle,closeResponseButton);
+    const responseScript=make('blockquote'),responseNote=make('p',null,'call-guide-note'),dismiss=make('button','Back to current step','call-objection-close');dismiss.type='button';responses.append(responseHeader,responseScript,responseNote,dismiss);
+    function closeResponse(){if(responses.open)responses.close();}
+    responses.addEventListener('close',()=>{allLinks.forEach(link=>link.setAttribute('aria-expanded','false'));responseTrigger?.focus({preventScroll:true});responseTrigger=null;});
+    closeResponseButton.addEventListener('click',closeResponse);dismiss.addEventListener('click',closeResponse);
+    responses.addEventListener('click',event=>{if(event.target===responses)closeResponse();});
+    function makeLinks(){
+      const links=make('div',null,'call-objection-links');links.setAttribute('role','group');links.setAttribute('aria-label','Quick objection responses');
+      objections.forEach(item=>{
+        const link=make('a',item.label);link.href='#call-objection-response';link.setAttribute('aria-controls','call-objection-response');link.setAttribute('aria-haspopup','dialog');link.setAttribute('aria-expanded','false');allLinks.push(link);
+        link.addEventListener('click',event=>{
+          event.preventDefault();responseTrigger=link;
+          responseTitle.textContent=item.title;responseScript.textContent=item.script;responseNote.textContent=item.note;
+          allLinks.forEach(other=>other.setAttribute('aria-expanded',String(other===link)));
+          if(!responses.open)responses.showModal();responseTitle.focus({preventScroll:true});
+        });links.append(link);
+      });return links;
+    }
+    const stageNav=make('div',null,'call-popup-nav'),stagePrevious=make('button','Previous'),stageNext=make('button','Next step →'),stageStatus=make('span',null,'call-popup-status');
+    stagePrevious.type=stageNext.type='button';stageStatus.setAttribute('aria-live','polite');stageNav.append(stagePrevious,stageStatus,stageNext);
+    stageDialog.append(dialogHeader,makeLinks(),guide,stageNav);document.body.append(stageDialog,responses);
     const pills=make('div',null,'call-stage-pills');pills.setAttribute('role','group');pills.setAttribute('aria-label','Call steps');
-    const pillButtons=labels.slice(0,stages.length).map((label,i)=>{
+    const pillButtons=[...stages.map(s=>s.label),'Process'].map((label,i)=>{
       const button=make('button',`${i+1}. ${label}`,'call-stage-pill');button.type='button';
-      button.setAttribute('aria-controls',i<cards.length?cards[i].id:'processSteps');
-      button.addEventListener('click',()=>{cursor=i;showStep(true);});pills.append(button);return button;
+      button.setAttribute('aria-controls',i<cards.length?stageDialog.id:'processSteps');if(i<cards.length)button.setAttribute('aria-haspopup','dialog');
+      button.addEventListener('click',()=>{if(i<cards.length)openStage(i,button);else openProcess(true);});pills.append(button);return button;
     });
-    const topbar=document.querySelector('.call-back-nav');
-    if(topbar)topbar.append(pills);else process.insertBefore(pills,header);
-    const links=make('div',null,'call-objection-links');links.setAttribute('role','group');links.setAttribute('aria-label','Quick objection responses');
-    const responses=make('section',null,'call-objection-responses');responses.hidden=true;
-    const responseTitle=make('h3');responseTitle.tabIndex=-1;
-    const responseScript=make('blockquote'),responseNote=make('p',null,'call-guide-note');
-    const dismiss=make('button','Back to current step','call-objection-close');dismiss.type='button';
-    responses.append(responseTitle,responseScript,responseNote,dismiss);guide.before(responses);
-    function closeResponse(){responses.hidden=true;links.querySelectorAll('a').forEach(link=>link.setAttribute('aria-expanded','false'));}
-    objections.forEach(item=>{
-      const link=make('a',item.label);link.href='#call-objection-response';link.setAttribute('aria-controls','call-objection-response');link.setAttribute('aria-expanded','false');
-      link.addEventListener('click',event=>{
-        event.preventDefault();const closing=!responses.hidden&&responses.dataset.objection===item.id;closeResponse();
-        if(closing)return;
-        responses.dataset.objection=item.id;responses.hidden=false;
-        responseTitle.textContent=item.title;responseScript.textContent=item.script;responseNote.textContent=item.note;
-        link.setAttribute('aria-expanded','true');responseTitle.focus({preventScroll:true});
-      });links.append(link);
-    });
-    responses.id='call-objection-response';
-    dismiss.addEventListener('click',()=>{const link=links.querySelector('[aria-expanded="true"]');closeResponse();link?.focus();});
-    process.addEventListener('keydown',event=>{if(event.key==='Escape'&&!responses.hidden){event.preventDefault();dismiss.click();}});
-    const nav=make('div',null,'workflow-step-nav');nav.setAttribute('role','group');nav.setAttribute('aria-label','Process steps');
-    const previous=make('button','Previous','sh-sheet-secondary');previous.type='button';
-    const next=make('button','Next step →','sh-sheet-primary');next.type='button';
+    const topbar=document.querySelector('.call-back-nav');if(topbar)topbar.append(pills);else process.insertBefore(pills,header);
+    function renderPills(){
+      const selected=stageDialog.open?activeStage:stages.length;
+      pillButtons.forEach((button,i)=>{button.setAttribute('aria-pressed',String(selected===i));if(selected===i)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
+    }
+    function openStage(index,trigger=null){
+      activeStage=index;stageTrigger=trigger||pillButtons[index];
+      cards.forEach((card,i)=>card.hidden=i!==activeStage);
+      stageStatus.textContent=`${activeStage+1} / ${stages.length} · ${stages[activeStage].label}`;
+      stagePrevious.disabled=activeStage===0;stageNext.textContent=activeStage===stages.length-1?'Continue to Process →':'Next step →';
+      if(!stageDialog.open)stageDialog.showModal();renderPills();cards[index].querySelector('h3').focus({preventScroll:true});
+    }
+    function openProcess(focus=false){
+      closeResponse();if(stageDialog.open)stageDialog.close();guided=true;showStep(focus);
+    }
+    closeStage.addEventListener('click',()=>stageDialog.close());
+    stageDialog.addEventListener('click',event=>{if(event.target===stageDialog)stageDialog.close();});
+    stageDialog.addEventListener('close',()=>{renderPills();stageTrigger?.focus({preventScroll:true});stageTrigger=null;});
+    stagePrevious.addEventListener('click',()=>openStage(Math.max(0,activeStage-1)));
+    stageNext.addEventListener('click',()=>{if(activeStage===stages.length-1)openProcess(true);else openStage(activeStage+1);});
+    const links=makeLinks(),nav=make('div',null,'workflow-step-nav');nav.setAttribute('role','group');nav.setAttribute('aria-label','Process steps');
+    const previous=make('button','Previous','sh-sheet-secondary'),next=make('button','Next step →','sh-sheet-primary');previous.type=next.type='button';
     const status=make('span',null,'call-step-status');status.setAttribute('aria-live','polite');
     nav.append(previous,next);header.insertBefore(links,document.getElementById('processProgress'));header.insertBefore(nav,document.getElementById('processProgress'));
-    header.className+=' call-guide-header';
-    header.insertBefore(status,links);
-    const prospect=process.querySelector('#processLead');
-    if(prospect)header.insertBefore(prospect,links);
+    header.className+=' call-guide-header';header.insertBefore(status,links);
+    const prospect=process.querySelector('#processLead');if(prospect)header.insertBefore(prospect,links);
     function showStep(focus=false){
-      guide.hidden=!guided;nav.hidden=!guided;pills.hidden=!guided;links.hidden=!guided;status.hidden=!guided;
-      const inChecklist=cursor>=cards.length;
-      fieldset.hidden=guided&&!inChecklist;
-      cards.forEach((card,i)=>card.hidden=i!==cursor);
-      checklist.forEach((step,i)=>step.hidden=guided&&cursor!==cards.length+i);
-      pillButtons.forEach((button,i)=>{button.setAttribute('aria-pressed',String(cursor===i));if(cursor===i)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
-      status.textContent=`${cursor+1} / ${labels.length} · ${labels[cursor]}`;
-      previous.disabled=cursor===0;next.disabled=cursor===labels.length-1;closeResponse();
-      if(focus&&guided){const heading=inChecklist?checklist[cursor-cards.length].querySelector('strong'):cards[cursor].querySelector('h3');heading.tabIndex=-1;heading.focus({preventScroll:true});}
+      nav.hidden=!guided;pills.hidden=!guided;links.hidden=!guided;status.hidden=!guided;fieldset.hidden=false;
+      checklist.forEach((step,i)=>step.hidden=guided&&cursor!==i);
+      status.textContent=`${cursor+1} / ${checklist.length} · ${checklist[cursor].querySelector('strong').textContent}`;
+      previous.disabled=cursor===0;next.disabled=cursor===checklist.length-1;renderPills();
+      if(focus&&guided){const heading=checklist[cursor].querySelector('strong');heading.tabIndex=-1;heading.focus({preventScroll:true});}
     }
     previous.addEventListener('click',()=>{cursor=Math.max(0,cursor-1);showStep(true);});
-    next.addEventListener('click',()=>{cursor=Math.min(labels.length-1,cursor+1);showStep(true);});
-    const resetLead=()=>{const id=leadId();if(id!==currentLead){currentLead=id;cursor=0;showStep();}};
+    next.addEventListener('click',()=>{cursor=Math.min(checklist.length-1,cursor+1);showStep(true);});
+    const resetLead=()=>{const id=leadId();if(id!==currentLead){closeResponse();currentLead=id;cursor=0;showStep();if(guided)openStage(0);}};
     window.addEventListener('steadyhands:call-lead-ready',resetLead);
     window.addEventListener('steadyhands:call-guide-step',event=>{
-      const step=Number(event.detail?.checklistStep);
-      if(!Number.isInteger(step)||step<1||step>checklist.length)return;
-      guided=true;cursor=cards.length+step-1;showStep(true);
+      const step=Number(event.detail?.checklistStep);if(!Number.isInteger(step)||step<1||step>checklist.length)return;
+      cursor=step-1;openProcess(true);
     });
-    const selected=document.querySelector('#selectedLeadTop');
-    if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
-    window.addEventListener('steadyhands:process-mode',event=>{guided=!!event.detail?.guided;resetLead();showStep();});
-    renderOpener();showStep();
+    const selected=document.querySelector('#selectedLeadTop');if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
+    window.addEventListener('steadyhands:process-mode',event=>{
+      guided=!!event.detail?.guided;closeResponse();if(stageDialog.open)stageDialog.close();resetLead();showStep();if(guided)openStage(0);
+    });
+    renderOpener();showStep();if(guided)openStage(0);
   }
   window.SteadyHandsCallGuide={mount};
 })();
