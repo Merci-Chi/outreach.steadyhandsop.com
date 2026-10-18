@@ -19,3 +19,21 @@ export function voicemail(base,greeting) {
 }
 export const answered = status => status==='completed';
 export const acceptedCell = (status,call) => answered(status) && call.cellphone_accepted===true;
+
+export function normalizeCellphone(value) {
+ const raw=String(value??'').trim();
+ if(!/^\+?[\d\s().-]+$/.test(raw))return '';
+ let digits=raw.replace(/\D/g,'');
+ if(!raw.startsWith('+')){
+  if(digits.length===10)digits='1'+digits;
+  else if(digits.length!==11||!digits.startsWith('1'))return '';
+ }
+ const phone='+'+digits;
+ return /^\+[1-9]\d{7,14}$/.test(phone)?phone:'';
+}
+export function resolveRoutingSettings(saved,profilePhone) {
+ // An explicit saved choice, especially disabled routing, always wins.
+ if(saved)return {...saved,cellphone_number:normalizeCellphone(saved.cellphone_number)};
+ const phone=normalizeCellphone(profilePhone);
+ return phone?{enabled:true,cellphone_number:phone,outreach_ring_seconds:15,cellphone_ring_seconds:20}:null;
+}

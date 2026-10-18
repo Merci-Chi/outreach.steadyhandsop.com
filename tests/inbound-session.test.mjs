@@ -31,3 +31,25 @@ test('routing settings always save to the authenticated user',async()=>{
 test('voicemail inbox and audio access cannot cross agent ownership',async()=>{
  const s=setup();const inbox=await (await s.request('settings')).json();assert.equal(inbox.calls.length,0);assert.equal((await s.request('play_voicemail',{call_sid:'other-call'})).status,404);
 });
+
+test('profile cellphone enables incoming token without separate routing settings',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone='(702) 555-0102';
+ const settings=await (await s.request('settings')).json();assert.equal(settings.routing_source,'profile');assert.equal(settings.settings.cellphone_number,'+17025550102');assert.equal(settings.settings.enabled,true);
+ assert.equal((await s.request('token')).status,200);assert.equal(s.rows.outreach_inbound_settings.length,0);
+});
+test('explicit disabled routing is preserved despite a valid profile cellphone',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;s.rows.callcenter_profiles[0].phone='+17025550103';
+ assert.equal((await s.request('token')).status,403);
+ const settings=await (await s.request('settings')).json();assert.equal(settings.routing_source,'settings');assert.equal(settings.settings.enabled,false);
+});
+test('profile fallback rejects invalid numbers and every managed business number',async()=>{
+ for(const phone of ['anonymous','+17025550101','+17025550109']){
+  const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone=phone;
+  s.rows.callcenter_phone_numbers.push({id:'other',phone_number:'+17025550109'});
+  assert.equal((await s.request('token')).status,403);
+ }
+});
+test('routing settings accept a formatted personal cellphone and store E164',async()=>{
+ const s=setup();assert.equal((await s.request('save_settings',{cellphone_number:'(702) 555-0103',voicemail_greeting:'Hello',enabled:true})).status,200);
+ assert.equal(s.rows.outreach_inbound_settings[0].cellphone_number,'+17025550103');
+});

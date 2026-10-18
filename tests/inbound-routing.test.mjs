@@ -25,3 +25,17 @@ test('successfully answered browser calls stop rather than falling through',()=>
 test('business greeting escapes markup and records with a protected callback',()=>{
  const xml=voicemail(base,'Hello <friend> & welcome');assert.match(xml,/Hello &lt;friend&gt; &amp; welcome/);assert.match(xml,/maxLength="120"/);assert.match(xml,/playBeep="true"/);assert.match(xml,/stage=recorded/);assert.match(xml,/recordingStatusCallbackEvent="completed"/);
 });
+
+const {normalizeCellphone,resolveRoutingSettings}=await import('../supabase/functions/twilio-inbound/routing.mjs');
+test('personal phone normalization accepts formatted US and explicit international numbers only',()=>{
+ assert.equal(normalizeCellphone('(702) 555-0102'),'+17025550102');
+ assert.equal(normalizeCellphone('1-702-555-0102'),'+17025550102');
+ assert.equal(normalizeCellphone('+44 20 7946 0958'),'+442079460958');
+ for(const invalid of ['','anonymous','client:agent','7025550102 ext 4','00442079460958'])assert.equal(normalizeCellphone(invalid),'');
+});
+test('saved routing wins over profile, including an explicit disabled choice',()=>{
+ assert.equal(resolveRoutingSettings(null,'(702) 555-0102').cellphone_number,'+17025550102');
+ assert.equal(resolveRoutingSettings(null,'invalid'),null);
+ const saved=resolveRoutingSettings({enabled:false,cellphone_number:'+17025550103'},'+17025550102');
+ assert.equal(saved.enabled,false);assert.equal(saved.cellphone_number,'+17025550103');
+});
