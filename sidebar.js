@@ -71,4 +71,4 @@
 })();
 
 // Inbound reception is enabled explicitly by the signed-in user on each page.
-import('./inbound-calling.js?v=20261018-inbound-profile-phone').catch(error => console.warn('Incoming calling module unavailable:',error));
+import('./inbound-calling.js?v=20261018-twilio-only').catch(error => console.warn('Incoming calling module unavailable:',error));

@@ -17,39 +17,32 @@ function setup({active=true,validAuth=true}={}){
  const request=(action,body={})=>handler(new Request('https://example.supabase.co/functions/v1/twilio-inbound-session',{method:'POST',headers:{Authorization:'Bearer test','Content-Type':'application/json'},body:JSON.stringify({action,...body})}));
  return {rows,request,issued:()=>issued,access:()=>dbAccess};
 }
-test('incoming-only token uses the authenticated agent identity',async()=>{
- const s=setup();const result=await s.request('token');assert.equal(result.status,200);assert.equal((await result.json()).token,'test-incoming-token');assert.equal(s.issued().options.identity,identity('agent'));assert.equal(s.issued().grant.options.incomingAllow,true);assert.equal(s.issued().grant.options.outgoingApplicationSid,undefined);
+test('incoming-only token uses the authenticated identity without a personal phone',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings=[];
+ const result=await s.request('token');assert.equal(result.status,200);assert.equal((await result.json()).token,'test-incoming-token');assert.equal(s.issued().options.identity,identity('agent'));assert.equal(s.issued().grant.options.incomingAllow,true);assert.equal(s.issued().grant.options.outgoingApplicationSid,undefined);
 });
-test('disabled agent cannot get a token or change routing',async()=>{
- const s=setup({active:false});assert.equal((await s.request('token')).status,403);assert.equal((await s.request('save_settings',{cellphone_number:'+17025550103',voicemail_greeting:'Hello',enabled:true})).status,403);
+test('disabled agents and invalid logins are denied',async()=>{
+ const disabled=setup({active:false});assert.equal((await disabled.request('token')).status,403);assert.equal((await disabled.request('save_settings',{voicemail_greeting:'Hello',enabled:true})).status,403);
+ const invalid=setup({validAuth:false});assert.equal((await invalid.request('settings')).status,401);assert.equal(invalid.access(),0);
 });
-test('invalid login is rejected before database reads',async()=>{const s=setup({validAuth:false});assert.equal((await s.request('settings')).status,401);assert.equal(s.access(),0)});
-test('business numbers cannot be used as forwarding cellphone',async()=>{const s=setup();assert.equal((await s.request('save_settings',{cellphone_number:'+17025550101',voicemail_greeting:'Hello',enabled:true})).status,400)});
-test('routing settings always save to the authenticated user',async()=>{
- const s=setup();assert.equal((await s.request('save_settings',{user_id:'other',cellphone_number:'+17025550103',voicemail_greeting:'Hello',enabled:true})).status,200);assert.equal(s.rows.outreach_inbound_settings[0].user_id,'agent');assert.equal(s.rows.outreach_inbound_settings[0].cellphone_number,'+17025550103');
+test('voicemail settings save without collecting a personal phone and ignore old client phone values',async()=>{
+ const s=setup();const result=await s.request('save_settings',{user_id:'other',cellphone_number:'+17025550103',voicemail_greeting:'Hello',enabled:true});
+ assert.equal(result.status,200);const saved=s.rows.outreach_inbound_settings[0];assert.equal(saved.user_id,'agent');assert.equal(saved.cellphone_number,null);assert.equal(saved.voicemail_greeting,'Hello');
 });
-test('voicemail inbox and audio access cannot cross agent ownership',async()=>{
- const s=setup();const inbox=await (await s.request('settings')).json();assert.equal(inbox.calls.length,0);assert.equal((await s.request('play_voicemail',{call_sid:'other-call'})).status,404);
-});
-
-test('profile cellphone enables incoming token without separate routing settings',async()=>{
- const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone='(702) 555-0102';
- const settings=await (await s.request('settings')).json();assert.equal(settings.routing_source,'profile');assert.equal(settings.settings.cellphone_number,'+17025550102');assert.equal(settings.settings.enabled,true);
- assert.equal((await s.request('token')).status,200);assert.equal(s.rows.outreach_inbound_settings.length,0);
-});
-test('explicit disabled routing is preserved despite a valid profile cellphone',async()=>{
+test('explicit disabled routing is retained',async()=>{
  const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;s.rows.callcenter_profiles[0].phone='+17025550103';
- assert.equal((await s.request('token')).status,403);
- const settings=await (await s.request('settings')).json();assert.equal(settings.routing_source,'settings');assert.equal(settings.settings.enabled,false);
+ assert.equal((await s.request('token')).status,403);const data=await (await s.request('settings')).json();assert.equal(data.settings.enabled,false);assert.equal(data.settings.cellphone_number,null);
 });
-test('profile fallback rejects invalid numbers and every managed business number',async()=>{
- for(const phone of ['anonymous','+17025550101','+17025550109']){
-  const s=setup();s.rows.outreach_inbound_settings=[];s.rows.callcenter_profiles[0].phone=phone;
-  s.rows.callcenter_phone_numbers.push({id:'other',phone_number:'+17025550109'});
-  assert.equal((await s.request('token')).status,403);
- }
+test('legacy settings and profile numbers are never returned as forwarding destinations',async()=>{
+ const s=setup();s.rows.callcenter_profiles[0].phone='+17025550103';const data=await (await s.request('settings')).json();
+ assert.equal(data.routing_source,'twilio');assert.equal(data.settings.cellphone_number,null);assert.equal((await s.request('token')).status,200);
 });
-test('routing settings accept a formatted personal cellphone and store E164',async()=>{
- const s=setup();assert.equal((await s.request('save_settings',{cellphone_number:'(702) 555-0103',voicemail_greeting:'Hello',enabled:true})).status,200);
- assert.equal(s.rows.outreach_inbound_settings[0].cellphone_number,'+17025550103');
+test('an approved assigned Twilio number is still required',async()=>{
+ const s=setup();s.rows.callcenter_phone_assignments=[];assert.equal((await s.request('token')).status,403);
+});
+test('voicemail remains private to its assigned user',async()=>{
+ const s=setup();assert.equal((await (await s.request('settings')).json()).calls.length,0);assert.equal((await s.request('play_voicemail',{call_sid:'other-call'})).status,404);
+});
+test('an empty greeting cannot replace voicemail settings',async()=>{
+ const s=setup();assert.equal((await s.request('save_settings',{voicemail_greeting:'',enabled:true})).status,400);
 });

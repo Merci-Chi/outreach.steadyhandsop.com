@@ -10,35 +10,16 @@ function endpoint(base, stage, parent='') {
 function browserDial(base, call, settings={}) {
   return response(`<Dial answerOnBridge="true" timeout="${settings.outreach_ring_seconds||15}" action="${escapeXML(endpoint(base,'browser-ended'))}" method="POST"><Client><Identity>${escapeXML(identity(call.user_id))}</Identity><Parameter name="businessNumber" value="${escapeXML(call.to_number)}"/></Client></Dial>`);
 }
-function cellphoneDial(base, call, settings) {
-  return response(`<Dial answerOnBridge="true" timeout="${settings.cellphone_ring_seconds||20}" callerId="${escapeXML(call.to_number)}" action="${escapeXML(endpoint(base,'cell-ended'))}" method="POST"><Number url="${escapeXML(endpoint(base,'screen',call.call_sid))}" method="POST">${escapeXML(settings.cellphone_number)}</Number></Dial>`);
-}
-function screen(base,parent) {
-  return response(`<Gather numDigits="1" timeout="7" action="${escapeXML(endpoint(base,'accept-cell',parent))}" method="POST"><Say>Steady Hands callback. Press 1 to accept this call.</Say></Gather><Hangup/>`);
-}
 function voicemail(base,greeting) {
   return response(`<Say>${escapeXML(greeting||'Thank you for calling Steady Hands. Please leave your name, number, and message after the beep.')}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
 }
 const answered = status => status==='completed';
-const acceptedCell = (status,call) => answered(status) && call.cellphone_accepted===true;
 
-function normalizeCellphone(value) {
- const raw=String(value??'').trim();
- if(!/^\+?[\d\s().-]+$/.test(raw))return '';
- let digits=raw.replace(/\D/g,'');
- if(!raw.startsWith('+')){
-  if(digits.length===10)digits='1'+digits;
-  else if(digits.length!==11||!digits.startsWith('1'))return '';
- }
- const phone='+'+digits;
- return /^\+[1-9]\d{7,14}$/.test(phone)?phone:'';
+function resolveRoutingSettings(saved) {
+ // Twilio rings the assigned browser identity; personal numbers are never used.
+ return {enabled:true,outreach_ring_seconds:20,...saved,cellphone_number:null};
 }
-function resolveRoutingSettings(saved,profilePhone) {
- // An explicit saved choice, especially disabled routing, always wins.
- if(saved)return {...saved,cellphone_number:normalizeCellphone(saved.cellphone_number)};
- const phone=normalizeCellphone(profilePhone);
- return phone?{enabled:true,cellphone_number:phone,outreach_ring_seconds:15,cellphone_ring_seconds:20}:null;
-}
+
 
 const xml=(body:string,status=200)=>new Response(body,{status,headers:{'Content-Type':'text/xml; charset=utf-8'}});
 Deno.serve(async req=>{
@@ -83,34 +64,17 @@ Deno.serve(async req=>{
   }
   if(call.status==='completed'||call.status==='voicemail')return xml(hangup());
   const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle());
-  const forwardingProfile=saved?null:await checked(await db.from('callcenter_profiles').select('phone,disabled_at').eq('user_id',call.user_id).maybeSingle());
-  let settings=resolveRoutingSettings(saved,forwardingProfile&&!forwardingProfile.disabled_at?forwardingProfile.phone:null);
-  if(settings?.cellphone_number){
-   const managed=await checked(await db.from('callcenter_phone_numbers').select('id').eq('phone_number',settings.cellphone_number).limit(1));
-   if(managed?.length)settings=null; // Never send a call back to any managed business number.
-  }
+  const settings=resolveRoutingSettings(saved);
   const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
   if(stage==='incoming')return settings?.enabled?xml(browserDial(base,call,settings)):mailbox();
   if(stage==='browser-ended'){
    if(answered(form.DialCallStatus)){await patch({status:'completed',answered_via:'outreach'});return xml(hangup());}
-   if(settings?.enabled&&settings.cellphone_number&&settings.cellphone_number!==call.to_number){await patch({status:'forwarding'});return xml(cellphoneDial(base,call,settings));}
    return mailbox();
   }
-  if(stage==='screen'){
-   await patch({forwarded_sid:form.CallSid,cellphone_accepted:false});
-   return xml(screen(base,callSid));
-  }
-  if(stage==='accept-cell'){
-   if(form.Digits!=='1'||call.forwarded_sid!==form.CallSid)return xml(hangup());
-   await patch({cellphone_accepted:true});
-   // Ending the screening TwiML without Hangup bridges the original caller.
-   return xml(response('<Say>Connecting.</Say>'));
-  }
-  if(stage==='cell-ended'){
-   if(acceptedCell(form.DialCallStatus,call)){await patch({status:'completed',answered_via:'cellphone'});return xml(hangup());}
-   return mailbox();
-  }
+  // Old in-flight cellphone callbacks cannot bridge a personal-number leg.
+  if(stage==='screen'||stage==='accept-cell')return xml(hangup());
+  if(stage==='cell-ended')return mailbox();
   return new Response('Unknown stage',{status:400});
  }catch(error){console.error('Inbound routing failed:',error);return xml(response('<Say>We cannot connect your call right now. Please try again shortly.</Say><Hangup/>'),500);}
 });
