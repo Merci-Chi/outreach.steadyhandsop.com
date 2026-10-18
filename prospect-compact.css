@@ -1,0 +1,71 @@
+/* Compact prospect details on Outreach and Call, including the mobile stack.
+   Existing call controls, tool tiles and the process panel keep their styles. */
+body.page-outreach #refOutreachMain .ref-lead-card {
+  min-height: 0;
+  padding: 14px 16px;
+}
+body.page-outreach #refOutreachMain .ref-lead-identity {
+  display: block;
+  min-height: 0;
+  text-align: left;
+}
+body.page-outreach #refOutreachMain .ref-lead-identity-copy {
+  width: 100%;
+  min-width: 0;
+}
+body.page-outreach #refOutreachMain .ref-lead-identity h2 {
+  margin: 0 0 5px;
+  font-size: clamp(18px, 1.5vw, 22px);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+body.page-outreach #refOutreachMain .ref-lead-card .ref-phone {
+  font-size: clamp(20px, 1.6vw, 25px);
+  line-height: 1.2;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  font-variant-numeric: tabular-nums;
+}
+body.page-outreach #refOutreachMain .ref-lead-card .ref-status {
+  justify-content: flex-start;
+  gap: 7px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+body.page-outreach #refOutreachMain .ref-lead-card .ref-line {
+  margin: 9px 0;
+}
+body.page-outreach #refOutreachMain .ref-time-block {
+  display: block;
+}
+body.page-outreach #refOutreachMain .ref-lead-card .ref-muted,
+body.page-outreach #refOutreachMain .ref-active-clock > span,
+body.page-outreach #refOutreachMain .ref-lead-card .ref-call-label {
+  font-size: 12px;
+}
+body.page-outreach #refOutreachMain .ref-lead-card .ref-time,
+body.page-outreach #refOutreachMain .ref-active-clock strong {
+  font-size: clamp(18px, 1.5vw, 23px);
+  line-height: 1.25;
+  margin: 3px 0;
+  overflow-wrap: normal;
+}
+body.page-outreach #refOutreachMain .ref-time-block p {
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 4px 0 0;
+}
+body.page-outreach #refOutreachMain .ref-attempts {
+  gap: 10px;
+  font-size: 12px;
+}
+body.page-outreach #refOutreachMain .ref-attempts span {
+  padding: 2px 12px;
+  font-size: 15px;
+}
+body.page-outreach #refOutreachMain .ref-active-clock {
+  text-align: left;
+  gap: 2px;
+}
