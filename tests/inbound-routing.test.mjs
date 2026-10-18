@@ -7,9 +7,9 @@ test('browser leg rings only the assigned agent identity',()=>{
  const xml=browserDial(base,call,resolveRoutingSettings(null));
  assert(xml.includes('<Identity>'+identity('agent-id')+'</Identity>'));assert.match(xml,/stage=browser-ended/);assert.doesNotMatch(xml,/<Number/);
 });
-test('Twilio-only defaults need no personal number and saved disabled routing wins',()=>{
+test('Twilio-only defaults need no personal number and Admin routing is not blocked by legacy disabled settings',()=>{
  const defaults=resolveRoutingSettings(null);assert.equal(defaults.enabled,true);assert.equal(defaults.cellphone_number,null);
- const saved=resolveRoutingSettings({enabled:false,cellphone_number:'+17025550102'});assert.equal(saved.enabled,false);assert.equal(saved.cellphone_number,null);
+ const saved=resolveRoutingSettings({enabled:false,cellphone_number:'+17025550102'});assert.equal(saved.enabled,true);assert.equal(saved.cellphone_number,null);
 });
 test('answered browser calls stop rather than falling through',()=>{assert.equal(answered('completed'),true);assert.equal(answered('no-answer'),false)});
 test('business voicemail escapes markup and records through signed callbacks',()=>{

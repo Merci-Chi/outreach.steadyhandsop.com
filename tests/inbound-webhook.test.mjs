@@ -29,8 +29,8 @@ test('busy, failed and unanswered browser calls go straight to voicemail despite
 test('successful browser conversation hangs up without voicemail',async()=>{
  const s=setup();await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'completed'})).text();assert.doesNotMatch(xml,/<Number|<Record/);assert.equal(s.rows.outreach_inbound_calls[0].answered_via,'outreach');
 });
-test('explicit disabled routing sends to business voicemail',async()=>{
- const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;const xml=await (await s.request()).text();assert.match(xml,/<Record /);assert.doesNotMatch(xml,/<Client>|<Number/);
+test('Admin app destination rings despite a legacy per-user disabled setting',async()=>{
+ const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;const xml=await (await s.request()).text();assert.match(xml,/<Client>/);assert.doesNotMatch(xml,/<Number/);
 });
 test('stale cellphone callbacks cannot accept or bridge a personal-number leg',async()=>{
  const s=setup();await s.request();for(const stage of ['screen','accept-cell']){
@@ -47,4 +47,27 @@ test('disabled numbers cannot create incoming records',async()=>{
 test('completed recordings stay attached to the original incoming call',async()=>{
  const s=setup();await s.request();await s.request('recorded',{RecordingStatus:'completed',RecordingSid:'RE'+'3'.repeat(32),RecordingDuration:'12'});
  assert.equal(s.rows.outreach_inbound_calls[0].status,'voicemail');assert.equal(s.rows.outreach_inbound_calls[0].recording_duration,12);
+});
+
+test('Admin Phone forwarding rings only its explicit number and snapshots that destination',async()=>{
+ const s=setup();Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17025550109'});
+ const xml=await (await s.request()).text();assert.match(xml,/>\+17025550109<\/Number>/);assert.doesNotMatch(xml,/<Client>/);
+ assert.equal(s.rows.outreach_inbound_calls[0].route_destination,'forward');assert.equal(s.rows.outreach_inbound_calls[0].forward_number,'+17025550109');
+ // Admin edits apply to later calls, not this active phone leg.
+ s.rows.callcenter_phone_numbers[0].inbound_destination='app';
+ const screen=await (await s.request('screen',{CallSid:child},'&parent='+parent)).text();assert.match(screen,/Press 1/);
+ await s.request('accept-cell',{CallSid:child,Digits:'1'},'&parent='+parent);
+ const ended=await (await s.request('phone-ended',{DialCallStatus:'completed'})).text();assert.doesNotMatch(ended,/<Record/);assert.equal(s.rows.outreach_inbound_calls[0].answered_via,'phone');
+});
+test('unaccepted forwarding answers and failed calls go to business voicemail',async()=>{
+ for(const status of ['completed','no-answer','busy','failed']){
+  const s=setup();Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17025550109'});await s.request();
+  assert.match(await (await s.request('phone-ended',{DialCallStatus:status})).text(),/<Record /);
+ }
+});
+test('forwarding routes reject self, managed, and malformed destinations without placing a call',async()=>{
+ for(const forward of ['+17025550101','invalid','+17025550108']){
+  const s=setup();s.rows.callcenter_phone_numbers.push({id:'managed',phone_number:'+17025550108'});Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:forward});
+  const response=await s.request();assert.equal(response.status,500);assert.doesNotMatch(await response.text(),/<Number|<Client>/);assert.equal(s.rows.outreach_inbound_calls.length,0);
+ }
 });
