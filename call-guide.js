@@ -46,7 +46,8 @@
     const make=(tag,text,className)=>{const el=document.createElement(tag);if(text)el.textContent=text;if(className)el.className=className;return el;};
     const header=process.querySelector('header'),fieldset=process.querySelector('#processSteps');
     const checklist=[...fieldset.querySelectorAll('ol > li')];
-    let guided=document.body.classList.contains('page-call'),cursor=0,activeStage=0,opener=0,currentLead=leadId(),stageTrigger=null,responseTrigger=null;
+    const isCall=document.body.classList.contains('page-call');
+    let guided=true,cursor=0,activeStage=0,opener=0,currentLead=leadId(),stageTrigger=null,responseTrigger=null;
     const allLinks=[];
     const stageDialog=make('dialog',null,'call-guide-dialog');stageDialog.id='call-conversation-popup';
     stageDialog.setAttribute('aria-labelledby','call-conversation-title');
@@ -134,7 +135,7 @@
     }
     previous.addEventListener('click',()=>{cursor=Math.max(0,cursor-1);showStep(true);});
     next.addEventListener('click',()=>{cursor=Math.min(checklist.length-1,cursor+1);showStep(true);});
-    const resetLead=()=>{const id=leadId();if(id!==currentLead){closeResponse();currentLead=id;cursor=0;showStep();if(guided)openStage(0);}};
+    const resetLead=()=>{const id=leadId();if(id!==currentLead){closeResponse();currentLead=id;cursor=0;showStep();if(isCall)openStage(0);}};
     window.addEventListener('steadyhands:call-lead-ready',resetLead);
     window.addEventListener('steadyhands:call-guide-step',event=>{
       const step=Number(event.detail?.checklistStep);if(!Number.isInteger(step)||step<1||step>checklist.length)return;
@@ -142,9 +143,9 @@
     });
     const selected=document.querySelector('#selectedLeadTop');if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
     window.addEventListener('steadyhands:process-mode',event=>{
-      guided=!!event.detail?.guided;closeResponse();if(stageDialog.open)stageDialog.close();resetLead();showStep();if(guided)openStage(0);
+      guided=true;closeResponse();if(stageDialog.open)stageDialog.close();resetLead();showStep();if(event.detail?.guided)openStage(0);
     });
-    renderOpener();showStep();if(guided)openStage(0);
+    renderOpener();showStep();if(isCall)openStage(0);
   }
   window.SteadyHandsCallGuide={mount};
 })();

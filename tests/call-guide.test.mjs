@@ -38,7 +38,7 @@ function setup({callPage=true}={}){
   const li=new Node('li'),strong=new Node('strong'),check=new Node('input');strong.textContent=label;check.checked=false;li.append(strong,check);ol.append(li);
  }
  root.classList={contains:name=>callPage&&name==='page-call'};
- document={createElement:tag=>new Node(tag),getElementById:id=>root.querySelector('#'+id),querySelector:selector=>selector==='#selectedLeadTop'?selected:selector==='.call-back-nav'?(callPage?back:null):root.querySelector(selector),body:root};
+ document={createElement:tag=>new Node(tag),getElementById:id=>root.querySelector('#'+id),querySelector:selector=>selector==='#selectedLeadTop'?selected:selector==='.call-back-nav'?back:root.querySelector(selector),body:root};
  const listeners={},window={addEventListener(type,fn){(listeners[type]??=[]).push(fn);}};let lead='one',observer;
  vm.runInNewContext(source,{window,document,MutationObserver:class{constructor(fn){observer=fn;}observe(){}}});window.SteadyHandsCallGuide.mount({process,leadId:()=>lead});
  const dispatch=(type,detail)=>{for(const fn of listeners[type]||[])fn({detail});};
@@ -92,11 +92,18 @@ test('new leads restart the opener and Process; textable-number shortcut opens c
  s.dispatch('steadyhands:call-guide-step',{checklistStep:3});assert.equal(s.dialog.open,false);assert.equal(s.pills[6].getAttribute('aria-current'),'step');assert.equal(s.ol.children[2].hidden,false);
  s.dispatch('steadyhands:call-guide-step',{checklistStep:20});assert.equal(s.ol.children[2].hidden,false);
 });
-test('Outreach overview keeps its checklist; regular-call mode opens the guide as a popup',()=>{
- const s=setup({callPage:false});assert.equal(s.dialog.open,false);assert(s.ol.children.every(li=>!li.hidden));
+test('main Outreach exposes the same top pills, popup scripts, objections, and guided Process',()=>{
+ const s=setup({callPage:false});assert.equal(s.dialog.open,false);assert.equal(s.pills.length,7);
+ assert.equal(s.back.children[1].hidden,false);assert.equal(s.pills[6].getAttribute('aria-current'),'step');
+ assert.equal(s.header.querySelector('.workflow-step-nav').hidden,false);assert.equal(s.header.querySelector('.call-objection-links').hidden,false);
+ assert.equal(s.ol.children.filter(li=>!li.hidden).length,1);
+ s.pills[2].click();assert(s.dialog.open);assert.equal(s.cards[2].hidden,false);
+ s.pills[6].click();assert.equal(s.dialog.open,false);s.next.click();assert.equal(s.ol.children[1].hidden,false);
+ const response=s.root.querySelector('#call-objection-response');s.header.querySelectorAll('a')[0].click();assert(response.open);response.close();
+ s.changeLead('another');assert.equal(s.dialog.open,false);assert.equal(s.ol.children[0].hidden,false);
  s.dispatch('steadyhands:process-mode',{guided:true});assert(s.dialog.open);
- s.dispatch('steadyhands:process-mode',{guided:false});assert.equal(s.dialog.open,false);assert.equal(s.fieldset.hidden,false);assert(s.ol.children.every(li=>!li.hidden));
+ s.dispatch('steadyhands:process-mode',{guided:false});assert.equal(s.dialog.open,false);assert.equal(s.header.querySelector('.workflow-step-nav').hidden,false);assert.equal(s.back.children[1].hidden,false);
 });
 test('both workspaces load the guide before workflow initialization',async()=>{
- for(const name of ['call.html','index.html']){const html=await readFile(new URL('../'+name,import.meta.url),'utf8');assert(html.indexOf('call-guide.js?')<html.indexOf('outreach-workflow.js?'));}
+ for(const name of ['call.html','index.html']){const html=await readFile(new URL('../'+name,import.meta.url),'utf8');assert(html.indexOf('call-guide.js?')<html.indexOf('outreach-workflow.js?'));assert.match(html,/class="call-back-nav"/);}
 });
