@@ -1,0 +1,48 @@
+/* Compact process navigation and suggestion pills; dialer controls are untouched. */
+.outreach-process > header { flex-wrap: wrap; }
+.outreach-process > header h2 { margin-right: auto; }
+.outreach-process .workflow-step-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.outreach-process .workflow-step-nav[hidden] { display: none; }
+.outreach-process .workflow-step-nav button {
+  width: auto;
+  min-height: 32px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.outreach-process .workflow-step-nav .sh-sheet-secondary {
+  background: transparent;
+  color: #1468b2;
+  border-color: #cbd9e9;
+}
+#keywordActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+}
+#keywordActions > :is(button, .suggested-action-empty) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 64px;
+  min-height: 30px;
+  border: 1px solid #cbd9e9;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+#keywordActions > button { cursor: pointer; }
+:is(#keywordFeedback, #transcriptFeedback, #processFeedback):empty { display: none; }
+html[data-theme=dark] .workflow-step-nav .sh-sheet-secondary { color: #adcfff; border-color: #38516d; }
+html[data-theme=dark] #keywordActions > :is(button, .suggested-action-empty) { border-color: #38516d; }

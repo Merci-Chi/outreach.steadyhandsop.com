@@ -1,4 +1,4 @@
-/* Workflow additions use existing classes; no CSS or dialer styling is changed. */
+/* Outreach and call workflow behavior. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -36,11 +36,12 @@
   const process=document.querySelector('.outreach-process');
   const steps=[...process.querySelectorAll('ol > li')];
   let guided=document.body.classList.contains('page-call'), cursor=0;
-  const nav=make('div',null,'sh-tag-options');
+  const nav=make('div',null,'workflow-step-nav');
+  nav.setAttribute('role','group');nav.setAttribute('aria-label','Process steps');
   const previous=make('button','Previous','sh-sheet-secondary');previous.type='button';
   const next=make('button','Next step →','sh-sheet-primary');next.type='button';
-  const stepStatus=make('p',null,'sh-sheet-help');stepStatus.setAttribute('aria-live','polite');
-  nav.append(previous,next);process.append(stepStatus,nav);
+  const stepStatus=make('span',null,'process-sr-only');stepStatus.setAttribute('aria-live','polite');
+  nav.append(previous,next,stepStatus);process.querySelector('header').insertBefore(nav,$('processProgress'));
   function showStep(direction=0) {
     steps.forEach((step,i)=>{step.hidden=guided&&i!==cursor;});
     nav.hidden=!guided;stepStatus.hidden=!guided;
@@ -126,15 +127,14 @@
 
   // All transcript state is scoped to the selected lead and stays in memory.
   const history=$('transcriptHistory'), feedback=$('transcriptFeedback'), actions=$('keywordActions');
-  let current=leadId(), entries=[], capture=null, captureRunning=false, callActive=$('refEndCall')?.dataset.callState==='active'||!!document.querySelector('#refRegularCallTracker:not([hidden])');
+  let current=leadId(), entries=[], callActive=$('refEndCall')?.dataset.callState==='active'||!!document.querySelector('#refRegularCallTracker:not([hidden])');
   const applied=new Set(), imported=new Set();
   let syncTimer=null, since=null, syncEpoch=0, syncBusy=false;
-  function stopCapture() {captureRunning=false;try{capture?.stop();}catch{}capture=null;$('transcriptCapture').textContent='Start microphone transcript';}
   function resetLead() {
     const id=leadId();if(id===current)return;
-    stopCapture();stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';actions.replaceChildren();cursor=0;showStep();
-    $('keywordFeedback').textContent='Suggestions appear when a relevant keyword is mentioned.';
-    $('refTranscriptStatus').textContent='No transcript captured yet';
+    stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();cursor=0;showStep();feedback.textContent='';
+    $('keywordFeedback').textContent='';
+    $('refTranscriptStatus').textContent='';
   }
   function appendEntry({id,speaker,text,final=true}) {
     resetLead();
@@ -166,26 +166,8 @@
         finally{button.disabled=false;}
       };
     }
-    if(!suggested.length)$('keywordFeedback').textContent='No new keyword actions to review.';
+    if(!suggested.length){const empty=make('span',null,'suggested-action-empty');empty.setAttribute('aria-hidden','true');actions.append(empty);}
   }
-  $('transcriptAdd').onclick=()=>{
-    if(!leadId()){feedback.textContent='Select a prospect first.';return;}
-    const input=$('transcriptText');appendEntry({id:leadId(),speaker:$('transcriptSpeaker').value,text:input.value});input.value='';
-  };
-  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Recognition){$('transcriptCapture').disabled=true;feedback.textContent='Microphone transcription is unavailable in this browser. Enter the prospect’s words above.';}
-  $('transcriptCapture').onclick=()=>{
-    if(captureRunning){stopCapture();return;}
-    if(!callActive){feedback.textContent='Start the call before enabling microphone transcription.';return;}
-    const id=leadId();if(!id)return;
-    capture=new Recognition();capture.continuous=true;capture.interimResults=false;capture.lang='en-US';
-    capture.onresult=event=>{
-      for(let i=event.resultIndex;i<event.results.length;i++)if(event.results[i].isFinal)appendEntry({id,speaker:'agent',text:event.results[i][0].transcript});
-    };
-    capture.onerror=event=>{feedback.textContent='Microphone transcript stopped: '+event.error;stopCapture();};
-    capture.onend=()=>{captureRunning=false;$('transcriptCapture').textContent='Start microphone transcript';};
-    try{capture.start();captureRunning=true;$('transcriptCapture').textContent='Stop microphone transcript';feedback.textContent='Capturing your microphone as You. Remote caller speech requires transcript entry.';}catch(error){feedback.textContent=error.message;stopCapture();}
-  };
   window.addEventListener('steadyhands:transcript',event=>appendEntry(event.detail||{}));
   window.addEventListener('steadyhands:call-lead-ready',resetLead);
   async function refreshTranscript() {
@@ -195,13 +177,13 @@
     try {
       const row=await core.fetchTranscript(window.steadyHandsCRMClient,id,since);
       if(epoch!==syncEpoch||leadId()!==id)return;
-      if(!row){feedback.textContent='No saved transcript is available for this call yet. You can add entries manually.';return;}
+      if(!row)return;
       const segments=core.transcriptSegments(row);
       segments.forEach((segment,i)=>{
         const key=JSON.stringify([row.id,i,segment.speaker,segment.text]);
         if(!imported.has(key)){imported.add(key);appendEntry({id,...segment});}
       });
-      feedback.textContent='Saved transcript synced. Unlabelled speech is shown as Transcript and does not create keyword actions.';
+      feedback.textContent='';
     }catch(error){if(epoch===syncEpoch)feedback.textContent=error.message;}
     finally{syncBusy=false;}
   }
@@ -209,14 +191,13 @@
   function callState(event) {
     const nextActive=!!event.detail?.active;
     if(nextActive&&!callActive){stopSync();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,5000);refreshTranscript();}
-    if(!nextActive){stopCapture();if(callActive)refreshTranscript();if(syncTimer)clearInterval(syncTimer);syncTimer=null;}
+    if(!nextActive){if(callActive)refreshTranscript();if(syncTimer)clearInterval(syncTimer);syncTimer=null;}
     callActive=nextActive;
   }
-  $('transcriptRefresh').onclick=refreshTranscript;
   window.addEventListener('steadyhands:call-state',callState);
   window.addEventListener('steadyhands:regular-call-state',callState);
   const selected=$('selectedLeadTop');if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
   window.addEventListener('steadyhands:lead-disposition',event=>{if(event.detail?.id===current&&event.detail.action==='dnc'){applied.add('dnc');renderActions();}});
-  window.addEventListener('pagehide',()=>{stopCapture();stopSync();});
+  window.addEventListener('pagehide',()=>{stopSync();});
   icons();
 })();
