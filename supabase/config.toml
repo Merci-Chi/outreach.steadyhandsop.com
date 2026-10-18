@@ -4,3 +4,11 @@ verify_jwt = false
 
 [functions.twilio-inbound-session]
 verify_jwt = false
+
+# Browser JWT is checked by the gateway and again against Supabase Auth.
+[functions.twilio-voice-token]
+verify_jwt = true
+
+# Twilio sends a signed form POST, not a Supabase JWT.
+[functions.twilio-voice-outbound]
+verify_jwt = false
