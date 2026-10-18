@@ -58,6 +58,16 @@ For recording privacy, confirm **Voice → General Settings → Enforce HTTP Aut
 
 Open Outreach, sign in, and click **Incoming calls** (lower right).
 
+If no separate routing settings have been saved, the assigned salesperson's
+personal phone in **Profile & Personal Info** is now used automatically. The panel
+identifies this as the profile number. Ten-digit US numbers are normalized to +1;
+other countries require an explicit +country code. A managed Twilio number is
+never accepted as a forwarding cellphone. The incoming caller's `From` number is
+kept in the inbox; it is never treated as a forwarding destination.
+
+Saved routing settings take priority, including an explicit disabled setting. To
+override the profile phone or customize voicemail:
+
 1. Open **Cellphone & voicemail settings**.
 2. Enter your real cellphone with country code, for example `+17025550101`. Do not enter a Twilio business number; the server rejects managed numbers to avoid forwarding loops.
 3. Check **Enable Outreach → cellphone → voicemail**.
@@ -92,3 +102,18 @@ Real calls incur Twilio usage charges. Trial accounts require verified test numb
 - **Recording not ready:** Wait for Twilio's completed recording callback and refresh. Audio is retrieved server-side with Twilio authentication and is returned only to the assigned user. Recordings remain stored in your Twilio account; manage retention there.
 
 No production secrets were installed, SQL executed, Twilio settings changed, or real calls placed by this implementation.
+
+## Deploy the profile-phone fallback update
+
+After merging the update, redeploy **both** `twilio-inbound` and
+`twilio-inbound-session` using the commands in section 3. No additional SQL is
+required if the inbound migration already exists. Static-site publication alone
+does not update the deployed functions. Existing secrets and the Twilio number's
+incoming webhook in section 4 are still required. The implementation cannot
+establish their current production configuration without live account access.
+
+Regression checks: test an assigned, active agent with a valid profile phone and
+no saved routing settings; the browser token should be available, and an
+unanswered browser leg should dial that profile number. Check that saved routing
+still wins, disabled routing still goes to voicemail, and neither the incoming
+caller nor a managed business number is used as the forwarding destination.

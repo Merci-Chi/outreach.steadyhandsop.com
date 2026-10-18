@@ -1,5 +1,23 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
+function normalizeCellphone(value) {
+ const raw=String(value??'').trim();
+ if(!/^\+?[\d\s().-]+$/.test(raw))return '';
+ let digits=raw.replace(/\D/g,'');
+ if(!raw.startsWith('+')){
+  if(digits.length===10)digits='1'+digits;
+  else if(digits.length!==11||!digits.startsWith('1'))return '';
+ }
+ const phone='+'+digits;
+ return /^\+[1-9]\d{7,14}$/.test(phone)?phone:'';
+}
+function resolveRoutingSettings(saved,profilePhone) {
+ // An explicit saved choice, especially disabled routing, always wins.
+ if(saved)return {...saved,cellphone_number:normalizeCellphone(saved.cellphone_number)};
+ const phone=normalizeCellphone(profilePhone);
+ return phone?{enabled:true,cellphone_number:phone,outreach_ring_seconds:15,cellphone_ring_seconds:20}:null;
+}
+
 const identity = (userId:string) => 'sh_inbound_' + userId;
 const origin='https://outreach.steadyhandsop.com';
 const headers={'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
@@ -17,17 +35,26 @@ Deno.serve(async req=>{
   const userId=auth.user.id;
   const checked=async(result:any)=>{if(result.error)throw result.error;return result.data;};
   const permission=await checked(await db.from('team_permissions').select('role,active,listed').eq('user_id',userId).maybeSingle());
-  const profile=await checked(await db.from('callcenter_profiles').select('disabled_at').eq('user_id',userId).maybeSingle());
+  const profile=await checked(await db.from('callcenter_profiles').select('disabled_at,phone').eq('user_id',userId).maybeSingle());
   if(!permission?.active||permission.listed===false||!['ADMIN','SALES'].includes(permission.role)||!profile||profile.disabled_at)return json({error:'Active sales or admin access required.'},403);
   const body=await req.json();
   const action=String(body.action||'token');
+  const loadRouting=async()=>{
+   const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',userId).maybeSingle());
+   let settings=resolveRoutingSettings(saved,profile.phone);
+   if(settings?.cellphone_number){
+    const managed=await checked(await db.from('callcenter_phone_numbers').select('id').eq('phone_number',settings.cellphone_number).limit(1));
+    if(managed?.length)settings=null;
+   }
+   return {settings,routing_source:saved?'settings':settings?'profile':'missing'};
+  };
   if(action==='settings'){
-   const settings=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',userId).maybeSingle());
+   const routing=await loadRouting();
    const calls=await checked(await db.from('outreach_inbound_calls').select('call_sid,from_number,to_number,status,answered_via,recording_sid,recording_duration,created_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(50));
-   return json({settings,calls});
+   return json({...routing,calls});
   }
   if(action==='save_settings'){
-   const phone=String(body.cellphone_number||'').trim();
+   const phone=normalizeCellphone(body.cellphone_number);
    const greeting=String(body.voicemail_greeting||'').trim();
    if(!/^\+[1-9]\d{7,14}$/.test(phone))return json({error:'Enter your cellphone with country code, for example +17025550101.'},400);
    if(!greeting||greeting.length>500)return json({error:'Enter a voicemail greeting between 1 and 500 characters.'},400);
@@ -63,8 +90,8 @@ Deno.serve(async req=>{
   if(!assignment)return json({error:'Ask your administrator to assign a Twilio Ready number first.'},403);
   const number=await checked(await db.from('callcenter_phone_numbers').select('phone_number,active,twilio_status').eq('id',assignment.phone_number_id).maybeSingle());
   if(!number?.active||number.twilio_status!=='ready')return json({error:'Your assigned calling number is not enabled and Twilio Ready.'},403);
-  const settings=await checked(await db.from('outreach_inbound_settings').select('enabled').eq('user_id',userId).maybeSingle());
-  if(!settings?.enabled)return json({error:'Save and enable inbound routing before receiving calls.'},403);
+  const {settings}=await loadRouting();
+  if(!settings?.enabled)return json({error:'Add a valid personal phone number to your profile or save and enable incoming-call routing first.'},403);
   const account=Deno.env.get('TWILIO_ACCOUNT_SID')||'',apiKey=Deno.env.get('TWILIO_API_KEY_SID')||'',secret=Deno.env.get('TWILIO_API_KEY_SECRET')||'';
   if(!account||!apiKey||!secret)throw Error('Twilio incoming-token settings are missing');
   const AccessToken=twilio.jwt.AccessToken;

@@ -22,6 +22,24 @@ function voicemail(base,greeting) {
 const answered = status => status==='completed';
 const acceptedCell = (status,call) => answered(status) && call.cellphone_accepted===true;
 
+function normalizeCellphone(value) {
+ const raw=String(value??'').trim();
+ if(!/^\+?[\d\s().-]+$/.test(raw))return '';
+ let digits=raw.replace(/\D/g,'');
+ if(!raw.startsWith('+')){
+  if(digits.length===10)digits='1'+digits;
+  else if(digits.length!==11||!digits.startsWith('1'))return '';
+ }
+ const phone='+'+digits;
+ return /^\+[1-9]\d{7,14}$/.test(phone)?phone:'';
+}
+function resolveRoutingSettings(saved,profilePhone) {
+ // An explicit saved choice, especially disabled routing, always wins.
+ if(saved)return {...saved,cellphone_number:normalizeCellphone(saved.cellphone_number)};
+ const phone=normalizeCellphone(profilePhone);
+ return phone?{enabled:true,cellphone_number:phone,outreach_ring_seconds:15,cellphone_ring_seconds:20}:null;
+}
+
 const xml=(body:string,status=200)=>new Response(body,{status,headers:{'Content-Type':'text/xml; charset=utf-8'}});
 Deno.serve(async req=>{
  if(req.method!=='POST')return new Response('Method not allowed',{status:405});
@@ -64,7 +82,13 @@ Deno.serve(async req=>{
    return new Response('ok');
   }
   if(call.status==='completed'||call.status==='voicemail')return xml(hangup());
-  const settings=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle());
+  const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle());
+  const forwardingProfile=saved?null:await checked(await db.from('callcenter_profiles').select('phone,disabled_at').eq('user_id',call.user_id).maybeSingle());
+  let settings=resolveRoutingSettings(saved,forwardingProfile&&!forwardingProfile.disabled_at?forwardingProfile.phone:null);
+  if(settings?.cellphone_number){
+   const managed=await checked(await db.from('callcenter_phone_numbers').select('id').eq('phone_number',settings.cellphone_number).limit(1));
+   if(managed?.length)settings=null; // Never send a call back to any managed business number.
+  }
   const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
   if(stage==='incoming')return settings?.enabled?xml(browserDial(base,call,settings)):mailbox();
