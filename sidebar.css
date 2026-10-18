@@ -165,3 +165,8 @@ body:has(.sh-sidebar) .sh-sidebar-toggle { position:relative;z-index:1; }
   body.sh-menu-open .app { overflow-y:hidden; }
   body:has(.sh-sidebar) .content { scroll-margin-top:12px; }
 }
+
+/* Desktop navigation uses the sidebar's own expand/collapse control. */
+@media(min-width:900px) {
+  .sh-sidebar-toggle { display: none; }
+}

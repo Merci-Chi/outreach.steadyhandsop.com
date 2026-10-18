@@ -4,6 +4,7 @@
  const current=location.pathname.split('/').pop()||'index.html';
  const isSettings=current==='admin.html'||current==='account.html';
  const active=isSettings?'account.html':current==='call.html'?'index.html':current;
+ const isCall=current==='call.html';
  const mobile=()=>matchMedia('(max-width: 899px)').matches;
  function init(){
   const app=document.querySelector('.app');if(!app||document.querySelector('#shSidebar'))return;
@@ -11,13 +12,22 @@
   const drawer=document.createElement('aside');drawer.id='shSidebar';drawer.className='sh-sidebar';drawer.setAttribute('aria-label','Main navigation');
   drawer.innerHTML=`<div class="sh-sidebar-brand"><img src="images/icon-192.png" alt=""/><span>Steady Hands</span><button type="button" class="sh-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><i data-lucide="panel-left-close"></i></button></div><nav class="sh-sidebar-links" aria-label="App pages">${items.map(([label,url,icon])=>`<a href="${url}" class="sh-sidebar-link${url===active?' active':''}" ${url===active?'aria-current="page"':''} title="${label}"><i data-lucide="${icon}"></i><span>${label}</span></a>`).join('')}</nav><div class="sh-sidebar-foot"><i data-lucide="circle-user-round"></i><span>My Account</span></div>`;
   const backdrop=document.createElement('button');backdrop.type='button';backdrop.className='sh-sidebar-backdrop';backdrop.setAttribute('aria-label','Close menu');
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='sh-sidebar-toggle';toggle.setAttribute('aria-label','Open navigation menu');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','shSidebar');toggle.innerHTML='<i data-lucide="menu"></i>';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='sh-sidebar-toggle';toggle.setAttribute('aria-label','Open navigation menu');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','shSidebar');toggle.innerHTML=isCall?'<i data-lucide="arrow-left" aria-hidden="true"></i>':'<i data-lucide="menu"></i>';
+  if(isCall){toggle.id='backToOutreach';toggle.setAttribute('aria-label','Back to Outreach');toggle.title='Back to Outreach';toggle.removeAttribute('aria-expanded');toggle.removeAttribute('aria-controls');}
   document.body.prepend(backdrop,drawer);
   const header=app.querySelector('.topbar-row,.call-topbar');
   if(header){header.insertBefore(toggle,header.firstChild)}else app.insertBefore(toggle,app.firstChild);
-  const close=()=>{document.body.classList.remove('sh-menu-open');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Open navigation menu')};
+  const close=()=>{document.body.classList.remove('sh-menu-open');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label',isCall?'Back to Outreach':'Open navigation menu');if(isCall)toggle.removeAttribute('aria-expanded')};
   const open=()=>{document.body.classList.add('sh-menu-open');toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Close navigation menu')};
-  toggle.addEventListener('click',()=>{if(!mobile()){drawer.querySelector('.sh-sidebar-collapse').click();return;}document.body.classList.contains('sh-menu-open')?close():open();});
+  toggle.addEventListener('click',()=>{
+    if(isCall){
+      const active=document.getElementById('refEndCall')?.dataset.callState==='active';
+      if(active&&!window.confirm('A call is in progress. Going back may interrupt the call. Leave the call page?'))return;
+      const id=new URLSearchParams(location.search).get('crm_id')||window.steadyHandsCallLead?.id||'';
+      if(id){try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);}catch{}}
+      location.href=id?'index.html?crm_id='+encodeURIComponent(id):'index.html';return;
+    }
+    if(!mobile())return;document.body.classList.contains('sh-menu-open')?close():open();});
   backdrop.addEventListener('click',close);
   drawer.querySelector('.sh-sidebar-collapse').addEventListener('click',()=>{
     if(mobile()){close();return}
@@ -42,7 +52,7 @@
   const desktopQuery=matchMedia('(min-width: 900px)');
   desktopQuery.addEventListener?.('change',close);
   toggle.addEventListener('click',()=>{
-    if(mobile()&&document.body.classList.contains('sh-menu-open'))
+    if(!isCall&&mobile()&&document.body.classList.contains('sh-menu-open'))
       drawer.querySelector('.sh-sidebar-link')?.focus({preventScroll:true});
   });
   backdrop.addEventListener('click',()=>toggle.focus({preventScroll:true}));
