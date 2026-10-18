@@ -1,8 +1,8 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
 function resolveRoutingSettings(saved) {
- // Twilio rings the assigned browser identity; personal numbers are never used.
- return {enabled:true,outreach_ring_seconds:20,...saved,cellphone_number:null};
+ // Admin number routing is authoritative; legacy per-user toggles do not block it.
+ return {outreach_ring_seconds:20,...saved,enabled:true,cellphone_number:null};
 }
 
 
@@ -39,7 +39,7 @@ Deno.serve(async req=>{
   if(action==='save_settings'){
    const greeting=String(body.voicemail_greeting||'').trim();
    if(!greeting||greeting.length>500)return json({error:'Enter a voicemail greeting between 1 and 500 characters.'},400);
-   await checked(await db.from('outreach_inbound_settings').upsert({user_id:userId,cellphone_number:null,enabled:body.enabled===true,voicemail_greeting:greeting,outreach_ring_seconds:20,cellphone_ring_seconds:20,updated_at:new Date().toISOString()}));
+   await checked(await db.from('outreach_inbound_settings').upsert({user_id:userId,cellphone_number:null,enabled:true,voicemail_greeting:greeting,outreach_ring_seconds:20,cellphone_ring_seconds:20,updated_at:new Date().toISOString()}));
    return json({ok:true});
   }
   if(action==='play_voicemail'){
@@ -67,8 +67,9 @@ Deno.serve(async req=>{
   if(action!=='token')return json({error:'Unknown action'},400);
   const assignment=await checked(await db.from('callcenter_phone_assignments').select('phone_number_id').eq('user_id',userId).maybeSingle());
   if(!assignment)return json({error:'Ask your administrator to assign a Twilio Ready number first.'},403);
-  const number=await checked(await db.from('callcenter_phone_numbers').select('phone_number,active,twilio_status').eq('id',assignment.phone_number_id).maybeSingle());
+  const number=await checked(await db.from('callcenter_phone_numbers').select('phone_number,active,twilio_status,inbound_destination,inbound_forward_number').eq('id',assignment.phone_number_id).maybeSingle());
   if(!number?.active||number.twilio_status!=='ready')return json({error:'Your assigned calling number is not enabled and Twilio Ready.'},403);
+  if(number.inbound_destination==='forward')return json({destination:'forward',number:number.phone_number,forward_number:number.inbound_forward_number});
   const {settings}=await loadRouting();
   if(!settings?.enabled)return json({error:'Incoming routing is disabled. Enable it in Incoming calls → Voicemail settings.'},403);
   const account=Deno.env.get('TWILIO_ACCOUNT_SID')||'',apiKey=Deno.env.get('TWILIO_API_KEY_SID')||'',secret=Deno.env.get('TWILIO_API_KEY_SECRET')||'';

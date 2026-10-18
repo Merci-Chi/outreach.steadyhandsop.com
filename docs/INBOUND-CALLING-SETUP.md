@@ -59,26 +59,44 @@ In Steady Hands Admin, keep the same number enabled, **Twilio Ready**, and assig
 
 For recording privacy, confirm **Voice → General Settings → Enforce HTTP Auth on Media URLs** is enabled if your Twilio account exposes that legacy setting. Playback in Outreach retrieves the audio through an authenticated server endpoint rather than exposing a recording URL.
 
-## 5. Receive calls using only the assigned Twilio number
+## 5. Set the incoming destination in Admin
 
-The assigned business number is sufficient. Personal/profile cellphone numbers
-are ignored, including legacy forwarding settings. No cellphone number is
-collected by the incoming-call settings form.
+In **Steady Hands Admin → Phone Numbers**, each calling-number card now has
+**Incoming calls go to**:
 
-1. Open Outreach, sign in, and click **Incoming calls**.
-2. Open **Voicemail settings**.
-3. Leave **Enable incoming calls in Outreach** checked and save your business
-   voicemail greeting. Existing explicit disabled settings remain disabled until
-   you enable them. Users without saved settings can receive calls by default.
-4. Click **Enable on this device**, allow microphone access, and confirm
-   **Ready for incoming calls** shows the assigned Twilio number.
-5. Keep Outreach open and connected. Calls ring in the browser. Unanswered,
-   declined, offline, and busy calls go directly to business voicemail.
+- **Outreach app** (default): rings the assigned account's signed-in browser.
+- **Phone forwarding**: rings only the explicit forwarding number saved by Admin.
+  Enter a valid country code; managed Twilio numbers cannot be forwarding targets.
+  Press **1** on the receiving phone to answer. This prevents its voicemail from
+  swallowing the call. Unanswered or unaccepted calls reach business voicemail.
 
-A successful browser call ends without starting voicemail. No call is forwarded
-to a salesperson's personal phone. Reception must be enabled again after
-navigation/reload to establish browser audio permissions. Browsers can suspend
-in the background, especially on mobile; in that case calls go to voicemail.
+Click **Save incoming destination**. Changing a destination affects the next
+incoming call; active calls keep their original routing snapshot. An active,
+Twilio Ready number assigned to an eligible account is required for either mode.
+Profile phone numbers are never used implicitly.
+
+The Admin destination is authoritative. The old per-user routing-enabled flag is
+ignored; it cannot silently block an Admin app route. Users can still choose
+**Go offline** on a particular device, which persists only for that signed-in
+account on that browser. That device will not register until reconnected.
+
+For app routes, Outreach automatically registers its incoming-only Twilio Device
+after sign-in and reconnects after reload/network recovery. Microphone access is
+requested when **Answer** is clicked. The incoming alert shows the caller number
+and Answer/Send to voicemail controls. An optional **Enable device call alerts**
+button requests OS/browser notification permission using a user gesture. Existing
+Device Notifications preferences are respected. Notification clicks focus the
+live receiving tab without reloading and dropping its pending call. Missed calls
+appear on the call badge and in the incoming inbox (with the status callback).
+
+Keep Outreach open, connected, and awake for browser reception. A browser tab
+cannot provide native carrier/CallKit reception when closed or suspended; those
+calls reach voicemail. Choose Phone forwarding for an explicit telephone
+endpoint when closed-app telephone reception is needed. Browser autoplay policies
+can limit audible ringing; the visible call alert remains available. Notification
+support varies by device/browser. This change adds no server-side incoming push.
+
+Open **Incoming calls → Voicemail settings** to customize the business greeting.
 
 ## 6. Provision a new Twilio number
 
@@ -125,8 +143,23 @@ account may require an upgrade or verified test destinations before public use.
 
 ## Deployment
 
-After merging, apply the new nullable-field migration and redeploy both
-`twilio-inbound` and `twilio-inbound-session` using the commands in section 3.
-Static-site publication alone does not deploy Edge Functions. Existing server
-secrets and the incoming webhook remain required. No production SQL, secrets,
-number purchases, Twilio settings, or real calls were changed by this code PR.
+1. Ensure the original inbound tables exist (section 1).
+2. Run `supabase/migrations/20261018070000_admin_inbound_destinations.sql`.
+   It adds per-number destination fields and per-call routing snapshots, and makes
+   the legacy cellphone field optional. Existing number rows default to Outreach
+   app; no profile phones or legacy cellphone fields are copied into forwarding.
+   Existing RLS, table grants, and account assignments are unchanged.
+3. Redeploy `twilio-inbound` and `twilio-inbound-session` with gateway JWT checks
+   disabled as in section 3. Their signature/user authentication remains enabled.
+4. Publish both the Admin frontend and Outreach frontend/service worker. Refresh
+   Outreach so the updated receiver and service worker are active.
+5. Set each purchased Twilio number's incoming POST webhook to section 4's URL.
+   The TwiML App's outbound Voice Request URL is a separate setting and must remain
+   pointed at `twilio-voice-outbound`.
+6. Test a real incoming call to the purchased number, device notification click,
+   Answer/two-way audio, decline/voicemail, and explicit Phone forwarding.
+
+Static-site publication alone does not deploy functions or SQL. No production
+SQL, secrets, number purchases, Twilio settings, or real calls were changed here.
+Automated tests use mocked Twilio/browser/database APIs; production delivery and
+phone/browser behavior require verification after deployment.

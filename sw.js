@@ -64,8 +64,23 @@ self.addEventListener('push', event => {
   );
 });
 
+self.addEventListener('message', event => {
+ if(event.data?.type==='steadyhands:incoming-alert'&&event.source?.id){
+  event.waitUntil(self.registration.showNotification(event.data.title,{...event.data.options,data:{kind:'incoming-call',clientId:event.source.id}}));
+ }
+ if(event.data?.type==='steadyhands:close-incoming-alert'){
+  event.waitUntil(self.registration.getNotifications({tag:'steadyhands-incoming-call'}).then(items=>items.filter(item=>item.data?.clientId===event.source?.id).forEach(item=>item.close())));
+ }
+});
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+  if(event.notification?.data?.kind==='incoming-call'){
+    event.waitUntil((async()=>{
+      const client=await self.clients.get(event.notification.data.clientId);
+      if(client){client.postMessage({type:'steadyhands:open-incoming'});return client.focus();}
+      return self.clients.openWindow('index.html');
+    })());return;
+  }
   const target = event.notification?.data?.url || 'index.html';
 
   event.waitUntil((async () => {

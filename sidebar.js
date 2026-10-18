@@ -70,5 +70,5 @@
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 
-// Inbound reception is enabled explicitly by the signed-in user on each page.
-import('./inbound-calling.js?v=20261018-twilio-only').catch(error => console.warn('Incoming calling module unavailable:',error));
+// Keep the signed-in app registered for incoming calls; microphone access is requested on Answer.
+import('./inbound-calling.js?v=20261018-inbound-destinations').catch(error => console.warn('Incoming calling module unavailable:',error));

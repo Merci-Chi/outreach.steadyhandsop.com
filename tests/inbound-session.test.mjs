@@ -29,9 +29,9 @@ test('voicemail settings save without collecting a personal phone and ignore old
  const s=setup();const result=await s.request('save_settings',{user_id:'other',cellphone_number:'+17025550103',voicemail_greeting:'Hello',enabled:true});
  assert.equal(result.status,200);const saved=s.rows.outreach_inbound_settings[0];assert.equal(saved.user_id,'agent');assert.equal(saved.cellphone_number,null);assert.equal(saved.voicemail_greeting,'Hello');
 });
-test('explicit disabled routing is retained',async()=>{
+test('Admin app routing supersedes the obsolete per-user disabled toggle',async()=>{
  const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;s.rows.callcenter_profiles[0].phone='+17025550103';
- assert.equal((await s.request('token')).status,403);const data=await (await s.request('settings')).json();assert.equal(data.settings.enabled,false);assert.equal(data.settings.cellphone_number,null);
+ assert.equal((await s.request('token')).status,200);const data=await (await s.request('settings')).json();assert.equal(data.settings.enabled,true);assert.equal(data.settings.cellphone_number,null);
 });
 test('legacy settings and profile numbers are never returned as forwarding destinations',async()=>{
  const s=setup();s.rows.callcenter_profiles[0].phone='+17025550103';const data=await (await s.request('settings')).json();
@@ -45,4 +45,9 @@ test('voicemail remains private to its assigned user',async()=>{
 });
 test('an empty greeting cannot replace voicemail settings',async()=>{
  const s=setup();assert.equal((await s.request('save_settings',{voicemail_greeting:'',enabled:true})).status,400);
+});
+
+test('phone-forwarded assignments return their Admin destination without issuing a browser token',async()=>{
+ const s=setup();Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17025550109'});
+ const response=await s.request('token');assert.equal(response.status,200);const data=await response.json();assert.equal(data.destination,'forward');assert.equal(data.forward_number,'+17025550109');assert.equal(s.issued(),undefined);
 });
