@@ -12,7 +12,7 @@ function setup({path='call.html',active=false,allow=true,mobile=true}={}){
  return {toggle:header.toggle,classes,location,stored,prompts};
 }
 test('call header uses a back arrow and returns to the same Outreach lead',()=>{
- const s=setup();assert.match(s.toggle.innerHTML,/arrow-left/);assert.equal(s.toggle.attributes['aria-label'],'Back to Outreach');assert.equal(s.toggle.attributes['aria-controls'],undefined);
+ const s=setup();assert.match(s.toggle.className,/sh-sidebar-toggle sh-outreach-back/);assert.match(s.toggle.innerHTML,/arrow-left/);assert.equal(s.toggle.attributes['aria-label'],'Back to Outreach');assert.equal(s.toggle.attributes['aria-controls'],undefined);
  s.toggle.click();assert.equal(s.location.href,'index.html?crm_id=lead%2Fone');assert.equal(s.stored.get('steadyhands-selected-outreach-crm-id'),'lead/one');assert.equal(s.classes.has('sh-menu-open'),false);
 });
 test('back arrow preserves active-call confirmation and can cancel navigation',()=>{

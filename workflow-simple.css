@@ -245,3 +245,12 @@ html[data-theme=dark] .call-popup-status { color: #adc1d9; }
   min-width: max-content;
   white-space: nowrap;
 }
+
+/* Outreach and Call share the same full-width stage navigation. */
+body.page-outreach .call-back-nav {
+  display: flex;
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  margin: 0 0 9px;
+}

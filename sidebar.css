@@ -168,5 +168,5 @@ body:has(.sh-sidebar) .sh-sidebar-toggle { position:relative;z-index:1; }
 
 /* Desktop navigation uses the sidebar's own expand/collapse control. */
 @media(min-width:900px) {
-  .sh-sidebar-toggle { display: none; }
+  .sh-sidebar-toggle:not(.sh-outreach-back) { display: none; }
 }
