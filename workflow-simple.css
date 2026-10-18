@@ -124,3 +124,57 @@ html[data-theme=dark] .outreach-process .call-opener-choices button[aria-pressed
   .outreach-process > header .call-objection-links { order: 3; flex-basis: 100%; justify-content: flex-start; }
   .outreach-process > header .workflow-step-nav { margin-left: auto; }
 }
+
+/* Keep the complete Process toolbar on one line; narrow panels scroll the row. */
+.outreach-process > header.call-guide-header {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 4px 0 10px;
+  scrollbar-width: thin;
+}
+.outreach-process > header.call-guide-header h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 14px;
+}
+.call-guide-header .call-step-status {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.outreach-process > header.call-guide-header #processLead {
+  flex: 0 1 110px;
+  min-width: 40px;
+  max-width: 110px;
+  margin: 0;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outreach-process > header.call-guide-header .call-objection-links {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 10px;
+  order: initial;
+}
+.call-guide-header .call-objection-links a {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.outreach-process > header.call-guide-header .workflow-step-nav {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+.outreach-process > header.call-guide-header .workflow-step-nav button {
+  min-height: 30px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.call-guide-header #processProgress { flex: 0 0 auto; white-space: nowrap; font-size: 11px; }
