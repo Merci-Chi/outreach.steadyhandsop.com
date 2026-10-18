@@ -6,7 +6,7 @@
   const selectedId=()=>window.steadyHandsCallLead?.id||document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId||'';
   const checks=[...panel.querySelectorAll('[data-process-step]')];
   const empty=()=>({steps:Array(6).fill(false),versions:Array(6).fill(0),phone:'',notes:'',sent:false});
-  let userId='',leadId='',state=empty(),busy=false,ready=false,revision=0,request=0;
+  let userId='',leadId='',state=empty(),busy=false,ready=false,revision=0,request=0,retryTimer=null,retryDelay=200;
   const client=()=>window.steadyHandsCRMClient;
   const draftKey=id=>`steadyhands-process-draft-v2:${userId}:${id}`;
   const feedback=text=>{$('#processFeedback').textContent=text;};
@@ -22,16 +22,21 @@
       input.closest('li').classList.toggle('is-complete',input.checked);
     });
     $('#processSteps').disabled=!ready||busy;
-    $('#processStatus').disabled=busy||!leadId;
+    $('#processStatus').disabled=busy||!ready||!leadId;
     $('#processProgress').textContent=`${state.steps.filter(Boolean).length} / 6`;
     $('#processPhone').value=state.phone||'';
     $('#processNotes').value=state.notes||'';
-    $('#processSend').disabled=busy||state.sent;
+    $('#processSend').disabled=!ready||busy||state.sent;
     $('#processSend').textContent=state.sent?'Sent to development team':'Send to development team';
     $('#processDevelopment').textContent=state.status||'Development status has not been checked.';
   }
-  function message(error) {
-    return 'CRM checklist unavailable: '+(error?.message||'Run the manual process checks SQL migration and try again.');
+  function retry(rev,error) {
+    if(rev!==revision)return;
+    feedback('Loading…');
+    if(error)console.warn('Process checklist read will retry:',error);
+    clearTimeout(retryTimer);
+    retryTimer=setTimeout(()=>syncLead(true),retryDelay);
+    retryDelay=Math.min(retryDelay*2,5000);
   }
   async function reload(id=leadId) {
     if(!id||busy)return;
@@ -55,26 +60,32 @@
       const row=leadResult.data;
       state.sent=(row.tags||[]).includes('Development Team');
       state.status=state.sent?`CRM status: ${row.stage||'review'}${row.outcome?' · '+row.outcome:''}`:'Not sent to development yet.';
-      ready=true;render();feedback('');
+      ready=true;retryDelay=200;clearTimeout(retryTimer);render();feedback('');
       return true;
     } catch(error) {
-      if(rev===revision&&seq===request){ready=false;render();feedback(message(error));}
-    } finally {if(rev===revision&&seq===request)$('#processStatus').disabled=false;}
+      if(rev===revision&&seq===request){ready=false;render();retry(rev,error);}
+    } finally {if(rev===revision&&seq===request)$('#processStatus').disabled=!ready;}
   }
   async function syncLead(force=false) {
     const id=selectedId();if(!force&&id===leadId&&ready)return;
+    clearTimeout(retryTimer);
     const rev=++revision;++request;leadId=id;state=empty();ready=false;busy=false;
     $('#processLead').textContent=id?'Loading selected prospect…':'Select a prospect to begin.';feedback('');render();
     if(!id)return;
+    feedback('Loading…');
+    // Deferred scripts can run before auth-guard creates the shared CRM client.
+    // Wait for it instead of treating normal startup as a sign-in failure.
+    if(!client()){retry(rev);return;}
     try {
-      if(!client())throw Error('Please sign in and reload the page.');
-      const {data,error}=await client().auth.getUser();if(error||!data?.user)throw Error('Please sign in again.');
-      if(rev!==revision)return;userId=data.user.id;
+      const {data,error}=await client().auth.getSession();
+      if(rev!==revision)return;
+      if(error||!data?.session?.user){retry(rev,error);return;}
+      userId=data.session.user.id;
       // Intentionally ignore all legacy steadyhands-process-v1 checkboxes.
       try{const draft=JSON.parse(localStorage.getItem(draftKey(id))||'{}');state.phone=typeof draft.phone==='string'?draft.phone:'';state.notes=typeof draft.notes==='string'?draft.notes:'';}catch{}
       $('#processLead').textContent=document.querySelector('#refCompany')?.textContent||'Selected prospect';
       await reload(id);
-    }catch(error){if(rev===revision)feedback(message(error));}
+    }catch(error){retry(rev,error);}
   }
   const validPhone=()=>{const digits=$('#processPhone').value.replace(/\D/g,'');return digits.length>=10&&digits.length<=15;};
   checks.forEach((input,i)=>input.addEventListener('change',async()=>{
@@ -116,5 +127,6 @@
   if(selected)new MutationObserver(()=>{if(selectedId()!==leadId)syncLead();}).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
   window.addEventListener('steadyhands:call-lead-ready',()=>{if(selectedId()!==leadId)syncLead();});
   window.addEventListener('focus',()=>{if(leadId&&!busy)syncLead(true);});
+  document.addEventListener('DOMContentLoaded',()=>{if(!ready)syncLead();},{once:true});
   syncLead();
 })();
