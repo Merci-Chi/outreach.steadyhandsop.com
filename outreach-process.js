@@ -55,7 +55,7 @@
       const row=leadResult.data;
       state.sent=(row.tags||[]).includes('Development Team');
       state.status=state.sent?`CRM status: ${row.stage||'review'}${row.outcome?' · '+row.outcome:''}`:'Not sent to development yet.';
-      ready=true;render();feedback('Checklist loaded from CRM. Only manual checkbox changes mark steps complete.');
+      ready=true;render();feedback('');
       return true;
     } catch(error) {
       if(rev===revision&&seq===request){ready=false;render();feedback(message(error));}
