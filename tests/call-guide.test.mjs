@@ -49,12 +49,12 @@ test('call opens on A; both location-neutral openers switch without advancing',(
  assert.equal(s.pills[0].getAttribute('aria-current'),'step');buttons[0].click();
  for(const button of buttons){button.click();assert.doesNotMatch(card.querySelector('blockquote').textContent,/Las Vegas|local businesses/i);}
 });
-test('all seven conversation stages precede six CRM steps; Next and Previous cross the boundary',()=>{
- const s=setup();assert.equal(s.pills.length,13);assert.equal(s.back.children[0],s.backButton);assert.equal(s.back.children[1].children.length,13);
+test('only seven conversation pills appear at the top; Next and Previous still reach all six CRM steps',()=>{
+ const s=setup();assert.equal(s.pills.length,7);assert.equal(s.back.children[0],s.backButton);assert.equal(s.back.children[1].children.length,7);
  for(let i=1;i<7;i++){s.next.click();assert.equal(s.cards[i].hidden,false);assert.equal(s.pills[i].getAttribute('aria-current'),'step');}
  s.next.click();assert.equal(s.fieldset.hidden,false);assert.equal(s.ol.children[0].hidden,false);assert(s.cards.every(c=>c.hidden));
  s.previous.click();assert.equal(s.cards[6].hidden,false);assert(s.fieldset.hidden);
- s.pills[12].click();assert(s.next.disabled);assert.equal(s.ol.children[5].hidden,false);
+ for(let i=0;i<6;i++)s.next.click();assert(s.next.disabled);assert.equal(s.ol.children[5].hidden,false);
  s.pills[2].click();assert.equal(s.cards[2].hidden,false);assert.equal(s.previous.disabled,false);
  assert(s.ol.children.every(li=>li.querySelector('input').checked===false));assert(s.fieldset.disabled);
 });
@@ -70,9 +70,9 @@ test('each objection link opens its response and returns to the same step',()=>{
  links[2].click();s.next.click();assert(response.hidden);assert.equal(s.pills[5].getAttribute('aria-current'),'step');
 });
 test('new leads restart at the opener; the textable-number shortcut still opens CRM step three',()=>{
- const s=setup();s.pills[11].click();s.changeLead('two');assert.equal(s.pills[0].getAttribute('aria-current'),'step');
- s.dispatch('steadyhands:call-guide-step',{checklistStep:3});assert.equal(s.pills[9].getAttribute('aria-current'),'step');assert.equal(s.ol.children[2].hidden,false);
- s.dispatch('steadyhands:call-guide-step',{checklistStep:20});assert.equal(s.pills[9].getAttribute('aria-current'),'step');
+ const s=setup();for(let i=0;i<11;i++)s.next.click();s.changeLead('two');assert.equal(s.pills[0].getAttribute('aria-current'),'step');
+ s.dispatch('steadyhands:call-guide-step',{checklistStep:3});assert(s.pills.every(p=>p.getAttribute('aria-current')===null));assert.equal(s.ol.children[2].hidden,false);
+ s.dispatch('steadyhands:call-guide-step',{checklistStep:20});assert.equal(s.ol.children[2].hidden,false);
 });
 test('Outreach overview keeps its checklist; the regular-call popup starts the guide',()=>{
  const s=setup({callPage:false});assert.equal(s.fieldset.hidden,false);assert(s.ol.children.every(li=>!li.hidden));assert(s.cards[0].parent.hidden);

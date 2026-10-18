@@ -71,7 +71,7 @@
     fieldset.before(guide);
     const labels=[...stages.map(s=>s.label),...checklist.map(step=>step.querySelector('strong').textContent)];
     const pills=make('div',null,'call-stage-pills');pills.setAttribute('role','group');pills.setAttribute('aria-label','Call steps');
-    const pillButtons=labels.map((label,i)=>{
+    const pillButtons=labels.slice(0,stages.length).map((label,i)=>{
       const button=make('button',`${i+1}. ${label}`,'call-stage-pill');button.type='button';
       button.setAttribute('aria-controls',i<cards.length?cards[i].id:'processSteps');
       button.addEventListener('click',()=>{cursor=i;showStep(true);});pills.append(button);return button;
