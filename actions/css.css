@@ -2,3 +2,5 @@
 .start-date{display:block;font-size:clamp(20px,3vw,26px);line-height:1.4}.extend-button{width:100%;margin-top:8px}select:disabled{opacity:.6}
 
 .header .topbar-row{display:flex;align-items:center;width:100%}
+
+.phone-options{border:0;padding:0;margin:0}.phone-legend{font-size:14px;font-weight:700}.phone-choice.is-selected,.phone-choice:has(input:checked){background:#174f91;border:2px solid #103a70;color:#fff;box-shadow:0 7px 18px #174f9126}.phone-choice.is-selected small,.phone-choice:has(input:checked) small{color:#e7f1ff}.phone-choice.is-selected input{accent-color:#fff}.phone-choice strong{font-weight:800}.phone-choice:focus-within{outline:3px solid #6bacdf;outline-offset:3px}input[type=tel]{width:100%;font:inherit;color:var(--navy);border:1px solid #c4d6ea;border-radius:10px;background:white;padding:13px;box-sizing:border-box}

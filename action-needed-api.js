@@ -22,7 +22,7 @@
   }
   async function submit(assignmentId,state) {
     const {client} = await session();
-    const {data,error} = await client.rpc('outreach_action_submit',{
+    const {data,error} = await client.rpc('outreach_action_submit_v2',{
       p_assignment_id:assignmentId,
       p_selected_path:state.path,
       p_local_timezone:state.localZone,
@@ -30,7 +30,9 @@
       p_shift_start_minutes:state.start,
       p_preferred_weekly_hours:state.hours,
       p_quota_acknowledged:state.quotaAcknowledged === true,
-      p_confirmed_start_date:state.path==='hourly' ? state.startDate : null
+      p_confirmed_start_date:state.path==='hourly' ? state.startDate : null,
+      p_phone_setup:state.phoneSetup,
+      p_us_phone_number:state.phoneSetup==='needs_number' ? null : state.phoneNumber
     });
     if (error) throw new Error(error.message || 'Could not confirm your submission. Return to Action Needed to check its status.');
     return data;

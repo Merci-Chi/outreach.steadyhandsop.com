@@ -32,8 +32,8 @@ test('hourly choosing commission skips start-date confirmation and requests an a
  const h=harness('currentlyonhourlywage.html',assigned('hourly'));await h.init();h.run("state.path='commission'");h.e().continue.click();assert.match(h.app.innerHTML,/updated commission agreement/);h.e().proceed.click();assert.match(h.app.innerHTML,/Set your preferred hours/);
 });
 test('submission waits for server success and failures remain on the form',async()=>{
- let finish;const h=harness('alreadyoncommission.html',assigned('commission'),()=>new Promise(resolve=>{finish=resolve}));await h.init();const pending=h.run('submitPreference()');assert.match(h.app.innerHTML,/Submitting/);assert.doesNotMatch(h.app.innerHTML,/Great, preference completed/);finish({});await pending;assert.match(h.app.innerHTML,/Your preference has been submitted/);assert.doesNotMatch(h.app.innerHTML,/id="edit"/);
- const fail=harness('alreadyoncommission.html',assigned('commission'),async()=>{throw Error('Assignment cancelled');});await fail.init();await fail.run('submitPreference()');assert.match(fail.app.innerHTML,/Assignment cancelled/);assert.match(fail.app.innerHTML,/Set your preferred hours/);assert.equal(fail.e().finish.disabled,false);
+ let finish;const h=harness('alreadyoncommission.html',assigned('commission'),()=>new Promise(resolve=>{finish=resolve}));await h.init();h.run("state.phoneSetup='needs_number';go('phone')");const pending=h.run('submitPreference()');assert.match(h.app.innerHTML,/Submitting/);assert.doesNotMatch(h.app.innerHTML,/Great, preference completed/);finish({});await pending;assert.match(h.app.innerHTML,/Your preference has been submitted/);assert.doesNotMatch(h.app.innerHTML,/id="edit"/);
+ const fail=harness('alreadyoncommission.html',assigned('commission'),async()=>{throw Error('Assignment cancelled');});await fail.init();fail.run("state.phoneSetup='needs_number';go('phone')");await fail.run('submitPreference()');assert.match(fail.app.innerHTML,/Assignment cancelled/);assert.match(fail.app.innerHTML,/Do you need a US number/);assert.equal(fail.e()['submit-phone'].disabled,false);
 });
 test('weekday choices span four calendar months and handle month ends and leap years',()=>{
  const window={};vm.runInNewContext(read('actions/start-dates.js'),{window,Intl,Date});const d=window.SteadyHandsStartDates;
@@ -43,7 +43,15 @@ test('weekday choices span four calendar months and handle month ends and leap y
 });
 test('adapter sends assignment and exact response to RPC; database errors propagate',async()=>{
  let call;const window={steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'real-user'}}})},rpc:async(name,args)=>{call={name,args};return {data:{saved:true}};}}};
- vm.runInNewContext(read('action-needed-api.js'),{window});await window.OutreachActions.submit('assigned-id',{path:'hourly',localZone:'America/New_York',workZone:'America/Chicago',start:540,hours:20,quotaAcknowledged:true,startDate:'2026-11-02'});
- assert.equal(call.name,'outreach_action_submit');assert.equal(call.args.p_assignment_id,'assigned-id');assert.equal(call.args.p_confirmed_start_date,'2026-11-02');assert.equal(call.args.p_quota_acknowledged,true);assert(!('user_id' in call.args));
+ vm.runInNewContext(read('action-needed-api.js'),{window});await window.OutreachActions.submit('assigned-id',{path:'hourly',localZone:'America/New_York',workZone:'America/Chicago',start:540,hours:20,quotaAcknowledged:true,startDate:'2026-11-02',phoneSetup:'google_voice',phoneNumber:'2025550101'});
+ assert.equal(call.name,'outreach_action_submit_v2');assert.equal(call.args.p_assignment_id,'assigned-id');assert.equal(call.args.p_confirmed_start_date,'2026-11-02');assert.equal(call.args.p_quota_acknowledged,true);assert.equal(call.args.p_phone_setup,'google_voice');assert.equal(call.args.p_us_phone_number,'2025550101');assert(!('user_id' in call.args));
  window.steadyHandsCRMClient.rpc=async()=>({error:{message:'Not assigned'}});await assert.rejects(()=>window.OutreachActions.extend('other','2026-11-02','2026-11-09'),/Not assigned/);
+});
+
+test('final phone step requires a choice and a valid number for existing and Google Voice numbers',async()=>{
+ let saves=0;const h=harness('alreadyoncommission.html',assigned('commission'),async()=>{saves++;return {};});await h.init();h.e().finish.click();assert.match(h.app.innerHTML,/Do you need a US number/);
+ await h.run('submitPreference()');assert.equal(saves,0);assert.match(h.app.innerHTML,/Choose an option/);
+ h.run("state.phoneSetup='google_voice';state.phoneNumber='abc2025550101';render()");await h.run('submitPreference()');assert.equal(saves,0);assert.match(h.app.innerHTML,/valid 10-digit/);
+ h.run("state.phoneNumber='(202) 555-0101';render()");await h.run('submitPreference()');assert.equal(saves,1);assert.match(h.app.innerHTML,/Google Voice/);assert.match(h.app.innerHTML,/\+12025550101/);
+ assert.equal(h.run("normalizeUSPhone('+44 20 7946 0958')"),null);
 });

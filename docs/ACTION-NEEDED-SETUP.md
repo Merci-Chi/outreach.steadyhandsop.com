@@ -110,3 +110,20 @@ adapter behavior. Run the database checks in
 with `supabase test db`. These checks exercise access policies and RPCs with
 separate admin/associate JWT identities. They are rolled back after testing.
 Live deployment still needs the migration applied and a real assigned-user check.
+
+## US calling number question
+
+The final questionnaire step requires one of: needs a US number, already has
+a US number, or has Google Voice. The last two require a valid 10-digit
+US-format number (or +1). Phone answers are stored as phone_setup and
+us_phone_number on outreach_action_preferences. Numbers are normalized to +1.
+This is format validation, not proof of number ownership or a phone provisioning
+request sent to an external provider. Needs-number requests are visible in
+Other Actions, including a filter for administrator follow-up.
+
+After the base assigned-action migration, apply the additional phone migration:
+`supabase/migrations/20261018210000_questionnaire_phone_setup.sql`.
+Existing answers remain readable. The new protected submission RPC requires
+a phone choice for new responses and saves it atomically with completion.
+The earlier submission RPC is revoked from browser callers, so open older
+questionnaire tabs must reload. No live migration is executed by this commit.
