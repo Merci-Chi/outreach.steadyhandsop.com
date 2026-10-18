@@ -1,4 +1,4 @@
-import { Device } from 'https://esm.sh/@twilio/voice-sdk@2.18.5';
+import { Device } from './twilio-sdk.js?v=2.18.5-browser';
 
 let device = null;
 let activeCall = null;
