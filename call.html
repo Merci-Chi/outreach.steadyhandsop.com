@@ -19,18 +19,17 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
-  <link rel="stylesheet" href="sidebar.css?v=batch2" />
+  <link rel="stylesheet" href="sidebar.css?v=20261018-mobile-back" />
+  <script src="sidebar.js?v=20261018-mobile-back" defer></script>
 <link rel="stylesheet" href="queue.css?v=queue-b2" />
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
-  <script src="sidebar.js?v=inbound-20261017" defer></script>
 <link rel="stylesheet" href="call.css?v=lead-actions-20261017" />
-  <script src="sidebar.js?v=batch2" defer></script>
 <link rel="stylesheet" href="call.css?v=action-tiles-20261017" />
 <link rel="stylesheet" href="outreach-tools.css?v=integration-2"><link rel="stylesheet" href="starter-scripts.css?v=2"><link rel="stylesheet" href="outreach-process.css?v=20261017-call"><link rel="stylesheet" href="prospect-compact.css?v=20261018">
 <link rel="stylesheet" href="fit-control-labels.css?v=20261018-full">
 <script src="fit-control-labels.js?v=20261018-full" defer></script>
-<link rel="stylesheet" href="workflow-simple.css?v=20261018-popups">
+<link rel="stylesheet" href="workflow-simple.css?v=20261018-single-row">
 </head>
 <body class="page-outreach page-call">
 <div class="app">
@@ -42,7 +41,6 @@
 
 <main class="content" id="refOutreachMain">
     <nav class="call-back-nav" aria-label="Call page navigation">
-      <button type="button" id="backToOutreach" class="call-back-btn"><i data-lucide="arrow-left" aria-hidden="true"></i><span>Back to Outreach</span></button>
     </nav>
     <table id="workflowLayout" role="presentation" width="100%" cellpadding="8"><colgroup><col width="33%"><col width="67%"></colgroup><tbody><tr><td valign="top" id="workflowDialer"><div class="process-workspace"><section class="ref-lead-card" aria-label="Selected prospect">
         <div class="ref-lead-identity"><div class="ref-lead-identity-copy"><h2 id="refCompany">No prospect selected</h2><div class="ref-phone" id="refPhone">No phone number on file</div><div class="ref-status"><span class="ref-green-dot"></span><span id="refStatus">Waiting for call</span><span class="ref-active-duration" id="refCallTimer" hidden></span></div></div></div>
@@ -262,22 +260,7 @@ try {
 <script src="approved-caller.js?v=20261016" defer></script>
 <script type="module" src="twilio-voice.js?v=20261017-call-errors"></script>
 <script src="call-voice-controller.js?v=workflow-20261017" defer></script>
-<script>
-(() => {
-  const back = document.getElementById('backToOutreach');
-  if (!back) return;
-  back.addEventListener('click', () => {
-    const callButton = document.getElementById('refEndCall');
-    const active = callButton?.dataset.callState === 'active';
-    if (active && !window.confirm('A call is in progress. Going back may interrupt the call. Leave the call page?')) return;
-    const id = new URLSearchParams(location.search).get('crm_id') || window.steadyHandsCallLead?.id || '';
-    if (id) {
-      try { sessionStorage.setItem('steadyhands-selected-outreach-crm-id', id); } catch (_) {}
-    }
-    location.href = id ? 'index.html?crm_id=' + encodeURIComponent(id) : 'index.html';
-  });
-})();
-</script>
+
 <script src="starter-scripts.js?v=3" defer></script><script src="outreach-process.js?v=20261018-startup" defer></script><script src="outreach-workflow-core.js?v=20261017" defer></script>
 <script src="call-guide.js?v=20261018-popups" defer></script>
 <script src="outreach-workflow.js?v=20261018-call-guide" defer></script>

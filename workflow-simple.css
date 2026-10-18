@@ -226,3 +226,22 @@ html[data-theme=dark] .call-popup-status { color: #adc1d9; }
   .call-popup-nav { flex-wrap: wrap; }
   .call-popup-status { order: -1; flex-basis: 100%; }
 }
+
+/* Seven stage pills share one row; small screens scroll horizontally. */
+.call-stage-pills {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+.call-stage-pills .call-stage-pill {
+  flex: 1 0 auto;
+  width: auto;
+  min-width: max-content;
+  white-space: nowrap;
+}
