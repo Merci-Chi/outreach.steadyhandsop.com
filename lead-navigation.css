@@ -1,8 +1,8 @@
-/* Outreach-only fixed lead navigation, above the existing Incoming calls toggle. */
+/* Outreach-only lead navigation anchored to the bottom edge. */
 #outreachLeadDock {
   position: fixed;
   right: 18px;
-  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 1050;
   width: min(340px, calc(100vw - 36px));
   box-sizing: border-box;
@@ -40,15 +40,17 @@
 #outreachLeadDock .ref-next-buttons .ref-primary svg { stroke: #fff; }
 #outreachLeadDock button:focus-visible { outline: 3px solid #75adff; outline-offset: 2px; }
 body.page-outreach:has(#outreachLeadDock) .app {
-  padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 @media (max-width: 899px) {
   #outreachLeadDock {
     right: 12px;
-    bottom: calc(152px + env(safe-area-inset-bottom, 0px));
     width: min(340px, calc(100vw - 24px));
   }
   body.page-outreach:has(#outreachLeadDock) .app {
-    padding-bottom: calc(240px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Remove the floating Incoming calls launcher from Outreach. */
+body.page-outreach #shInbound #inboundToggle { display: none; }
