@@ -49,3 +49,11 @@ test('unassigned or completed users cannot open the questionnaire dialog',async(
  const h=harness();h.window.OutreachActions.load=async()=>({assignment:null});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);
  h.window.OutreachActions.load=async()=>({assignment:{status:'completed'}});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);
 });
+test('local timezone dropdown includes worldwide regions, UTC and fractional offsets; work zones stay limited',async()=>{
+ const h=harness();await h.open();
+ const html=h.body.innerHTML;
+ assert((html.match(/<option /g)||[]).length>400);
+ for(const zone of ['Africa/Johannesburg','America/Sao_Paulo','Asia/Manila','Asia/Tokyo','Australia/Sydney','Europe/London','Pacific/Auckland','UTC'])assert(html.includes('value="'+zone+'"'),zone);
+ assert.match(html,/GMT\+05:45/);assert.match(html,/GMT\+05:30/);assert.match(html,/GMT\+00:00/);
+ h.next();assert.equal((h.body.innerHTML.match(/<option /g)||[]).length,3);
+});
