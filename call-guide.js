@@ -103,7 +103,10 @@
     const next=make('button','Next step →','sh-sheet-primary');next.type='button';
     const status=make('span',null,'call-step-status');status.setAttribute('aria-live','polite');
     nav.append(previous,next);header.insertBefore(links,document.getElementById('processProgress'));header.insertBefore(nav,document.getElementById('processProgress'));
-    header.after(status);
+    header.className+=' call-guide-header';
+    header.insertBefore(status,links);
+    const prospect=process.querySelector('#processLead');
+    if(prospect)header.insertBefore(prospect,links);
     function showStep(focus=false){
       guide.hidden=!guided;nav.hidden=!guided;pills.hidden=!guided;links.hidden=!guided;status.hidden=!guided;
       const inChecklist=cursor>=cards.length;
