@@ -46,3 +46,81 @@
 :is(#keywordFeedback, #transcriptFeedback, #processFeedback):empty { display: none; }
 html[data-theme=dark] .workflow-step-nav .sh-sheet-secondary { color: #adcfff; border-color: #38516d; }
 html[data-theme=dark] #keywordActions > :is(button, .suggested-action-empty) { border-color: #38516d; }
+
+/* Complete call path sits beside Back to Outreach, with quick responses in Process. */
+body.page-call .call-back-nav { align-items: flex-start; gap: 12px; }
+body.page-call .call-back-btn { flex: 0 0 auto; min-height: 38px; white-space: nowrap; }
+.call-stage-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  flex: 1;
+  min-width: 0;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.call-stage-pills .call-stage-pill {
+  appearance: none;
+  width: 100%;
+  min-height: 38px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #193c60;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: center;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.call-stage-pills .call-stage-pill:nth-child(even) { background: #dda711; color: #183650; }
+.call-stage-pills .call-stage-pill[aria-current=step] { border-color: #087efa; box-shadow: 0 0 0 2px #fff inset, 0 0 0 2px #087efa; }
+.call-stage-pills .call-stage-pill:hover { filter: brightness(1.1); }
+.call-stage-pills .call-stage-pill:focus-visible,
+.call-objection-links a:focus-visible { outline: 3px solid #087efa; outline-offset: 3px; }
+.outreach-process > header .call-objection-links { flex: 1 1 200px; display: flex; flex-wrap: wrap; justify-content: center; gap: 7px 14px; }
+.call-objection-links a { color: #165987; font-size: 12px; font-weight: 800; line-height: 1.5; text-decoration: underline; text-underline-offset: 3px; }
+.call-objection-links a[aria-expanded=true] { color: #0877dc; }
+.call-step-status { margin: 12px 0 0; color: #61738e; font-size: 12px; font-weight: 700; }
+.call-guide, .call-objection-responses { border-top: 1px solid #e1e9f2; padding-top: 16px; }
+.call-guide-card h3, .call-objection-responses h3 { margin: 0 0 12px; font-size: 17px; line-height: 1.4; }
+.call-guide-card h4 { margin: 16px 0 10px; font-size: 14px; line-height: 1.5; }
+.outreach-process .call-guide blockquote,
+.outreach-process .call-objection-responses blockquote {
+  margin: 12px 0;
+  padding: 16px;
+  border-left: 4px solid #dda711;
+  background: #fbf7ec;
+  color: #193c60;
+  border-radius: 0 12px 12px 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.call-guide blockquote p { margin: 0 0 12px; }
+.call-guide blockquote p:last-child { margin-bottom: 0; }
+.call-guide-note { color: #61738e; font-size: 12px; line-height: 1.65; margin: 12px 0 16px; }
+.call-opener-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.outreach-process .call-opener-choices button {
+  width: auto; flex: 1 1 160px; margin: 0; border-radius: 999px;
+  color: #193c60; background: transparent; border-color: #cbd9e9;
+}
+.outreach-process .call-opener-choices button[aria-pressed=true] { background: #193c60; border-color: #193c60; color: #fff; }
+.outreach-process .call-objection-close { width: auto; margin: 0 0 16px; }
+.call-guide[hidden], .call-guide-card[hidden], .call-stage-pills[hidden], .call-objection-links[hidden],
+.call-objection-responses[hidden], .call-step-status[hidden], #processSteps[hidden] { display: none !important; }
+html[data-theme=dark] .call-objection-links a { color: #a9d5ff; }
+html[data-theme=dark] :is(.call-step-status,.call-guide-note) { color: #adc1d9; }
+html[data-theme=dark] :is(.call-guide,.call-objection-responses) { border-color: #38516d; }
+html[data-theme=dark] .outreach-process :is(.call-guide,.call-objection-responses) blockquote { background: #19334e; color: #e1edff; }
+html[data-theme=dark] .outreach-process .call-opener-choices button { color: #e1edff; border-color: #617d9b; }
+html[data-theme=dark] .outreach-process .call-opener-choices button[aria-pressed=true] { background: #255a87; }
+@media(max-width:720px) {
+  body.page-call .call-back-nav { flex-direction: column; align-items: stretch; }
+  body.page-call .call-back-btn { align-self: flex-start; }
+  .call-stage-pills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .outreach-process > header .call-objection-links { order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .outreach-process > header .workflow-step-nav { margin-left: auto; }
+}

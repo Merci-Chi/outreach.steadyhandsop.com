@@ -34,27 +34,7 @@
   };
 
   const process=document.querySelector('.outreach-process');
-  const steps=[...process.querySelectorAll('ol > li')];
-  let guided=document.body.classList.contains('page-call'), cursor=0;
-  const nav=make('div',null,'workflow-step-nav');
-  nav.setAttribute('role','group');nav.setAttribute('aria-label','Process steps');
-  const previous=make('button','Previous','sh-sheet-secondary');previous.type='button';
-  const next=make('button','Next step →','sh-sheet-primary');next.type='button';
-  const stepStatus=make('span',null,'process-sr-only');stepStatus.setAttribute('aria-live','polite');
-  nav.append(previous,next,stepStatus);process.querySelector('header').insertBefore(nav,$('processProgress'));
-  function showStep(direction=0) {
-    steps.forEach((step,i)=>{step.hidden=guided&&i!==cursor;});
-    nav.hidden=!guided;stepStatus.hidden=!guided;
-    stepStatus.textContent=`Step ${cursor+1} of ${steps.length}`;
-    previous.disabled=cursor===0;next.disabled=cursor===steps.length-1;
-    if(guided&&direction&&!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      steps[cursor].animate?.([{opacity:0,transform:`translateX(${direction*24}px)`},{opacity:1,transform:'translateX(0)'}],{duration:180,easing:'ease-out'});
-    }
-  }
-  previous.onclick=()=>{cursor=Math.max(0,cursor-1);showStep(-1);};
-  next.onclick=()=>{cursor=Math.min(steps.length-1,cursor+1);showStep(1);};
-  window.addEventListener('steadyhands:process-mode',event=>{guided=!!event.detail?.guided;showStep();});
-  showStep();
+  window.SteadyHandsCallGuide.mount({process,leadId});
 
   let reviewPending=null;
   window.SteadyHandsReviewBeforeCall = id => {
@@ -132,7 +112,7 @@
   let syncTimer=null, since=null, syncEpoch=0, syncBusy=false;
   function resetLead() {
     const id=leadId();if(id===current)return;
-    stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();cursor=0;showStep();feedback.textContent='';
+    stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
     $('keywordFeedback').textContent='';
     $('refTranscriptStatus').textContent='';
   }
@@ -159,7 +139,7 @@
         try {
           if(action.id==='dnc'){$('refDoNotCall')?.click();}
           else if(action.id.startsWith('tag:')){await core.addTag(window.steadyHandsCRMClient,id,action.id.slice(4));if(leadId()===id)applied.add(action.id);}
-          else if(action.id==='phone'){cursor=2;showStep();$('processPhone').focus();}
+          else if(action.id==='phone'){window.dispatchEvent(new CustomEvent('steadyhands:call-guide-step',{detail:{checklistStep:3}}));$('processPhone').focus();}
           else {if(!window.steadyHandsOpenOutreachTool)throw Error('Call tools are still loading. Please try again.');await window.steadyHandsOpenOutreachTool(action.id);}
           if(leadId()===id){$('keywordFeedback').textContent=action.id.startsWith('tag:')?'Tag saved.':'Review the action before saving.';renderActions();}
         }catch(error){if(leadId()===id)$('keywordFeedback').textContent=error.message;}
