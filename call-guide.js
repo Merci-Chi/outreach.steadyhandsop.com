@@ -122,14 +122,12 @@
     stageNext.addEventListener('click',()=>{if(activeStage===stages.length-1)openProcess(true);else openStage(activeStage+1);});
     const links=makeLinks(),nav=make('div',null,'workflow-step-nav');nav.setAttribute('role','group');nav.setAttribute('aria-label','Process steps');
     const previous=make('button','Previous','sh-sheet-secondary'),next=make('button','Next step →','sh-sheet-primary');previous.type=next.type='button';
-    const status=make('span',null,'call-step-status');status.setAttribute('aria-live','polite');
     nav.append(previous,next);header.insertBefore(links,document.getElementById('processProgress'));header.insertBefore(nav,document.getElementById('processProgress'));
-    header.className+=' call-guide-header';header.insertBefore(status,links);
-    const prospect=process.querySelector('#processLead');if(prospect)header.insertBefore(prospect,links);
+    header.className+=' call-guide-header';
+    const prospect=process.querySelector('#processLead');if(prospect)prospect.hidden=true;
     function showStep(focus=false){
-      nav.hidden=!guided;pills.hidden=!guided;links.hidden=!guided;status.hidden=!guided;fieldset.hidden=false;
+      nav.hidden=!guided;pills.hidden=!guided;links.hidden=!guided;fieldset.hidden=false;
       checklist.forEach((step,i)=>step.hidden=guided&&cursor!==i);
-      status.textContent=`${cursor+1} / ${checklist.length} · ${checklist[cursor].querySelector('strong').textContent}`;
       previous.disabled=cursor===0;next.disabled=cursor===checklist.length-1;renderPills();
       if(focus&&guided){const heading=checklist[cursor].querySelector('strong');heading.tabIndex=-1;heading.focus({preventScroll:true});}
     }

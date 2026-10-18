@@ -254,3 +254,28 @@ body.page-outreach .call-back-nav {
   width: 100%;
   margin: 0 0 9px;
 }
+
+/* Keep intrinsic toolbar widths from changing the desktop 1/3–2/3 columns. */
+#workflowLayout {
+  table-layout: fixed;
+  width: 100%;
+  max-width: 100%;
+}
+#workflowLayout col:first-child, #workflowDialer { width: 33.333333%; }
+#workflowLayout col:last-child, #workflowReview { width: 66.666667%; }
+#workflowDialer, #workflowReview { min-width: 0; overflow-wrap: anywhere; }
+body.page-outreach #workflowDialer > .process-workspace { width: 100%; max-width: none; }
+#workflowReview > :is(.outreach-process,.workspace-card) { width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
+.outreach-process > header.call-guide-header {
+  flex-wrap: wrap;
+  overflow: visible;
+  gap: 8px;
+}
+.outreach-process > header.call-guide-header .call-objection-links {
+  flex: 1 1 260px;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.outreach-process > header.call-guide-header .workflow-step-nav { margin-left: 0; }
+#processLead[hidden] { display: none !important; }

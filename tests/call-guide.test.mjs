@@ -67,7 +67,7 @@ test('six stage pills open popups and the seventh opens Process instead of a sep
 test('popup Next reaches Process; Process Next/Previous only navigate its six manual checks',()=>{
  const s=setup();for(let i=0;i<6;i++)s.stageNext.click();assert.equal(s.dialog.open,false);assert(s.previous.disabled);
  for(let i=1;i<6;i++){s.next.click();assert.equal(s.ol.children[i].hidden,false);}
- assert(s.next.disabled);assert.match(s.header.querySelector('.call-step-status').textContent,/6 \/ 6/);
+ assert(s.next.disabled);assert.equal(s.header.querySelector('.call-step-status'),null);
  s.previous.click();assert.equal(s.ol.children[4].hidden,false);
  s.pills[0].click();s.pills[6].click();assert.equal(s.ol.children[4].hidden,false);
  assert(s.ol.children.every(li=>li.querySelector('input').checked===false));assert(s.fieldset.disabled);
