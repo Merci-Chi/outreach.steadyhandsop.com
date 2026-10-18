@@ -155,12 +155,25 @@
         return;
       }
 
+      // Assigned questionnaires are available without entering the older pause agreement.
+      // This exception grants no calling or lead access; those pages retain their checks.
+      const actionPages = ['action-needed.html','alreadyoncommission.html','currentlyonhourlywage.html'];
+      if(actionPages.includes(currentPageName())){
+        document.documentElement.classList.remove('auth-checking');
+        return;
+      }
+
       // Server-backed restriction is checked before onboarding/resume or displaying leads.
       const {data:pauseData,error:pauseError}=await client.rpc('sh_get_my_access_pause');
       if(pauseError) throw new Error('Could not verify account access: '+pauseError.message);
       const pauseStatus=Array.isArray(pauseData)?pauseData[0]:pauseData;
       if(pauseStatus?.is_paused===true){
-        if(currentPageName()!=='pause.html'){ location.replace('pause.html');return; }
+        if(currentPageName()!=='pause.html'){
+          const {data:assignedAction,error:assignmentError}=await client.from('outreach_action_assignments')
+            .select('id').eq('user_id',data.session.user.id).eq('status','assigned').maybeSingle();
+          if(!assignmentError && assignedAction){location.replace('action-needed.html?open=1');return;}
+          location.replace('pause.html');return;
+        }
         document.documentElement.classList.remove('auth-checking');
         return;
       }
@@ -219,3 +232,4 @@
     }
   });
 })();
+

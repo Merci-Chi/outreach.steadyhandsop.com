@@ -127,3 +127,21 @@ Existing answers remain readable. The new protected submission RPC requires
 a phone choice for new responses and saves it atomically with completion.
 The earlier submission RPC is revoked from browser callers, so open older
 questionnaire tabs must reload. No live migration is executed by this commit.
+
+## Popup questionnaire routing
+
+Action Needed opens the assigned questionnaire in a native dialog on the same
+page. It shows one question per step: path (hourly associates), start-date
+confirmation/extension, local timezone, work timezone, two-hour window, weekly
+hours, US-number choice, and the existing number if applicable. Notices and
+confirmations also use their own popup steps. No agreement URL, PDF, signature,
+or document-signing flow is opened or issued by the questionnaire.
+
+The auth guard permits authenticated access to questionnaire pages separately
+from the legacy account pause. All writes still require the authenticated
+user's active assignment. Calling and lead pages retain their pause checks.
+When a paused user has an assigned questionnaire, the guard sends them to
+Action Needed and opens the dialog instead of the legacy agreement page. The
+pause screen's hardcoded agreement link is replaced by the questionnaire entry.
+Completing the questionnaire does not silently change unrelated account access.
+No new SQL migration is required for this routing/UI correction.

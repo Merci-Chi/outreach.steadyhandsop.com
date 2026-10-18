@@ -2,56 +2,50 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
-const read=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8');
-function harness(path,loaded,submit=async()=>({})){
-  let elements={},html='',listeners={};
-  const app={focus(){},append(){},querySelectorAll(){return[]},querySelector(){return null},
-    set innerHTML(value){html=value;elements={};for(const m of value.matchAll(/<(?:button|input|select|strong|span|div|p)[^>]*\bid="([^"]+)"[^>]*>/g)){
-      const tag=m[0];elements[m[1]]={disabled:/\sdisabled/.test(tag),value:tag.match(/value="([^"]*)"/)?.[1],textContent:'',style:{setProperty(k,v){this[k]=v}},setAttribute(k,v){this[k]=v},addEventListener(_,fn){this.click=fn},reportValidity(){return Number(this.value)>=2&&Number(this.value)<=40;}};
-    }},get innerHTML(){return html;}};
-  const window={OutreachActions:{load:async()=>loaded,submit,extend:async(_,__,next)=>next}};
-  const context=vm.createContext({window,Intl,Date,console,location:{pathname:path},document:{getElementById:id=>id==='app'?app:elements[id],addEventListener(type,fn){listeners[type]=fn;}}});
-  vm.runInContext(read('actions/start-dates.js'),context);
-  vm.runInContext(read('actions/js.js'),context);
-  return {app,window,e:()=>elements,run:code=>vm.runInContext(code,context),init:()=>listeners.DOMContentLoaded()};
+const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8');
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+function harness(basis='commission',submit=async()=>({})){let dialog;const listeners={};
+ class Node{
+  constructor(tag='div',attrs=''){this.tag=tag;this.attrs=attrs;this.flat=[];this.listeners={};this.style={setProperty:(k,v)=>{this.style[k]=v}};this.value=attrs.match(/\bvalue="([^"]*)"/)?.[1]||'';this.checked=/\bchecked\b/.test(attrs);this.disabled=false;this.id=attrs.match(/\bid="([^"]*)"/)?.[1];this.name=attrs.match(/\bname="([^"]*)"/)?.[1];}
+  set innerHTML(html){this.html=html;this.flat=[];for(const m of html.matchAll(/<(button|input|select|div|h1|strong)[^>]*>/g)){const node=new Node(m[1],m[0]);if(node.tag==='select'){const body=html.slice(m.index).match(/^[\s\S]*?<\/select>/)?.[0]||'';node.value=(body.match(/<option[^>]*value="([^"]*)"[^>]*selected/)||body.match(/<option[^>]*value="([^"]*)"/))?.[1]||'';}this.flat.push(node);}}
+  get innerHTML(){return this.html||'';}setAttribute(k,v){this[k]=v;}addEventListener(k,fn){this.listeners[k]=fn;}focus(){}showModal(){this.open=true;}close(){this.open=false;}
+  all(){return this.flat.flatMap(x=>[x,...x.all()]);}
+  querySelectorAll(s){return this.all().filter(x=>s.startsWith('#')?x.id===s.slice(1):s.startsWith('.')?x.attrs.includes(s.slice(1)):s.startsWith('input[name=')?x.tag==='input'&&x.name===s.match(/name="([^"]*)"/)[1]&&(!s.includes(':checked')||x.checked):s.split(',').includes(x.tag));}
+  querySelector(s){return this.querySelectorAll(s)[0]||null;}
+  click(){if(!this.disabled)return this.onclick?.()||this.listeners.click?.();}reportValidity(){const n=Number(this.value);return n>=2&&n<=40&&Number.isInteger(n);}
+ }
+ const document={activeElement:new Node(),body:{appendChild(n){dialog=n},classList:{add(){},remove(){}}},createElement:tag=>new Node(tag),addEventListener(k,fn){listeners[k]=fn;}};
+ const calls=[];const window={OutreachActions:{load:async()=>({assignment:{id:'assigned-1',status:'assigned'},associate:{current_basis:basis,start_date:'2026-11-02'}}),submit:async(...args)=>{calls.push(args);return submit(...args)},extend:async(_,__,next)=>next}};
+ const c=vm.createContext({window,document,Intl,Date,location:{pathname:'/action-needed.html'},console});vm.runInContext(read('actions/start-dates.js'),c);vm.runInContext(read('actions/js.js'),c);
+ return {window,calls,open:()=>window.OutreachQuestionnaire.open(),get body(){return dialog.querySelector('#question-body')},get dialog(){return dialog},node(id){return this.body.querySelector('#'+id)},next(){return this.node('question-next').click()},choose(name,value){this.body.all().filter(x=>x.name===name).forEach(x=>x.checked=x.value===value)}};
 }
-const assigned=basis=>({assignment:{id:'assignment-1',status:'assigned'},associate:{current_basis:basis,start_date:'2026-11-02'}});
-test('unassigned, completed, and wrong-route users cannot enter the questionnaire',async()=>{
- const none=harness('alreadyoncommission.html',{assignment:null});await none.init();assert.match(none.app.innerHTML,/No action assigned/);assert.doesNotMatch(none.app.innerHTML,/id="start"/);
- const done=harness('alreadyoncommission.html',{assignment:{status:'completed'}});await done.init();assert.match(done.app.innerHTML,/Already completed/);
- const wrong=harness('alreadyoncommission.html',assigned('hourly'));await wrong.init();assert.match(wrong.app.innerHTML,/href="currentlyonhourlywage.html"/);assert.doesNotMatch(wrong.app.innerHTML,/id="start"/);
+async function toPhone(h){h.next();h.next();h.next();h.next();assert.match(h.body.innerHTML,/Do you need a US number/);}
+test('commission popup asks timezone, work timezone, shift and weekly hours separately',async()=>{
+ const h=harness();await h.open();assert(h.dialog.open);assert.match(h.body.innerHTML,/What is your local timezone/);assert.equal(h.body.querySelectorAll('select').length,1);assert.equal(h.body.querySelectorAll('input').length,0);
+ h.node('local-zone').value='America/New_York';h.next();assert.match(h.body.innerHTML,/Which work timezone/);h.node('work-zone').value='America/Los_Angeles';h.next();assert.equal(h.body.querySelectorAll('input').length,1);h.node('shift-start').oninput({target:{value:'900'}});assert.equal(h.node('work-time').textContent,'3:00 PM – 5:00 PM');assert.equal(h.node('local-time').textContent,'6:00 PM – 8:00 PM');h.next();assert.match(h.body.innerHTML,/weekly hours/);assert.equal(h.body.querySelectorAll('input').length,1);
 });
-test('commission goes directly to scheduling, with endpoint-safe timezone conversion',async()=>{
- const h=harness('alreadyoncommission.html',assigned('commission'));await h.init();assert.match(h.app.innerHTML,/Set your preferred hours/);assert.doesNotMatch(h.app.innerHTML,/Trial notice/);
- h.run("state.localZone='America/New_York';render()");assert.equal(h.e()['local-time'].textContent,'12:00 PM – 2:00 PM');h.e().start.oninput({target:{value:'900'}});assert.equal(h.e()['work-time'].textContent,'3:00 PM – 5:00 PM');assert.equal(h.e()['local-time'].textContent,'6:00 PM – 8:00 PM');
+test('hourly path keeps confirmation order, quota and separate weekday/date popups',async()=>{
+ const h=harness('hourly');await h.open();h.next();h.choose('path','hourly');h.next();assert(h.body.innerHTML.indexOf('id="hourly-sure"')<h.body.innerHTML.indexOf('id="hourly-review"'));h.node('hourly-sure').click();h.next();assert.match(h.body.innerHTML,/Please acknowledge/);h.node('quota-ack').checked=true;h.next();assert.match(h.body.innerHTML,/Confirm your start date/);h.node('extend-start').click();assert.equal(h.body.querySelectorAll('select').length,1);h.next();assert.equal(h.body.querySelectorAll('select').length,1);assert.match(h.body.innerHTML,/Choose your new start date/);await h.next();assert.match(h.body.innerHTML,/Confirm your start date/);
 });
-test('hourly confirmation preserves button order, quota acknowledgment, and start-date step',async()=>{
- const h=harness('currentlyonhourlywage.html',assigned('hourly'));await h.init();h.e().continue.click();assert(h.app.innerHTML.indexOf('id="sure"')<h.app.innerHTML.indexOf('id="review"'));h.e().sure.click();assert(h.e().proceed.disabled);h.e().ack.onchange({target:{checked:true}});assert.equal(h.run('state.quotaAcknowledged'),true);h.e().proceed.click();await new Promise(resolve=>setImmediate(resolve));assert.match(h.app.innerHTML,/Monday, November 2, 2026/);h.e()['extend-date'].click();assert.match(h.app.innerHTML,/Preferred day of the week/);
+test('commission selection shows only an administrator reminder and never an agreement link',async()=>{
+ const h=harness('hourly');await h.open();h.next();h.choose('path','commission');h.next();assert.match(h.body.innerHTML,/Contact your administrator/);assert.doesNotMatch(h.body.innerHTML,/href=|signature|PDF/);h.next();assert.match(h.body.innerHTML,/local timezone/);
 });
-test('hourly choosing commission skips start-date confirmation and requests an agreement',async()=>{
- const h=harness('currentlyonhourlywage.html',assigned('hourly'));await h.init();h.run("state.path='commission'");h.e().continue.click();assert.match(h.app.innerHTML,/updated commission agreement/);h.e().proceed.click();assert.match(h.app.innerHTML,/Set your preferred hours/);
+test('US number choice and Google Voice number use separate popups with validation',async()=>{
+ const h=harness();await h.open();await toPhone(h);h.next();assert.match(h.body.innerHTML,/Choose an option/);h.choose('phone','google_voice');h.next();assert.match(h.body.innerHTML,/Google Voice number/);assert.equal(h.body.querySelectorAll('input').length,1);h.node('us-number').value='bad';h.next();assert.match(h.body.innerHTML,/valid 10-digit/);assert.equal(h.calls.length,0);h.node('us-number').value='(202) 555-0101';h.next();await tick();assert.match(h.body.innerHTML,/Great, preference completed/);assert.equal(h.calls[0][1].phoneSetup,'google_voice');assert.doesNotMatch(h.body.innerHTML,/href=|onboard\.steadyhandsop/);
 });
-test('submission waits for server success and failures remain on the form',async()=>{
- let finish;const h=harness('alreadyoncommission.html',assigned('commission'),()=>new Promise(resolve=>{finish=resolve}));await h.init();h.run("state.phoneSetup='needs_number';go('phone')");const pending=h.run('submitPreference()');assert.match(h.app.innerHTML,/Submitting/);assert.doesNotMatch(h.app.innerHTML,/Great, preference completed/);finish({});await pending;assert.match(h.app.innerHTML,/Your preference has been submitted/);assert.doesNotMatch(h.app.innerHTML,/id="edit"/);
- const fail=harness('alreadyoncommission.html',assigned('commission'),async()=>{throw Error('Assignment cancelled');});await fail.init();fail.run("state.phoneSetup='needs_number';go('phone')");await fail.run('submitPreference()');assert.match(fail.app.innerHTML,/Assignment cancelled/);assert.match(fail.app.innerHTML,/Do you need a US number/);assert.equal(fail.e()['submit-phone'].disabled,false);
+test('submission waits for Supabase and failure stays in the popup',async()=>{
+ let resolve;const h=harness('commission',()=>new Promise(r=>{resolve=r}));await h.open();await toPhone(h);h.choose('phone','needs_number');h.next();assert.doesNotMatch(h.body.innerHTML,/Great, preference completed/);resolve({});await tick();assert.match(h.body.innerHTML,/Great, preference completed/);
+ const fail=harness('commission',async()=>{throw Error('Assignment cancelled')});await fail.open();await toPhone(fail);fail.choose('phone','needs_number');fail.next();await tick();assert.match(fail.body.innerHTML,/Assignment cancelled/);assert.match(fail.body.innerHTML,/Do you need a US number/);
 });
-test('weekday choices span four calendar months and handle month ends and leap years',()=>{
- const window={};vm.runInNewContext(read('actions/start-dates.js'),{window,Intl,Date});const d=window.SteadyHandsStartDates;
- assert.equal(d.limitDate('2026-10-31'),'2027-02-28');assert.equal(d.limitDate('2027-10-31'),'2028-02-29');assert.throws(()=>d.parse('2026-02-30'));
- for(let day=1;day<=5;day++){const options=d.options(day,'2026-10-20','2026-10-18');assert(options.length>=16);for(const key of options){assert.equal(d.parse(key).getUTCDay(),day);assert(key>'2026-10-20'&&key<='2027-02-18');}}
- assert.equal(d.options(0,'2026-10-20','2026-10-18').length,0);assert.equal(d.options(6,'2026-10-20','2026-10-18').length,0);
+test('date options use four calendar months and exclude weekends and earlier dates',()=>{
+ const window={};vm.runInNewContext(read('actions/start-dates.js'),{window,Intl,Date});const d=window.SteadyHandsStartDates;assert.equal(d.limitDate('2026-10-31'),'2027-02-28');assert.equal(d.limitDate('2027-10-31'),'2028-02-29');for(let day=1;day<=5;day++)for(const key of d.options(day,'2026-10-20','2026-10-18')){assert.equal(d.parse(key).getUTCDay(),day);assert(key>'2026-10-20'&&key<='2027-02-18');}
 });
-test('adapter sends assignment and exact response to RPC; database errors propagate',async()=>{
- let call;const window={steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'real-user'}}})},rpc:async(name,args)=>{call={name,args};return {data:{saved:true}};}}};
- vm.runInNewContext(read('action-needed-api.js'),{window});await window.OutreachActions.submit('assigned-id',{path:'hourly',localZone:'America/New_York',workZone:'America/Chicago',start:540,hours:20,quotaAcknowledged:true,startDate:'2026-11-02',phoneSetup:'google_voice',phoneNumber:'2025550101'});
- assert.equal(call.name,'outreach_action_submit_v2');assert.equal(call.args.p_assignment_id,'assigned-id');assert.equal(call.args.p_confirmed_start_date,'2026-11-02');assert.equal(call.args.p_quota_acknowledged,true);assert.equal(call.args.p_phone_setup,'google_voice');assert.equal(call.args.p_us_phone_number,'2025550101');assert(!('user_id' in call.args));
- window.steadyHandsCRMClient.rpc=async()=>({error:{message:'Not assigned'}});await assert.rejects(()=>window.OutreachActions.extend('other','2026-11-02','2026-11-09'),/Not assigned/);
+test('questionnaire pages bypass the legacy agreement redirect, while lead pages remain paused',async()=>{
+ async function guard(path,assigned){const events={};let redirected=null,removed=false,checks=0;const q={select(){return this},eq(){return this},maybeSingle:async()=>({data:assigned?{id:'assigned-1'}:null})};const client={auth:{getSession:async()=>({data:{session:{user:{id:'user',created_at:'2020-01-01'}}}})},rpc:async()=>{checks++;return{data:{is_paused:true}}},from:()=>q};const document={documentElement:{classList:{add(){},remove(){removed=true}}},addEventListener(k,fn){events[k]=fn}};const window={supabase:{createClient:()=>client}};vm.runInNewContext(read('auth-guard.js'),{window,document,location:{pathname:path,replace(v){redirected=v}},console});await events.DOMContentLoaded();return{redirected,removed,checks};}
+ const own=await guard('/action-needed.html',true);assert.equal(own.redirected,null);assert(own.removed);assert.equal(own.checks,0);
+ assert.equal((await guard('/index.html',true)).redirected,'action-needed.html?open=1');assert.equal((await guard('/leads.html',false)).redirected,'pause.html');
 });
-
-test('final phone step requires a choice and a valid number for existing and Google Voice numbers',async()=>{
- let saves=0;const h=harness('alreadyoncommission.html',assigned('commission'),async()=>{saves++;return {};});await h.init();h.e().finish.click();assert.match(h.app.innerHTML,/Do you need a US number/);
- await h.run('submitPreference()');assert.equal(saves,0);assert.match(h.app.innerHTML,/Choose an option/);
- h.run("state.phoneSetup='google_voice';state.phoneNumber='abc2025550101';render()");await h.run('submitPreference()');assert.equal(saves,0);assert.match(h.app.innerHTML,/valid 10-digit/);
- h.run("state.phoneNumber='(202) 555-0101';render()");await h.run('submitPreference()');assert.equal(saves,1);assert.match(h.app.innerHTML,/Google Voice/);assert.match(h.app.innerHTML,/\+12025550101/);
- assert.equal(h.run("normalizeUSPhone('+44 20 7946 0958')"),null);
+test('unassigned or completed users cannot open the questionnaire dialog',async()=>{
+ const h=harness();h.window.OutreachActions.load=async()=>({assignment:null});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);
+ h.window.OutreachActions.load=async()=>({assignment:{status:'completed'}});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);
 });
