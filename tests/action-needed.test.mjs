@@ -19,10 +19,10 @@ function harness(basis='commission',submit=async()=>({})){let dialog;const liste
  const c=vm.createContext({window,document,Intl,Date,location:{pathname:'/action-needed.html'},console});vm.runInContext(read('actions/start-dates.js'),c);vm.runInContext(read('actions/js.js'),c);
  return {window,calls,open:()=>window.OutreachQuestionnaire.open(),get body(){return dialog.querySelector('#question-body')},get dialog(){return dialog},node(id){return this.body.querySelector('#'+id)},next(){return this.node('question-next').click()},choose(name,value){this.body.all().filter(x=>x.name===name).forEach(x=>x.checked=x.value===value)}};
 }
-async function toPhone(h){h.next();h.next();h.next();h.next();assert.match(h.body.innerHTML,/Do you need a US number/);}
-test('commission popup asks timezone, work timezone, shift and weekly hours separately',async()=>{
+async function toPhone(h){h.next();h.next();h.next();assert.match(h.body.innerHTML,/Do you need a US number/);}
+test('commission popup asks timezone and shift, then phone, without a weekly-hours question',async()=>{
  const h=harness();await h.open();assert(h.dialog.open);assert.match(h.body.innerHTML,/What is your local timezone/);assert.equal(h.body.querySelectorAll('select').length,1);assert.equal(h.body.querySelectorAll('input').length,0);
- h.node('local-zone').value='America/New_York';h.next();assert.match(h.body.innerHTML,/Which work timezone/);h.node('work-zone').value='America/Los_Angeles';h.next();assert.equal(h.body.querySelectorAll('input').length,1);h.node('shift-start').oninput({target:{value:'900'}});assert.equal(h.node('work-time').textContent,'3:00 PM – 5:00 PM');assert.equal(h.node('local-time').textContent,'6:00 PM – 8:00 PM');h.next();assert.match(h.body.innerHTML,/weekly hours/);assert.equal(h.body.querySelectorAll('input').length,1);
+ h.node('local-zone').value='America/New_York';h.next();assert.match(h.body.innerHTML,/Which work timezone/);h.node('work-zone').value='America/Los_Angeles';h.next();assert.equal(h.body.querySelectorAll('input').length,1);h.node('shift-start').oninput({target:{value:'900'}});assert.equal(h.node('work-time').textContent,'3:00 PM – 5:00 PM');assert.equal(h.node('local-time').textContent,'6:00 PM – 8:00 PM');h.next();assert.match(h.body.innerHTML,/Do you need a US number/);assert.doesNotMatch(h.body.innerHTML,/weekly-hours/);
 });
 test('hourly path keeps confirmation order, quota and separate weekday/date popups',async()=>{
  const h=harness('hourly');await h.open();h.next();h.choose('path','hourly');h.next();assert(h.body.innerHTML.indexOf('id="hourly-sure"')<h.body.innerHTML.indexOf('id="hourly-review"'));h.node('hourly-sure').click();h.next();assert.match(h.body.innerHTML,/Please acknowledge/);h.node('quota-ack').checked=true;h.next();assert.match(h.body.innerHTML,/Confirm your start date/);h.node('extend-start').click();assert.equal(h.body.querySelectorAll('select').length,1);h.next();assert.equal(h.body.querySelectorAll('select').length,1);assert.match(h.body.innerHTML,/Choose your new start date/);await h.next();assert.match(h.body.innerHTML,/Confirm your start date/);
@@ -56,4 +56,11 @@ test('local timezone dropdown includes worldwide regions, UTC and fractional off
  for(const zone of ['Africa/Johannesburg','America/Sao_Paulo','Asia/Manila','Asia/Tokyo','Australia/Sydney','Europe/London','Pacific/Auckland','UTC'])assert(html.includes('value="'+zone+'"'),zone);
  assert.match(html,/GMT\+05:45/);assert.match(html,/GMT\+05:30/);assert.match(html,/GMT\+00:00/);
  h.next();assert.equal((h.body.innerHTML.match(/<option /g)||[]).length,3);
+});
+
+test('US number input autoformats typing and paste and limits digits',async()=>{
+ const h=harness();await h.open();await toPhone(h);h.choose('phone','has_number');h.next();
+ const input=h.node('us-number');
+ for(const [typed,expected] of [['2','+1(2'],['2025550101','+1(202)555-0101'],['+1 (202) 555-0101','+1(202)555-0101'],['20255501019999','+1(202)555-0101'],['','']]){input.value=typed;input.oninput();assert.equal(input.value,expected);}
+ input.value='2025550101';input.oninput();h.next();await tick();assert.match(h.body.innerHTML,/Great, preference completed/);assert.equal(h.calls[0][1].phoneNumber,'+1(202)555-0101');assert.equal(h.calls[0][1].hours,10);
 });
