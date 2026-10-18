@@ -1,6 +1,6 @@
 /* Shared production sidebar — Outreach then Leads; Batch 9. */
 (() => {
- const items=[['Outreach','index.html','phone-call'],['Leads','leads.html','users'],['Queue','queue.html','list-ordered'],['Sales Pipeline','sales.html','workflow'],['Earnings','earnings.html','wallet'],['Performance','activity.html','chart-no-axes-combined'],['Training','https://training.steadyhandsop.com','graduation-cap'],['Settings','account.html','settings']];
+ const items=[['Outreach','index.html','phone-call'],['Action Needed','action-needed.html','clipboard-check'],['Leads','leads.html','users'],['Queue','queue.html','list-ordered'],['Sales Pipeline','sales.html','workflow'],['Earnings','earnings.html','wallet'],['Performance','activity.html','chart-no-axes-combined'],['Training','https://training.steadyhandsop.com','graduation-cap'],['Settings','account.html','settings']];
  const current=location.pathname.split('/').pop()||'index.html';
  const isSettings=current==='admin.html'||current==='account.html';
  const active=isSettings?'account.html':current==='call.html'?'index.html':current;
@@ -72,3 +72,4 @@
 
 // Keep the signed-in app registered for incoming calls; microphone access is requested on Answer.
 import('./inbound-calling.js?v=20261018-inbound-destinations').catch(error => console.warn('Incoming calling module unavailable:',error));
+
