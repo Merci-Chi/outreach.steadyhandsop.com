@@ -3129,6 +3129,31 @@ async function loadLiveCRMTotals(client) {
   }
 }
 
+async function loadPersonalCallHistory(client, userId) {
+  try {
+    const { data = [], error } = await client.from('callcenter_call_activity')
+      .select('crm_id').eq('user_id', userId).not('crm_id', 'is', null).limit(5000);
+    if (error) throw error;
+    window.steadyHandsCalledCRMIds = new Set(data.map(row => String(row.crm_id)).filter(Boolean));
+  } catch (error) { console.warn('Unable to load personal call history:', error); }
+}
+
+async function crmHydrateCardPreviews(client, leads, cards) {
+  try {
+    const keys = await crmFetchSiteKeyPreviewURLs(client, leads);
+    cards.forEach((card, index) => {
+      // A slow response must not change another prospect after navigation.
+      if (!card.isConnected) return;
+      const url = keys.get(leads[index].sitekey);
+      if (!url) return;
+      card.dataset.previewUrl = url;
+      const links = q('.preview-links', card);
+      if (links) links.innerHTML = `<a class="preview-link" target="_blank" rel="noopener noreferrer" href="${crmEscape(url)}"><i data-lucide="external-link"></i> Open Website Preview</a>`;
+    });
+    refreshIcons();
+  } catch (error) { console.warn('Unable to load prospect previews:', error); }
+}
+
 async function loadApprovedPreviewCRM(options = {}) {
   const status = q('#crmStatus');
   const box = q('#crmLeadCards');
@@ -3196,24 +3221,7 @@ async function loadApprovedPreviewCRM(options = {}) {
       return;
     }
 
-    // Count all CRM records after confirming employee access, without blocking lead loading.
-    void loadLiveCRMTotals(client);
-
-    const { data: callRows = [], error: callRowsError } = await client
-      .from('callcenter_call_activity')
-      .select('crm_id')
-      .eq('user_id', outreachSession.user.id)
-      .not('crm_id', 'is', null)
-      .limit(5000);
-
-    if (callRowsError) {
-      console.warn('Unable to load personal call history:', callRowsError);
-      window.steadyHandsCalledCRMIds = new Set();
-    } else {
-      window.steadyHandsCalledCRMIds = new Set(
-        callRows.map(row => String(row.crm_id)).filter(Boolean)
-      );
-    }
+    window.steadyHandsCalledCRMIds = new Set();
   } catch (error) {
     console.error('Authentication check failed:', error);
     status.style.display = '';
@@ -3256,47 +3264,36 @@ async function loadApprovedPreviewCRM(options = {}) {
     // SECURITY: select by authenticated salesperson assignment at query time.
     // Do not enumerate global preview_inventory or unrestricted CRM rows.
     const userId = outreachSession.user.id;
-    const { data: assigned, error: assignedError } = await client
-      .from('crm')
-      .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
-      .eq('assigned_user_id', userId)
-      .limit(1000);
-    if (assignedError) throw assignedError;
-    const leads = (assigned || []).filter(callcenterIsFreshLead);
     const selectedId = new URLSearchParams(location.search).get('crm_id') ||
       (() => { try { return sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || ''; } catch { return ''; } })();
-    let selectedLead = leads.find(lead => String(lead.id) === String(selectedId));
-    // A My Leads deep link may point beyond this initial queue batch. Recheck
-    // the exact record with the same authenticated assignment restriction.
-    if (selectedId && !selectedLead) {
-      const { data, error } = await client.from('crm')
-        .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
-        .eq('id', selectedId).eq('assigned_user_id', userId).maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error('This prospect is no longer assigned to you. Choose a prospect from My Leads.');
-      selectedLead = data;
-      leads.push(data);
+    let query = client.from('crm')
+      .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
+      .eq('assigned_user_id', userId);
+    // Outreach displays one prospect. Do not download and render the full
+    // assignment list before opening a My Leads or queue selection.
+    if (selectedId) query = query.eq('id', selectedId);
+    const { data: assigned, error: assignedError } = await query.limit(1);
+    if (assignedError) throw assignedError;
+    const ordered = (assigned || []).filter(callcenterIsFreshLead);
+    if (selectedId && !ordered.length) {
+      throw new Error('This prospect is no longer assigned to you. Choose a prospect from My Leads.');
     }
-    const ordered = callcenterShuffle(leads);
-    if (selectedLead) {
-      const index = ordered.findIndex(lead => lead.id === selectedLead.id);
-      if (index >= 0) ordered.splice(index, 1);
-      ordered.unshift(selectedLead);
-      window.steadyHandsForcedCRMId = selectedLead.id;
-    }
-    const keys = await crmFetchSiteKeyPreviewURLs(client, ordered);
-    box.replaceChildren(...ordered.map(lead => makeCRMLinkCard(
-      lead, [keys.get(lead.sitekey)].filter(Boolean)
-    )));
+    if (ordered[0]) window.steadyHandsForcedCRMId = String(ordered[0].id);
+    const cards = ordered.map(lead => makeCRMLinkCard(lead, []));
+    box.replaceChildren(...cards);
     status.style.display = ordered.length ? 'none' : '';
     status.textContent = ordered.length ? '' : 'No assigned leads available. Ask your administrator to assign leads.';
 
-    // User-specific Outreach stats are loaded from callcenter_call_activity in user-data.js.\n\n    setupCopyButtons();
+    setupCopyButtons();
     setupOutreach();
     callcenterStartAvailabilitySync();
     startLeadCallTimeTicker();
     refreshIcons();
     finishInitialOutreachLoad();
+    // These enrichments must never delay contact details or calling controls.
+    void crmHydrateCardPreviews(client, ordered, cards);
+    void loadPersonalCallHistory(client, userId);
+    void loadLiveCRMTotals(client);
   } catch (error) {
     status.style.display = '';
     const detail = String(error?.message || 'Unknown error');
