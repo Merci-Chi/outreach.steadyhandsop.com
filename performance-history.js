@@ -23,7 +23,7 @@
         const label = lead.company || lead.name || 'Lead';
         if(kind === 'calls')return `<button type="button" class="performance-history-call" data-history-call="${esc(row.id)}" aria-label="View call details for ${esc(label)}"><span class="performance-history-icon" aria-hidden="true"><i data-lucide="phone-call"></i></span><span class="performance-history-copy"><span class="performance-history-owner">${esc(displayName || 'You')}</span><strong>${esc(label)}</strong><small>${esc(stamp(row.created_at))} · ${esc(duration(row.duration_seconds))}${lead.phone ? ' · '+esc(lead.phone) : ''}</small></span><span class="performance-history-side"><span class="performance-history-outcome">${esc(String(row.outcome || 'Called').replace(/_/g,' '))}</span><small>${transcripts.has(String(row.id)) ? 'Transcript' : 'Call Details'} <span aria-hidden="true">›</span></small></span></button>`;
         const href = 'call.html?'+new URLSearchParams({crm_id:String(lead.id),number:lead.phone||'',company:label,contact:lead.name||'',timezone:lead.timezone||''}).toString();
-        return `<article class="performance-history-followup"><span class="performance-history-icon" aria-hidden="true"><i data-lucide="calendar-clock"></i></span><div class="performance-history-copy"><strong>${esc(label)}</strong><small>${esc(lead.callbackdate || 'Date not set')}${lead.callbackat ? ' · '+esc(lead.callbackat) : ''}</small><small>${esc(lead.phone || 'No phone number')}</small></div>${lead.phone ? `<a class="performance-history-open" href="${esc(href)}">Open</a>` : ''}</article>`;
+        return `<article class="performance-history-followup"><span class="performance-history-icon" aria-hidden="true"><i data-lucide="calendar-clock"></i></span><div class="performance-history-copy"><strong>${esc(label)}</strong><small>${esc(lead.follow_up_at ? stamp(lead.follow_up_at) : lead.callbackdate || 'Date not set')}${!lead.follow_up_at && lead.callbackat ? ' · '+esc(lead.callbackat) : ''}</small><small>${esc(lead.phone || 'No phone number')}</small>${lead.follow_up_category ? '<small>'+esc(lead.follow_up_category)+'</small>' : ''}</div>${lead.phone ? `<a class="performance-history-open" href="${esc(href)}">Open</a>` : ''}</article>`;
       }).join('') || `<p class="performance-history-empty">${current.busy ? 'Loading…' : term ? 'No matches in loaded records.' : kind === 'calls' ? 'No call history yet.' : 'No follow-ups scheduled.'}</p>`;
       find(kind,'count').textContent = current.total == null ? `${current.rows.length} loaded` : `${current.rows.length} of ${current.total}`;
       const button = find(kind,'more');
@@ -32,6 +32,7 @@
       button.textContent = current.busy ? 'Loading…' : 'Load more';
       window.lucide?.createIcons?.();
     }
+    let followupRows=null;
     async function load(kind) {
       const current = state[kind];
       if(current.busy || !current.more)return;
@@ -42,11 +43,14 @@
         let query;
         if(kind === 'calls')query = client.from('callcenter_call_activity').select('id,user_id,crm_id,duration_seconds,outcome,created_at',{count:'exact'})
           .eq('user_id',userId).order('created_at',{ascending:false}).order('id',{ascending:false});
-        else query = client.from('crm').select('id,company,name,phone,callbackdate,callbackat,timezone,callback_owner_id,stage',{count:'exact'})
-          .eq('callback_owner_id',userId).eq('stage','callback').order('callbackdate',{ascending:true,nullsFirst:false}).order('id',{ascending:true});
-        const {data,error,count} = await query.range(current.offset,current.offset+SIZE-1);
+        let response;
+        if(kind === 'followups') {
+          if(!followupRows)followupRows=await window.steadyHandsLoadPerformanceFollowups({client,userId});
+          response={data:followupRows.slice(current.offset,current.offset+SIZE),count:followupRows.length};
+        } else response=await query.range(current.offset,current.offset+SIZE-1);
+        const {data,error,count}=response;
         if(error)throw error;
-        const page = data || [];
+        const page=data||[];
         const owned = page.filter(row => kind === 'calls' ? row.user_id === userId : row.callback_owner_id === userId);
         if(kind === 'calls' && owned.length) {
           const ids = [...new Set(owned.map(row=>row.crm_id).filter(Boolean))];
