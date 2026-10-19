@@ -12,7 +12,11 @@ requirements are clear it returns to the saved Outreach workspace automatically.
 It does not dial a call automatically. Normal onboarding visits without an Outreach
 return context do not redirect away. Failed checks never count as completed actions.
 
-Deploy once to the shared Supabase project:
+For one-time activation of both the CRM DNC checks and automatic unpausing, run
+`sql/activate-outreach-access.sql` in Supabase SQL Editor. It combines the two tested
+migrations, preserves existing backups, and contains no DNC phone list literals.
+
+If the DNC migration is already installed, deploy only this completion migration:
 
 `supabase/migrations/20261019110000_automatic_requirement_completion.sql`
 
