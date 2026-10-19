@@ -109,17 +109,18 @@
   const history=$('transcriptHistory'), feedback=$('transcriptFeedback'), actions=$('keywordActions');
   let current=leadId(), entries=[], callActive=$('refEndCall')?.dataset.callState==='active'||!!document.querySelector('#refRegularCallTracker:not([hidden])');
   const applied=new Set(), imported=new Set();
-  let syncTimer=null, since=null, syncEpoch=0, syncBusy=false;
+  let syncTimer=null, since=null, syncEpoch=0, syncBusy=false, drainUntil=0, activeCallSid=null;
   function resetLead() {
     const id=leadId();if(id===current)return;
     stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
     $('keywordFeedback').textContent='';
     $('refTranscriptStatus').textContent='';
   }
-  function appendEntry({id,speaker,text,final=true}) {
+  function appendEntry({id,speaker,text,seconds,final=true}) {
     resetLead();
     if(!id||id!==current||!final||!['agent','prospect','unknown'].includes(speaker)||typeof text!=='string'||!text.trim())return;
-    entries.push({speaker,text:text.trim().slice(0,4000),time:new Date()});
+    entries.push({speaker,text:text.trim().slice(0,4000),time:new Date(),seconds});
+    entries.sort((a,b)=>(a.seconds ?? Infinity)-(b.seconds ?? Infinity));
     if(entries.length>200)entries.shift();
     history.value=entries.map(entry=>`${entry.time.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${entry.speaker==='prospect'?'Prospect':entry.speaker==='agent'?'You':'Transcript'}: ${entry.text}`).join('\n\n');
     history.scrollTop=history.scrollHeight;
@@ -152,30 +153,33 @@
   window.addEventListener('steadyhands:call-lead-ready',resetLead);
   async function refreshTranscript() {
     if(syncBusy)return;
-    const id=leadId(),epoch=syncEpoch;if(!id)return;
+    if(!callActive && drainUntil && Date.now()>=drainUntil){clearInterval(syncTimer);syncTimer=null;return;}
+    const id=leadId(),epoch=syncEpoch;if(!id||!activeCallSid)return;
     syncBusy=true;
     try {
-      const row=await core.fetchTranscript(window.steadyHandsCRMClient,id,since);
+      const row=await core.fetchTranscript(window.steadyHandsCRMClient,id,since,activeCallSid);
       if(epoch!==syncEpoch||leadId()!==id)return;
-      if(!row)return;
+      if(!row){feedback.textContent='Waiting for the call transcript…';return;}
       const segments=core.transcriptSegments(row);
       segments.forEach((segment,i)=>{
-        const key=JSON.stringify([row.id,i,segment.speaker,segment.text]);
+        const key=JSON.stringify([row.id,segment.segmentId ?? i,segment.speaker,segment.text]);
         if(!imported.has(key)){imported.add(key);appendEntry({id,...segment});}
       });
-      feedback.textContent='';
+      feedback.textContent=row.transcription_status==='error' ? 'Transcription error: '+(row.transcription_error || 'Please ask your administrator to check Twilio.') : '';
+      if(!callActive && (Date.now()>=drainUntil)){clearInterval(syncTimer);syncTimer=null;}
     }catch(error){if(epoch===syncEpoch)feedback.textContent=error.message;}
     finally{syncBusy=false;}
   }
-  function stopSync() {if(syncTimer)clearInterval(syncTimer);syncTimer=null;since=null;syncEpoch++;imported.clear();}
+  function stopSync() {if(syncTimer)clearInterval(syncTimer);syncTimer=null;since=null;syncEpoch++;imported.clear();activeCallSid=null;}
   function callState(event) {
     const nextActive=!!event.detail?.active;
-    if(nextActive&&!callActive){stopSync();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,5000);refreshTranscript();}
-    if(!nextActive){if(callActive)refreshTranscript();if(syncTimer)clearInterval(syncTimer);syncTimer=null;}
+    if(nextActive&&!callActive){stopSync();drainUntil=0;entries=[];history.value='';$('refTranscriptStatus').textContent='';renderActions();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,5000);refreshTranscript();}
+    if(!nextActive&&callActive){drainUntil=Date.now()+30000;refreshTranscript();}
     callActive=nextActive;
+    if(nextActive&&event.detail?.callSid){activeCallSid=event.detail.callSid;refreshTranscript();}
   }
   window.addEventListener('steadyhands:call-state',callState);
-  window.addEventListener('steadyhands:regular-call-state',callState);
+  window.addEventListener('steadyhands:regular-call-state',()=>{feedback.textContent='Live transcription is available for calls made through the app.';});
   const selected=$('selectedLeadTop');if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
   window.addEventListener('steadyhands:lead-disposition',event=>{if(event.detail?.id===current&&event.detail.action==='dnc'){applied.add('dnc');renderActions();}});
   window.addEventListener('pagehide',()=>{stopSync();});

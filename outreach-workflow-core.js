@@ -38,13 +38,14 @@
     return segments.filter(segment=>segment&&segment.final!==false&&String(segment.text||'').trim()).map(segment=>{
       const role=String(segment.speaker||'').toLowerCase();
       const speaker=['user','agent','you'].includes(role)?'agent':['prospect','customer','client','lead'].includes(role)?'prospect':'unknown';
-      return {speaker,text:String(segment.text),seconds:Number(segment.start_seconds)||0};
+      return {segmentId:segment.id,speaker,text:String(segment.text),seconds:Number(segment.start_seconds ?? segment.sequence)||0};
     }).sort((a,b)=>a.seconds-b.seconds);
   }
-  async function fetchTranscript(client,id,since=null) {
+  async function fetchTranscript(client,id,since=null,callSid=null) {
     const {user}=await load(client,id);
-    let query=client.from('callcenter_transcripts').select('id,crm_id,segments,transcript,started_at,created_at').eq('user_id',user.id).eq('crm_id',id);
-    if(since)query=query.gte('started_at',since);
+    let query=client.from('callcenter_transcripts').select('id,crm_id,segments,transcript,started_at,created_at,transcription_status,transcription_error').eq('user_id',user.id).eq('crm_id',id);
+    if(callSid)query=query.eq('call_sid',callSid);
+    else if(since)query=query.gte('started_at',since);
     const {data,error}=await query.order('created_at',{ascending:false}).limit(1).maybeSingle();
     if(error)throw Error('Saved transcript is not available: '+error.message);
     return data;

@@ -7,14 +7,14 @@ const user='11111111-2222-3333-4444-555555555555',other='aaaaaaaa-bbbb-cccc-dddd
 const sources={};for(const name of ['twilio-voice-token','twilio-voice-outbound'])sources[name]=stripTypeScriptTypes((await readFile(new URL('../supabase/functions/'+name+'/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,''));
 function setup({validAuth=true}={}){
  const rows={team_permissions:[{user_id:user,active:true,role:'ADMIN',listed:true},{user_id:other,active:true,role:'SALES',listed:true}],callcenter_profiles:[{user_id:user,disabled_at:null},{user_id:other,disabled_at:null}],callcenter_phone_assignments:[{user_id:user,phone_number_id:'a'},{user_id:other,phone_number_id:'b'}],callcenter_phone_numbers:[{id:'a',phone_number:'+17026700880',active:true,twilio_status:'ready'},{id:'b',phone_number:'+17024106621',active:true,twilio_status:'ready'}]};
- let reads=0,issued,signatureInput;
- const db={auth:{getUser:async jwt=>validAuth&&jwt==='valid-jwt'?{data:{user:{id:user}}}:{error:{message:'bad token'}}},from(table){reads++;const filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},async maybeSingle(){return {data:structuredClone(rows[table].find(x=>filters.every(([k,v])=>x[k]===v))||null)}}};return q}};
+ let reads=0,issued,signatureInput;const starts=[];
+ const db={rpc:async(name,args)=>{starts.push({name,args});return {error:env.FAIL_TRANSCRIPT?{message:'failed'}:null}},auth:{getUser:async jwt=>validAuth&&jwt==='valid-jwt'?{data:{user:{id:user}}}:{error:{message:'bad token'}}},from(table){reads++;const filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},async maybeSingle(){return {data:structuredClone(rows[table].find(x=>filters.every(([k,v])=>x[k]===v))||null)}}};return q}};
  class Token{static VoiceGrant=class{constructor(options){this.options=options}};constructor(a,k,s,options){this.options=options;issued=this}addGrant(grant){this.grant=grant}toJwt(){return 'signed-by-sdk'}}
  const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'server-only',TWILIO_ACCOUNT_SID:'ACtest',TWILIO_AUTH_TOKEN:'auth-token',TWILIO_API_KEY_SID:'SKtest',TWILIO_API_KEY_SECRET:'key-secret',TWILIO_TWIML_APP_SID:'APtest',TWILIO_CALLER_ID:'+17023726399'};
  const handlers={};for(const [name,source] of Object.entries(sources))vm.runInNewContext(source,{URLSearchParams,Response,console:{error(){}},createClient:()=>db,twilio:{jwt:{AccessToken:Token},validateRequest:(token,signature,url,params)=>{signatureInput={token,url,params};return signature==='valid-signature'}},Deno:{env:{get:k=>env[k]},serve:fn=>{handlers[name]=fn}}});
  const token=()=>handlers['twilio-voice-token'](new Request('https://example.supabase.co/functions/v1/twilio-voice-token',{method:'POST',headers:{Authorization:'Bearer valid-jwt'}}));
- const call=(params={},signature='valid-signature')=>handlers['twilio-voice-outbound'](new Request('https://example.supabase.co/functions/v1/twilio-voice-outbound',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Twilio-Signature':signature},body:new URLSearchParams({AccountSid:'ACtest',From:'client:user_'+user.replace(/-/g,''),To:'7025550100',...params})}));
- return {rows,token,call,env,issued:()=>issued,reads:()=>reads,signature:()=>signatureInput};
+ const call=(params={},signature='valid-signature')=>handlers['twilio-voice-outbound'](new Request('https://example.supabase.co/functions/v1/twilio-voice-outbound',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Twilio-Signature':signature},body:new URLSearchParams({AccountSid:'ACtest',CallSid:'CA'+'1'.repeat(32),From:'client:user_'+user.replace(/-/g,''),To:'7025550100',...params})}));
+ return {starts,rows,token,call,env,issued:()=>issued,reads:()=>reads,signature:()=>signatureInput};
 }
 test('token verifies the login, preserves identity format, and reports the assigned caller ID',async()=>{
  const s=setup();const result=await s.token();assert.equal(result.status,200);const data=await result.json();assert.equal(data.caller_id,'+17026700880');assert.equal(data.identity,'user_'+user.replace(/-/g,''));assert.equal(s.issued().grant.options.outgoingApplicationSid,'APtest');
@@ -47,4 +47,13 @@ test('signature validation receives the exact public endpoint and every form par
 test('invalid destination never dials, and optional transcription remains supported',async()=>{
  const s=setup();assert.doesNotMatch(await (await s.call({To:'not-a-number'})).text(),/<Dial/);
  const xml=await (await s.call({transcribe:'true',crm_id:'lead-123'})).text();assert.match(xml,/<Start><Transcription/);assert.match(xml,/name="crm_lead-123"/);assert.match(xml,/track="both_tracks"/);
+});
+
+test('transcription is bound to signed identity and browser parent call before dialing',async()=>{
+ const s=setup();const xml=await (await s.call({transcribe:'true',crm_id:'lead-123',agent_user_id:other})).text();
+ assert.deepEqual({...s.starts[0].args},{p_call_sid:'CA'+'1'.repeat(32),p_user_id:user,p_crm_id:'lead-123'});
+ assert.match(xml,/inboundTrackLabel="agent" outboundTrackLabel="customer"/);
+ assert.match(xml,/transcriptionEngine="google"/);
+ s.env.FAIL_TRANSCRIPT=true;const failed=await s.call({transcribe:'true',crm_id:'lead-123'});
+ assert.equal(failed.status,500);assert.doesNotMatch(await failed.text(),/<Dial/);
 });

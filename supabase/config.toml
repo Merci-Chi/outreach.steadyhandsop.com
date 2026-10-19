@@ -12,3 +12,7 @@ verify_jwt = true
 # Twilio sends a signed form POST, not a Supabase JWT.
 [functions.twilio-voice-outbound]
 verify_jwt = false
+
+# Twilio callbacks authenticate with a signature rather than a user JWT.
+[functions.twilio-transcription-webhook]
+verify_jwt = false

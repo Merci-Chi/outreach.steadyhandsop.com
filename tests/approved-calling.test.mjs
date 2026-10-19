@@ -44,7 +44,7 @@ test('call button starts Twilio for approved assigned number without sending a s
  const page=callPage({phone_number:'+17025550101'});
  await page.handlers['steadyhands:start-call-request']();
  assert.equal(page.calls.length,1);assert.equal(page.calls[0][0],'+17025550102');
- assert.equal(page.calls[0][1].crmId,'lead');assert(!('From' in page.calls[0][1]));
+ assert.equal(page.calls[0][1].transcribe,true);assert.equal(page.calls[0][1].crmId,'lead');assert(!('From' in page.calls[0][1]));
  assert.equal(page.events.at(-1).detail.active,true);
 });
 test('direct call page cannot start Twilio without approval',async()=>{
