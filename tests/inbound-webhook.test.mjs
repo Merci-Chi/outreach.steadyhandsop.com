@@ -15,7 +15,7 @@ function setup(){
  const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test-server-key',TWILIO_ACCOUNT_SID:account,TWILIO_AUTH_TOKEN:'test-token',TWILIO_INBOUND_WEBHOOK_URL:base};
  vm.runInNewContext(source,{...routing,URL,URLSearchParams,Response,Date,webpush:{async sendNotification(subscription,payload,options){pushes.push({subscription,payload:JSON.parse(payload),options});if(pushError)throw pushError;}},console:{error(){}},createClient(){dbAccess++;return db},twilio:{validateRequest:(_token,signature)=>signature==='valid'},Deno:{env:{get:key=>env[key]},serve:fn=>{handler=fn}}});
  const request=(stage='incoming',form={},query='',signature='valid')=>handler(new Request(base+(stage==='incoming'?'':'?stage='+stage+query),{method:'POST',headers:{'X-Twilio-Signature':signature,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({AccountSid:account,CallSid:parent,To:'+17025550101',From:'+17025550103',...form})}));
- return {request,rows,writes,env,pushes,deleted,setPushError:error=>{pushError=error},failTranscript:()=>{failTranscript=true},access:()=>dbAccess};
+ return {getAudio:()=>handler(new Request(base+'?stage=hold-music')),getOther:()=>handler(new Request(base)),request,rows,writes,env,pushes,deleted,setPushError:error=>{pushError=error},failTranscript:()=>{failTranscript=true},access:()=>dbAccess};
 }
 test('signed calls ring Outreach without saved routing or a personal number',async()=>{
  const s=setup();s.rows.outreach_inbound_settings=[];assert.match(await (await s.request()).text(),/<Client>/);
@@ -135,7 +135,7 @@ function enablePush(s){
 }
 test('closed PWA receives owner-only enabled push and caller waits until browser registers',async()=>{
  const s=setup();enablePush(s);const first=await (await s.request()).text();assert.match(first,/<Redirect method="POST">/);assert.doesNotMatch(first,/<Client>|<Start>/);
- assert.equal(s.pushes.length,1);assert.equal(s.pushes[0].payload.kind,'incoming-call');assert.equal(s.pushes[0].payload.call_sid,parent);assert.equal(s.pushes[0].options.TTL,60);assert.equal(s.pushes[0].options.urgency,'high');
+ assert.equal(s.pushes.length,1);assert.equal(s.pushes[0].payload.kind,'incoming-call');assert.equal(s.pushes[0].payload.call_sid,parent);assert.equal(s.pushes[0].options.TTL,30);assert.equal(s.pushes[0].options.urgency,'high');
  assert.equal(s.pushes[0].payload.body.includes('+1702'),false);
  s.rows.outreach_inbound_devices.push({user_id:'agent',ready:true,updated_at:new Date().toISOString()});
  const resumed=await (await s.request('wait')).text();assert.match(resumed,/<Client>/);assert.match(resumed,/<Start>/);assert.equal(s.pushes.length,1);
@@ -156,4 +156,20 @@ test('expired push wait and explicitly alerted unanswered calls reach voicemail'
 });
 test('expired push endpoints are pruned without failing call routing',async()=>{
  const s=setup();enablePush(s);s.setPushError({statusCode:410});const response=await s.request();assert.equal(response.status,200);assert.equal(s.deleted.length,1);assert.equal(s.deleted[0],'https://web.push.apple.com/test');
+});
+
+test('waiting uses hold music, with a 30-second deadline and a short final pause',async()=>{
+ const s=setup();enablePush(s);const before=Date.now();const xml=await (await s.request()).text();
+ assert.match(xml,/<Say>Please hold while we connect your call/);assert.match(xml,/<Play>.*stage=hold-music<\/Play>/);
+ const deadline=Date.parse(s.rows.outreach_inbound_calls[0].push_wait_until);assert(deadline>=before+30000&&deadline<=Date.now()+30000);
+ s.rows.outreach_inbound_calls[0].push_wait_until=new Date(Date.now()+1000).toISOString();
+ const last=await (await s.request('wait')).text();assert.match(last,/<Pause length="1"/);assert.doesNotMatch(last,/<Play>/);
+});
+test('hold audio is a short non-silent WAV available without secrets or database access',async()=>{
+ const s=setup();for(const name of Object.keys(s.env))delete s.env[name];
+ const response=await s.getAudio();assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'audio/wav');
+ const bytes=new Uint8Array(await response.arrayBuffer()),view=new DataView(bytes.buffer);
+ assert.equal(new TextDecoder().decode(bytes.slice(0,4)),'RIFF');assert.equal(view.getUint32(24,true),8000);assert.equal(bytes.length,32044);
+ let peak=0;for(let i=44;i<bytes.length;i+=2)peak=Math.max(peak,Math.abs(view.getInt16(i,true)));
+ assert(peak>1000&&peak<10000);assert.equal(s.access(),0);assert.equal((await s.getOther()).status,405);
 });
