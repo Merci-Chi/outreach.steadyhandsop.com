@@ -54,7 +54,14 @@ Deno.serve(async (req) => {
     const transcribe = /^(1|true|yes)$/i.test(params.transcribe || '');
     const crmId = String(params.crm_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0,80);
     const callback = Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL') || url + '/functions/v1/twilio-transcription-webhook';
-    const transcription = transcribe ? '<Start><Transcription statusCallbackUrl="' + xmlEscape(callback) + '" track="both_tracks" inboundTrackLabel="customer" outboundTrackLabel="agent" languageCode="en-US" partialResults="true" enableAutomaticPunctuation="true" transcriptionEngine="auto"' + (crmId ? ' name="' + xmlEscape('crm_' + crmId) + '"' : '') + '/></Start>' : '';
+    if (transcribe) {
+      const {error} = await db.rpc('outreach_start_transcript', {
+        p_call_sid: params.CallSid, p_user_id: userId, p_crm_id: crmId,
+      });
+      if (error) throw Error('Could not initialize the call transcript.');
+    }
+    // This TwiML runs on the browser parent leg: inbound is the agent microphone.
+    const transcription = transcribe ? '<Start><Transcription statusCallbackUrl="' + xmlEscape(callback) + '" track="both_tracks" inboundTrackLabel="agent" outboundTrackLabel="customer" languageCode="en-US" partialResults="true" enableAutomaticPunctuation="true" transcriptionEngine="google"' + (crmId ? ' name="' + xmlEscape('crm_' + crmId) + '"' : '') + '/></Start>' : '';
     return xml(transcription + '<Dial answerOnBridge="true" callerId="' + xmlEscape(callerId) + '"><Number>' + xmlEscape(destination) + '</Number></Dial>');
   } catch (error: any) {
     console.error('Outbound call failed:', error);

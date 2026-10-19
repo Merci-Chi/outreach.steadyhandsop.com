@@ -2,7 +2,7 @@
   'use strict';
   let starting = false;
   const message = text => { const el = document.getElementById('refMessage'); if (el) el.textContent = text; };
-  const state = active => window.dispatchEvent(new CustomEvent('steadyhands:call-state', {detail:{active}}));
+  const state = (active, callSid) => window.dispatchEvent(new CustomEvent('steadyhands:call-state', {detail:{active,callSid}}));
   const button = () => document.getElementById('refEndCall');
   window.addEventListener('steadyhands:start-call-request', async () => {
     if (starting || window.SteadyHandsTwilioVoice?.isActive()) return;
@@ -21,7 +21,7 @@
       message('Calling from ' + caller.phone_number + '…');
       // The authenticated Twilio backend remains responsible for resolving and
       // validating the assigned caller ID. Never accept a caller-supplied From.
-      await voice.start(lead.number, {crmId:lead.id,company:lead.company});
+      await voice.start(lead.number, {crmId:lead.id,company:lead.company,transcribe:true});
       state(true);
     } catch (error) {
       state(false);
@@ -34,7 +34,7 @@
   window.addEventListener('steadyhands:end-call-request', () => window.SteadyHandsTwilioVoice?.hangup());
   window.addEventListener('steadyhands:voice-state', event => {
     const detail = event.detail || {};
-    if (['calling','ringing','connected'].includes(detail.state)) state(true);
+    if (['calling','ringing','connected'].includes(detail.state)) state(true,detail.callSid);
     if (detail.state === 'connected') message('Call connected.');
     if (detail.state === 'preparing') message(detail.message || 'Preparing browser calling…');
     if (detail.state === 'ended') {
