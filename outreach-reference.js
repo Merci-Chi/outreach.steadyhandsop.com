@@ -13,8 +13,12 @@ let checkingCaller = false;
 async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
- if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
- if(!await window.SteadyHandsReviewBeforeCall(id))return;
+ // App calls review the prospect at the final dial action on call.html.
+ // Reviewing here as well sends the user through the same confirmation twice.
+ if(mode==='regular'){
+  if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
+  if(!await window.SteadyHandsReviewBeforeCall(id))return;
+ }
  if(currentLead()?.id!==id){tell('The selected prospect changed. Review the new prospect first.');return;}
  try{await window.SteadyHandsLeadDisposition.ensureCallable(id,number);}catch(error){tell(error.message);return;}
  try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
