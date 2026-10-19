@@ -9,7 +9,7 @@ test('batch 4 exposes the requested post-call outcomes',()=>{
  }
 });
 test('DNC is highlighted and uses the existing enforced CRM workflow',()=>{
- assert.match(source,/input\[value=\\"do_not_call\\"\]/);
+ assert.ok(source.includes('background:#fff1f2'));
  assert.match(source,/SteadyHandsLeadDisposition\.save\(result\.crm_id,'dnc'/);
  assert.match(source,/if\(selected==='do_not_call'\)/);
 });
