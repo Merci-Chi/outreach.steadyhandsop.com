@@ -23,3 +23,25 @@ export function resolveRoutingSettings(saved) {
  // Admin number routing is authoritative; legacy per-user toggles do not block it.
  return {outreach_ring_seconds:20,...saved,enabled:true,cellphone_number:null};
 }
+
+
+// Follow managed routes within this webhook; never dial back into another
+// managed webhook leg. This avoids repeated screening and PSTN forwarding loops.
+export async function resolveForwardRoute(number, loadNumber) {
+ const visited=new Set();
+ let current=number;
+ for(let hops=0;hops<100;hops++){
+  if(!current?.active||current.twilio_status!=='ready')throw Error('Forwarding destination is unavailable');
+  if(visited.has(current.phone_number))throw Error('Forwarding loop detected');
+  visited.add(current.phone_number);
+  const destination=current.inbound_destination||'app';
+  if(destination==='app')return {number:current,destination:'app',forward:null};
+  if(destination!=='forward')throw Error('Invalid forwarding route');
+  const forward=current.inbound_forward_number;
+  if(!/^\+[1-9]\d{7,14}$/.test(forward||'')||visited.has(forward))throw Error('Invalid or looping forwarding route');
+  const managed=await loadNumber(forward);
+  if(!managed)return {number:current,destination:'forward',forward};
+  current=managed;
+ }
+ throw Error('Forwarding route is too long');
+}
