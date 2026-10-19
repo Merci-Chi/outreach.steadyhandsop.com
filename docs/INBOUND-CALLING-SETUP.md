@@ -143,6 +143,29 @@ account may require an upgrade or verified test destinations before public use.
 
 ## Deployment
 
+### Forwarding between managed or external numbers
+
+Apply `supabase/migrations/20261019000000_unassigned_phone_forwarding.sql`,
+then deploy the updated `twilio-inbound` function and publish the paired Admin
+forwarding update. No other function changes are required for this update.
+
+Admin can forward an enabled, Twilio Ready number to another managed number or
+an external phone. The webhook resolves managed chains internally to the final
+Outreach user or external phone, without dialing a managed number back through
+the PSTN. Self-forwarding, cycles, unavailable managed destinations, and routes
+longer than 100 managed numbers fail without placing a call. An app destination
+requires its own eligible assigned user with Outreach open; an external destination
+does not require an assignment. External phones retain press-1 screening.
+
+Calls are attributed to the eligible owner of the final managed number. When an
+external route has no eligible owner, its call record has a null user_id and is
+not exposed by existing own-user read policies. Voicemail uses that recipient's
+saved greeting when present, otherwise the standard business greeting. Original
+caller and called number are preserved. Active calls snapshot the resolved user
+and external destination so routing edits affect subsequent calls.
+
+### Existing inbound setup
+
 1. Ensure the original inbound tables exist (section 1).
 2. Run `supabase/migrations/20261018070000_admin_inbound_destinations.sql`.
    It adds per-number destination fields and per-call routing snapshots, and makes
@@ -163,3 +186,4 @@ Static-site publication alone does not deploy functions or SQL. No production
 SQL, secrets, number purchases, Twilio settings, or real calls were changed here.
 Automated tests use mocked Twilio/browser/database APIs; production delivery and
 phone/browser behavior require verification after deployment.
+

@@ -52,19 +52,18 @@ Deno.serve(async req=>{
   if(stage==='incoming'){
    const number=await checked(await db.from('callcenter_phone_numbers').select('id,phone_number,active,twilio_status,inbound_destination,inbound_forward_number').eq('phone_number',form.To).maybeSingle());
    if(!number?.active||number.twilio_status!=='ready')return xml(response('<Say>This number is unavailable.</Say><Hangup/>'));
-   const assignment=await checked(await db.from('callcenter_phone_assignments').select('user_id').eq('phone_number_id',number.id).maybeSingle());
-   if(!assignment?.user_id)return xml(hangup());
-   const permission=await checked(await db.from('team_permissions').select('role,active,listed').eq('user_id',assignment.user_id).maybeSingle());
-   const profile=await checked(await db.from('callcenter_profiles').select('disabled_at').eq('user_id',assignment.user_id).maybeSingle());
-   if(!permission?.active||permission.listed===false||!['ADMIN','SALES'].includes(permission.role)||!profile||profile.disabled_at)return xml(hangup());
-   const destination=number.inbound_destination||'app';
-   const forward=destination==='forward'?number.inbound_forward_number:null;
-   if(destination==='forward'){
-    if(!/^\+[1-9]\d{7,14}$/.test(forward||'')||forward===number.phone_number)throw Error('Invalid forwarding route');
-    const managed=await checked(await db.from('callcenter_phone_numbers').select('id').eq('phone_number',forward).limit(1));
-    if(managed?.length)throw Error('Forwarding to another managed number is not allowed');
+   const route=await resolveForwardRoute(number,async phone=>checked(await db.from('callcenter_phone_numbers').select('id,phone_number,active,twilio_status,inbound_destination,inbound_forward_number').eq('phone_number',phone).maybeSingle()));
+   const assignment=await checked(await db.from('callcenter_phone_assignments').select('user_id').eq('phone_number_id',route.number.id).maybeSingle());
+   let owner=null;
+   if(assignment?.user_id){
+    const permission=await checked(await db.from('team_permissions').select('role,active,listed').eq('user_id',assignment.user_id).maybeSingle());
+    const profile=await checked(await db.from('callcenter_profiles').select('disabled_at').eq('user_id',assignment.user_id).maybeSingle());
+    if(permission?.active&&permission.listed!==false&&['ADMIN','SALES'].includes(permission.role)&&profile&&!profile.disabled_at)owner=assignment.user_id;
    }
-   await checked(await db.from('outreach_inbound_calls').upsert({call_sid:callSid,user_id:assignment.user_id,from_number:form.From||'Unknown',to_number:form.To,route_destination:destination,forward_number:forward},{onConflict:'call_sid',ignoreDuplicates:true}));
+   // A PSTN route needs no browser identity; app routes still require an eligible owner.
+   if(route.destination==='app'&&!owner)return xml(hangup());
+   const {destination,forward}=route;
+   await checked(await db.from('outreach_inbound_calls').upsert({call_sid:callSid,user_id:owner,from_number:form.From||'Unknown',to_number:form.To,route_destination:destination,forward_number:forward},{onConflict:'call_sid',ignoreDuplicates:true}));
   }
   call=await checked(await db.from('outreach_inbound_calls').select('*').eq('call_sid',callSid).single());
   if(stage==='recorded'){
@@ -76,7 +75,7 @@ Deno.serve(async req=>{
    return new Response('ok');
   }
   if(call.status==='completed'||call.status==='voicemail')return xml(hangup());
-  const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle());
+  const saved=call.user_id?await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle()):null;
   const settings=resolveRoutingSettings(saved);
   const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
@@ -105,3 +104,25 @@ Deno.serve(async req=>{
   return new Response('Unknown stage',{status:400});
  }catch(error){console.error('Inbound routing failed:',error);return xml(response('<Say>We cannot connect your call right now. Please try again shortly.</Say><Hangup/>'),500);}
 });
+
+
+// Follow managed routes within this webhook; never dial back into another
+// managed webhook leg. This avoids repeated screening and PSTN forwarding loops.
+async function resolveForwardRoute(number, loadNumber) {
+ const visited=new Set();
+ let current=number;
+ for(let hops=0;hops<100;hops++){
+  if(!current?.active||current.twilio_status!=='ready')throw Error('Forwarding destination is unavailable');
+  if(visited.has(current.phone_number))throw Error('Forwarding loop detected');
+  visited.add(current.phone_number);
+  const destination=current.inbound_destination||'app';
+  if(destination==='app')return {number:current,destination:'app',forward:null};
+  if(destination!=='forward')throw Error('Invalid forwarding route');
+  const forward=current.inbound_forward_number;
+  if(!/^\+[1-9]\d{7,14}$/.test(forward||'')||visited.has(forward))throw Error('Invalid or looping forwarding route');
+  const managed=await loadNumber(forward);
+  if(!managed)return {number:current,destination:'forward',forward};
+  current=managed;
+ }
+ throw Error('Forwarding route is too long');
+}

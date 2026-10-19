@@ -65,9 +65,50 @@ test('unaccepted forwarding answers and failed calls go to business voicemail',a
   assert.match(await (await s.request('phone-ended',{DialCallStatus:status})).text(),/<Record /);
  }
 });
-test('forwarding routes reject self, managed, and malformed destinations without placing a call',async()=>{
+test('forwarding routes reject self, unavailable managed, and malformed destinations without placing a call',async()=>{
  for(const forward of ['+17025550101','invalid','+17025550108']){
   const s=setup();s.rows.callcenter_phone_numbers.push({id:'managed',phone_number:'+17025550108'});Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:forward});
   const response=await s.request();assert.equal(response.status,500);assert.doesNotMatch(await response.text(),/<Number|<Client>/);assert.equal(s.rows.outreach_inbound_calls.length,0);
  }
 });
+function addManaged(s, number, forward=null){
+ const id='managed-'+number;
+ s.rows.callcenter_phone_numbers.push({id,phone_number:number,active:true,twilio_status:'ready',inbound_destination:forward?'forward':'app',inbound_forward_number:forward});
+ s.rows.callcenter_phone_assignments.push({phone_number_id:id,user_id:'kiara'});
+ s.rows.team_permissions.push({user_id:'kiara',role:'SALES',active:true,listed:true});
+ s.rows.callcenter_profiles.push({user_id:'kiara',disabled_at:null});
+}
+test('an unassigned line can forward externally with private unattributed call history',async()=>{
+ const s=setup();s.rows.callcenter_phone_assignments=[];
+ Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17025550109'});
+ assert.match(await (await s.request()).text(),/>\+17025550109<\/Number>/);
+ assert.equal(s.rows.outreach_inbound_calls[0].user_id,null);
+ assert.match(await (await s.request('phone-ended',{DialCallStatus:'no-answer'})).text(),/<Record /);
+});
+test('managed forwarding rings the destination owner directly and preserves the original incoming number',async()=>{
+ const s=setup();addManaged(s,'+17023726399');
+ Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17023726399'});
+ const xml=await (await s.request()).text();assert.match(xml,/<Identity>sh_inbound_kiara<\/Identity>/);assert.doesNotMatch(xml,/<Number|<Gather/);
+ assert.equal(s.rows.outreach_inbound_calls[0].user_id,'kiara');assert.equal(s.rows.outreach_inbound_calls[0].to_number,'+17025550101');
+ // Assignment/routing edits cannot redirect callbacks for the existing call.
+ s.rows.callcenter_phone_assignments[1].user_id='someone-else';
+ assert.match(await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text(),/<Record /);
+});
+test('managed forwarding chains resolve to the final external number with one screening step',async()=>{
+ const s=setup();addManaged(s,'+17023726399','+17025550109');
+ Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17023726399'});
+ const xml=await (await s.request()).text();assert.match(xml,/>\+17025550109<\/Number>/);assert.doesNotMatch(xml,/>\+17023726399<\/Number>/);
+ assert.equal(s.rows.outreach_inbound_calls[0].user_id,'kiara');
+});
+test('cycles and unavailable or ineligible terminal owners never place a call',async()=>{
+ for(const failure of ['cycle','disabled','pending','unassigned','revoked']){
+  const s=setup();addManaged(s,'+17023726399',failure==='cycle'?'+17025550101':null);
+  Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17023726399'});
+  if(failure==='disabled')s.rows.callcenter_phone_numbers[1].active=false;
+  if(failure==='pending')s.rows.callcenter_phone_numbers[1].twilio_status='pending';
+  if(failure==='unassigned')s.rows.callcenter_phone_assignments.pop();
+  if(failure==='revoked')s.rows.team_permissions[1].active=false;
+  const xml=await (await s.request()).text();assert.doesNotMatch(xml,/<Number|<Client>/);assert.equal(s.rows.outreach_inbound_calls.length,0);
+ }
+});
+
