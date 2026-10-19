@@ -31,6 +31,14 @@ Deno.serve(async req=>{
    const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',userId).maybeSingle());
    return {settings:resolveRoutingSettings(saved),routing_source:'twilio'};
   };
+  if(action==='transcript'){
+   const callSid=String(body.call_sid||'');
+   if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
+   const call=await checked(await db.from('outreach_inbound_calls').select('call_sid').eq('call_sid',callSid).eq('user_id',userId).maybeSingle());
+   if(!call)return json({error:'Incoming call not found.'},404);
+   const transcript=await checked(await db.from('callcenter_transcripts').select('id,segments,transcript,transcription_status,transcription_error').eq('call_sid',callSid).eq('user_id',userId).maybeSingle());
+   return json({transcript});
+  }
   if(action==='settings'){
    const routing=await loadRouting();
    const calls=await checked(await db.from('outreach_inbound_calls').select('call_sid,from_number,to_number,status,answered_via,recording_sid,recording_duration,created_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(50));

@@ -23,6 +23,7 @@ alter table public.callcenter_transcripts
   add column if not exists transcription_error text;
 create unique index if not exists callcenter_transcripts_call_sid_idx on public.callcenter_transcripts(call_sid);
 alter table public.callcenter_transcripts enable row level security;
+drop policy if exists outreach_transcripts_read_own on public.callcenter_transcripts;
 create policy outreach_transcripts_read_own on public.callcenter_transcripts for select to authenticated using (user_id=auth.uid());
 grant select on public.callcenter_transcripts to authenticated;
 revoke insert,update,delete on public.callcenter_transcripts from public,anon,authenticated;
@@ -80,6 +81,7 @@ begin
     where call_sid=new.call_sid and user_id=new.user_id;
   return new;
 end $$;
+drop trigger if exists outreach_link_transcript_activity on public.callcenter_call_activity;
 create trigger outreach_link_transcript_activity after insert or update of call_sid,outcome on public.callcenter_call_activity
   for each row execute function public.outreach_link_transcript_activity();
 commit;

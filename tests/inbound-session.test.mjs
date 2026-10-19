@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {identity} from '../supabase/functions/twilio-inbound/routing.mjs';
 const source=(await readFile(new URL('../supabase/functions/twilio-inbound-session/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/:(?:any|Response|string)\b/g,'').replace("audio.headers.get('location')!","audio.headers.get('location')");
 function setup({active=true,validAuth=true}={}){
- const rows={team_permissions:[{user_id:'agent',role:'ADMIN',active,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],callcenter_phone_assignments:[{user_id:'agent',phone_number_id:'number'}],callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102'}],outreach_inbound_calls:[{user_id:'other',call_sid:'other-call',recording_sid:'RE'+'1'.repeat(32)}]};
+ const rows={callcenter_transcripts:[],team_permissions:[{user_id:'agent',role:'ADMIN',active,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],callcenter_phone_assignments:[{user_id:'agent',phone_number_id:'number'}],callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102'}],outreach_inbound_calls:[{user_id:'other',call_sid:'other-call',recording_sid:'RE'+'1'.repeat(32)}]};
  let issued,handler,dbAccess=0;
  const db={auth:{getUser:async()=>validAuth?{data:{user:{id:'agent'}}}:{error:{message:'bad token'}}},from(table){
   dbAccess++;let filters=[],insert=null;const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},limit(){return q},upsert(v){insert=v;return q},maybeSingle:()=>run(true),then:(resolve,reject)=>run(false).then(resolve,reject)};
@@ -50,4 +50,14 @@ test('an empty greeting cannot replace voicemail settings',async()=>{
 test('phone-forwarded assignments return their Admin destination without issuing a browser token',async()=>{
  const s=setup();Object.assign(s.rows.callcenter_phone_numbers[0],{inbound_destination:'forward',inbound_forward_number:'+17025550109'});
  const response=await s.request('token');assert.equal(response.status,200);const data=await response.json();assert.equal(data.destination,'forward');assert.equal(data.forward_number,'+17025550109');assert.equal(s.issued(),undefined);
+});
+
+test('transcript lookup requires the authenticated incoming owner and exact call SID',async()=>{
+ const s=setup(),sid='CA'+'1'.repeat(32);
+ s.rows.outreach_inbound_calls.push({user_id:'other',call_sid:sid});
+ s.rows.callcenter_transcripts.push({user_id:'other',call_sid:sid,transcript:'Private'});
+ assert.equal((await s.request('transcript',{call_sid:sid,user_id:'other'})).status,404);
+ assert.equal((await s.request('transcript',{call_sid:'bad'})).status,400);
+ s.rows.outreach_inbound_calls[1].user_id='agent';s.rows.callcenter_transcripts[0].user_id='agent';
+ assert.equal((await (await s.request('transcript',{call_sid:sid})).json()).transcript.transcript,'Private');
 });
