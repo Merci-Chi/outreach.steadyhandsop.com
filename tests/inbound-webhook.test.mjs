@@ -8,7 +8,7 @@ const account='AC'+'a'.repeat(32),parent='CA'+'1'.repeat(32),child='CA'+'2'.repe
 function setup(){
  const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],outreach_inbound_push_subscriptions:[],outreach_inbound_devices:[],callcenter_transcripts:[],outreach_inbound_calls:[]};
  const writes=[],pushes=[],deleted=[];let failTranscript=false,pushError=null;
- const db={async rpc(name,args){writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null,removing=false;const q={select(){return q},delete(){removing=true;return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
+ const db={async rpc(name,args){if(name==='outreach_access_status')return {data:{is_paused:!!env.PAUSED}};writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null,removing=false;const q={select(){return q},delete(){removing=true;return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
   async function run(single){if(insert&&!rows[table].some(x=>x.call_sid===insert.call_sid))rows[table].push({status:'ringing',cellphone_accepted:false,...insert});const found=rows[table].filter(row=>filters.every(([k,v])=>row[k]===v));if(patch)found.forEach(x=>Object.assign(x,patch));if(removing){found.forEach(x=>deleted.push(x.endpoint));rows[table]=rows[table].filter(x=>!found.includes(x));}return {data:structuredClone(single==='many'?found:found[0]||null),error:single===true&&!found.length?{message:'not found'}:null};}return q;
  }};
  let handler,dbAccess=0;
@@ -190,4 +190,10 @@ test('managed forwarding keeps the originally called number greeting',async()=>{
  s.rows.callcenter_phone_assignments.push({phone_number_id:'second',user_id:'agent'});
  await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
  assert.match(xml,/Original business greeting/);assert.doesNotMatch(xml,/Wrong destination greeting/);
+});
+
+test('paused app owners go to voicemail without ringing Outreach',async()=>{
+ const s=setup();s.env.PAUSED=true;
+ const xml=await (await s.request()).text();assert.doesNotMatch(xml,/<Client>/);assert.match(xml,/<Record /);
+ s.env.PAUSED=false;assert.match(await (await s.request()).text(),/<Client>/);
 });

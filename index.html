@@ -23,14 +23,14 @@
 <link rel="stylesheet" href="queue.css?v=queue-b2" />
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=mobile-bottom-fix-20261012" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
-  <script src="sidebar.js?v=20261019-auto-update-alerts" defer></script>
+  <script src="sidebar.js?v=20261019-shared-controls" defer></script>
 <link rel="stylesheet" href="call.css?v=action-tiles-20261017">
 <link rel="stylesheet" href="outreach-reference.css?v=press-buttons-20261014" />
 <link rel="stylesheet" href="outreach-tools.css?v=integration-2">
 <link rel="stylesheet" href="starter-scripts.css?v=2">
 <link rel="stylesheet" href="outreach-process.css?v=20261017-call">
 <link rel="stylesheet" href="prospect-compact.css?v=20261018">
-<link rel="stylesheet" href="lead-navigation.css?v=20261018-bottom">
+<link rel="stylesheet" href="lead-navigation.css?v=20261019-shared-controls">
 <link rel="stylesheet" href="fit-control-labels.css?v=20261018-full">
 <script src="fit-control-labels.js?v=20261018-full" defer></script>
 <link rel="stylesheet" href="workflow-simple.css?v=20261018-column-fit">
@@ -230,7 +230,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="auth-guard.js?v=20261018-multiple-actions"></script>
+<script src="auth-guard.js?v=20261019-access-pause"></script>
 <script src="user-data.js?v=20261001-1930"></script>
 <script src="preview-resolver.js?v=20261017-existing-sitekey"></script>
 <script src="app.js?v=warm-cold-20261017"></script>
@@ -241,7 +241,7 @@
 <script src="outreach-tasks.js?v=1" defer></script>
 <script src="lead-disposition.js?v=20261019-dnc" defer></script>
 <script src="approved-caller.js?v=20261016" defer></script>
-<script src="outreach-reference.js?v=20261019-dnc" defer></script>
+<script src="outreach-reference.js?v=20261019-dnc-shared-controls" defer></script>
 <script src="outreach-tools.js?v=20261017-existing-sitekey" defer></script>
 <script src="starter-scripts.js?v=3" defer></script>
 <script src="outreach-postcall.js?v=lucide-icons-20261014" defer></script>
@@ -250,9 +250,15 @@
 <script src="outreach-workflow-core.js?v=20261019-transcript-live-updates" defer></script>
 <script src="call-guide.js?v=20261018-column-fit" defer></script>
 <script src="outreach-workflow.js?v=20261019-transcript-live-updates" defer></script>
-<nav id="outreachLeadDock" class="ref-side-card" aria-label="Lead navigation">
-        <div class="ref-next-buttons"><button type="button" id="refRandomLead"><i data-lucide="shuffle"></i><span>Random Lead</span></button><button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right"></i><span>Next in Queue</span></button></div>
-        </nav>
+<nav id="outreachLeadDock" class="ref-side-card" aria-label="Call and lead controls">
+  <div class="ref-next-buttons">
+    <button type="button" id="refRandomLead"><i data-lucide="shuffle" aria-hidden="true"></i><span>Random Lead</span></button>
+    <button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right" aria-hidden="true"></i><span>Next in Queue</span></button>
+  </div>
+  <div id="inboundCallSlot"></div>
+  <p id="leadNavigationStatus" role="status" aria-live="polite" hidden></p>
+</nav>
+<script src="lead-navigation.js?v=20261019-shared-controls" defer></script>
 </body>
 </html>
 

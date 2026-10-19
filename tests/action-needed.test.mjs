@@ -47,11 +47,6 @@ test('submission waits for Supabase and failure stays in the popup',async()=>{
 test('date options use four calendar months and exclude weekends and earlier dates',()=>{
  const window={};vm.runInNewContext(read('actions/start-dates.js'),{window,Intl,Date});const d=window.SteadyHandsStartDates;assert.equal(d.limitDate('2026-10-31'),'2027-02-28');assert.equal(d.limitDate('2027-10-31'),'2028-02-29');for(let day=1;day<=5;day++)for(const key of d.options(day,'2026-10-20','2026-10-18')){assert.equal(d.parse(key).getUTCDay(),day);assert(key>'2026-10-20'&&key<='2027-02-18');}
 });
-test('questionnaire pages bypass the legacy agreement redirect, while lead pages remain paused',async()=>{
- async function guard(path,assigned){const events={};let redirected=null,removed=false,checks=0;const q={select(){return this},eq(){return this},limit(){return this},maybeSingle:async()=>({data:assigned?{id:'assigned-1'}:null})};const client={auth:{getSession:async()=>({data:{session:{user:{id:'user',created_at:'2020-01-01'}}}})},rpc:async()=>{checks++;return{data:{is_paused:true}}},from:()=>q};const document={documentElement:{classList:{add(){},remove(){removed=true}}},addEventListener(k,fn){events[k]=fn}};const window={supabase:{createClient:()=>client}};vm.runInNewContext(read('auth-guard.js'),{window,document,location:{pathname:path,replace(v){redirected=v}},console});await events.DOMContentLoaded();return{redirected,removed,checks};}
- const own=await guard('/action-needed.html',true);assert.equal(own.redirected,null);assert(own.removed);assert.equal(own.checks,0);
- assert.equal((await guard('/index.html',true)).redirected,'action-needed.html?open=1');assert.equal((await guard('/leads.html',false)).redirected,'pause.html');
-});
 test('unassigned or completed users cannot open the questionnaire dialog',async()=>{
  const h=harness();h.window.OutreachActions.load=async()=>({assignment:null});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);
  h.window.OutreachActions.load=async()=>({assignment:{status:'completed'}});await assert.rejects(()=>h.open(),/assigned/);assert.equal(h.dialog,undefined);

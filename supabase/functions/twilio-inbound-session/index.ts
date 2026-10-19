@@ -23,6 +23,9 @@ Deno.serve(async req=>{
   if(authError||!auth?.user)return json({error:'Sign in again.'},401);
   const userId=auth.user.id;
   const checked=async(result:any)=>{if(result.error)throw result.error;return result.data;};
+  const access=await checked(await db.rpc('outreach_access_status',{p_user_id:userId}));
+  if(typeof access?.is_paused!=='boolean')throw Error('Could not verify account access.');
+  if(access.is_paused)return json({error:'Outreach is paused. Complete required actions and agreements, then recheck access.'},403);
   const permission=await checked(await db.from('team_permissions').select('role,active,listed').eq('user_id',userId).maybeSingle());
   const profile=await checked(await db.from('callcenter_profiles').select('disabled_at').eq('user_id',userId).maybeSingle());
   if(!permission?.active||permission.listed===false||!['ADMIN','SALES'].includes(permission.role)||!profile||profile.disabled_at)return json({error:'Active sales or admin access required.'},403);

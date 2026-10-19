@@ -372,43 +372,7 @@ async function openPipelineStagePopup(){
 
 function wire(){const root=$('#refOutreachMain');if(!root)return;
 regularCall=readPendingRegularCall();ensureRegularCallPanel();renderRegularCall();regularCallTimer=setInterval(renderRegularCall,1000);window.addEventListener('pageshow',renderRegularCall);document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderRegularCall();});$('#refRegularPhone')?.addEventListener('click',()=>linkCall('regular'));$('#refAppPhone')?.addEventListener('click',()=>linkCall('app'));
-// The new Outreach header must work independently of hidden legacy UI / optional queues.
-let pickingProspect = false;
-async function pickAssignedProspect(random) {
-  if (pickingProspect) return;
-  pickingProspect = true;
-  const buttons = [$('#refRandomLead'), $('#refNextQueue')].filter(Boolean);
-  buttons.forEach(button => button.disabled = true);
-  tell('Finding an assigned prospect…');
-  try {
-    const client = window.steadyHandsCRMClient;
-    if (!client) throw new Error('CRM connection is not ready. Refresh and try again.');
-    const {data:auth,error:authError} = await client.auth.getUser();
-    if (authError || !auth?.user?.id) throw new Error('Please sign in again.');
-    const {data, error} = await client.from('crm')
-      .select('id,company,phone,lastcalled,stage,outcome,tags')
-      .eq('assigned_user_id', auth.user.id)
-      .limit(1000);
-    if (error) throw error;
-    const eligible = (data || []).filter(row => Boolean(row.id) && !window.SteadyHandsLeadDisposition.blocked(row));
-    if (!eligible.length) { tell('No assigned prospects found. Check your My Leads page.'); return; }
-    const current = card()?.dataset.crmId || sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || '';
-    const others = eligible.filter(x => String(x.id) !== String(current));
-    const pool = others.length ? others : eligible;
-    const choice = random ? pool[Math.floor(Math.random() * pool.length)] :
-      eligible[(Math.max(-1,eligible.findIndex(x => String(x.id) === String(current))) + 1) % eligible.length];
-    sessionStorage.setItem('steadyhands-selected-outreach-crm-id', String(choice.id));
-    window.location.assign('index.html?crm_id=' + encodeURIComponent(choice.id));
-  } catch(error) {
-    console.error('Unable to select assigned prospect',error);
-    tell('Unable to select prospect: ' + (error?.message || 'Please try again.'));
-  } finally {
-    pickingProspect = false;
-    buttons.forEach(button => button.disabled = false);
-  }
-}
-$('#refRandomLead')?.addEventListener('click', () => pickAssignedProspect(true));
-$('#refNextQueue')?.addEventListener('click', () => pickAssignedProspect(false));
+// Lead navigation is shared with call.html in lead-navigation.js.
 $('#refStartSale')?.addEventListener('click',openPipelineStagePopup);
 root.querySelectorAll('[data-ref-tool]').forEach(b=>b.addEventListener('click',()=>chooseTool(b.dataset.refTool)));
 // Reuse the existing Calendar tool in the 3-button mobile navigation row.

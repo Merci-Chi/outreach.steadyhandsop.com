@@ -1,56 +1,64 @@
-/* Outreach-only lead navigation anchored to the bottom edge. */
+/* Identical three-control dock on Outreach and the call page. */
 #outreachLeadDock {
-  position: fixed;
-  right: 18px;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: 1050;
-  width: min(340px, calc(100vw - 36px));
-  box-sizing: border-box;
-  padding: 8px;
-  border: 1px solid var(--line, #d4e1ef);
-  border-radius: 14px;
-  background: var(--card, #fff);
-  box-shadow: 0 6px 24px rgba(16, 41, 69, .16);
+  position:fixed;
+  right:18px;
+  bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index:1100;
+  width:min(540px,calc(100vw - 36px));
+  box-sizing:border-box;
+  padding:8px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  border:1px solid var(--line,#d4e1ef);
+  border-radius:14px;
+  background:var(--card,#fff);
+  box-shadow:0 6px 24px #10294529;
 }
-#outreachLeadDock .ref-next-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
+#outreachLeadDock .ref-next-buttons {display:contents;}
+#outreachLeadDock .ref-next-buttons > button,
+#outreachLeadDock #shInbound #inboundToggle {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  box-sizing:border-box;
+  margin:0;
+  padding:10px 8px;
+  gap:7px;
+  border:1px solid #1685ff;
+  border-radius:11px;
+  background:var(--card,#fff);
+  color:var(--text,#071443);
+  font:inherit;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.2;
+  text-align:center;
+  box-shadow:none;
+  cursor:pointer;
 }
-#outreachLeadDock .ref-next-buttons button {
-  min-width: 0;
-  min-height: 48px;
-  padding: 10px;
-  gap: 7px;
-  flex-direction: row;
-  font-size: 13px;
-  line-height: 1.2;
-  text-align: center;
-  background: var(--card, #fff);
-  color: var(--text, #071443);
+#outreachLeadDock .ref-next-buttons > button span {white-space:normal;}
+#outreachLeadDock .ref-next-buttons > button svg {width:20px;height:20px;flex-shrink:0;}
+#outreachLeadDock .ref-next-buttons > .ref-primary,
+#outreachLeadDock #shInbound #inboundToggle {background:#087efa;border-color:#087efa;color:#fff;}
+#outreachLeadDock .ref-next-buttons > .ref-primary svg {stroke:#fff;}
+#outreachLeadDock .ref-next-buttons > button:disabled {opacity:.6;cursor:wait;}
+#outreachLeadDock button:focus-visible {outline:3px solid #75adff;outline-offset:2px;}
+#outreachLeadDock #shInbound {position:relative;right:auto;bottom:auto;z-index:auto;height:100%;}
+#outreachLeadDock #shInbound #inboundPanel {bottom:calc(100% + 16px);}
+#outreachLeadDock #shInbound.is-ringing #inboundToggle {background:#138647;border-color:#138647;}
+#leadNavigationStatus {grid-column:1/-1;margin:0;font-size:13px;color:var(--text,#102945);}
+#leadNavigationStatus[hidden] {display:none;}
+body.page-outreach:has(#outreachLeadDock) .app {padding-bottom:calc(150px + env(safe-area-inset-bottom,0px));}
+@media(max-width:899px) {
+  #outreachLeadDock {right:12px;width:calc(100vw - 24px);}
 }
-#outreachLeadDock .ref-next-buttons button span { white-space: nowrap; }
-#outreachLeadDock .ref-next-buttons button svg { width: 20px; height: 20px; }
-#outreachLeadDock .ref-next-buttons .ref-primary {
-  background: #087efa;
-  border-color: #087efa;
-  color: #fff;
+@media(max-width:400px) {
+  #outreachLeadDock {gap:5px;padding:6px;}
+  #outreachLeadDock .ref-next-buttons > button,
+  #outreachLeadDock #shInbound #inboundToggle {font-size:12px;padding:8px 5px;gap:4px;min-height:58px;}
+  #outreachLeadDock .ref-next-buttons > button svg {width:17px;height:17px;}
 }
-#outreachLeadDock .ref-next-buttons .ref-primary svg { stroke: #fff; }
-#outreachLeadDock button:focus-visible { outline: 3px solid #75adff; outline-offset: 2px; }
-body.page-outreach:has(#outreachLeadDock) .app {
-  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-}
-@media (max-width: 899px) {
-  #outreachLeadDock {
-    right: 12px;
-    width: min(340px, calc(100vw - 24px));
-  }
-  body.page-outreach:has(#outreachLeadDock) .app {
-    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* Remove the floating Incoming calls launcher from Outreach. */
-body.page-outreach #shInbound #inboundToggle { display: none; }

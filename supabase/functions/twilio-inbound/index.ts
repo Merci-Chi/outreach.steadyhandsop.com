@@ -65,6 +65,11 @@ Deno.serve(async req=>{
     const profile=await checked(await db.from('callcenter_profiles').select('disabled_at').eq('user_id',assignment.user_id).maybeSingle());
     if(permission?.active&&permission.listed!==false&&['ADMIN','SALES'].includes(permission.role)&&profile&&!profile.disabled_at)owner=assignment.user_id;
    }
+   if(route.destination==='app'&&owner){
+    const access=await checked(await db.rpc('outreach_access_status',{p_user_id:owner}));
+    if(typeof access?.is_paused!=='boolean')throw Error('Could not verify account access.');
+    if(access.is_paused)return xml(voicemail(base));
+   }
    // A PSTN route needs no browser identity; app routes still require an eligible owner.
    if(route.destination==='app'&&!owner)return xml(hangup());
    const {destination,forward}=route;

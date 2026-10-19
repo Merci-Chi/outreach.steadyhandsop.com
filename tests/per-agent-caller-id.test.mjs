@@ -8,7 +8,7 @@ const sources={};for(const name of ['twilio-voice-token','twilio-voice-outbound'
 function setup({validAuth=true}={}){
  const rows={team_permissions:[{user_id:user,active:true,role:'ADMIN',listed:true},{user_id:other,active:true,role:'SALES',listed:true}],callcenter_profiles:[{user_id:user,disabled_at:null},{user_id:other,disabled_at:null}],callcenter_phone_assignments:[{user_id:user,phone_number_id:'a'},{user_id:other,phone_number_id:'b'}],callcenter_phone_numbers:[{id:'a',phone_number:'+17026700880',active:true,twilio_status:'ready'},{id:'b',phone_number:'+17024106621',active:true,twilio_status:'ready'}]};
  let reads=0,issued,signatureInput;const starts=[],checks=[];
- const db={rpc:async(name,args)=>{if(name==='outreach_call_is_blocked'){checks.push(args);return env.FAIL_DNC?{error:{message:'unavailable'}}:{data:env.DNC_RESULT===undefined?false:env.DNC_RESULT};}starts.push({name,args});return {error:env.FAIL_TRANSCRIPT?{message:'failed'}:null}},auth:{getUser:async jwt=>validAuth&&jwt==='valid-jwt'?{data:{user:{id:user}}}:{error:{message:'bad token'}}},from(table){reads++;const filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},async maybeSingle(){return {data:structuredClone(rows[table].find(x=>filters.every(([k,v])=>x[k]===v))||null)}}};return q}};
+ const db={rpc:async(name,args)=>{if(name==='outreach_access_status')return {data:{is_paused:!!env.PAUSED},error:env.FAIL_ACCESS?{message:'failed'}:null};if(name==='outreach_call_is_blocked'){checks.push(args);return env.FAIL_DNC?{error:{message:'unavailable'}}:{data:env.DNC_RESULT===undefined?false:env.DNC_RESULT};}starts.push({name,args});return {error:env.FAIL_TRANSCRIPT?{message:'failed'}:null}},auth:{getUser:async jwt=>validAuth&&jwt==='valid-jwt'?{data:{user:{id:user}}}:{error:{message:'bad token'}}},from(table){reads++;const filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},async maybeSingle(){return {data:structuredClone(rows[table].find(x=>filters.every(([k,v])=>x[k]===v))||null)}}};return q}};
  class Token{static VoiceGrant=class{constructor(options){this.options=options}};constructor(a,k,s,options){this.options=options;issued=this}addGrant(grant){this.grant=grant}toJwt(){return 'signed-by-sdk'}}
  const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'server-only',TWILIO_ACCOUNT_SID:'ACtest',TWILIO_AUTH_TOKEN:'auth-token',TWILIO_API_KEY_SID:'SKtest',TWILIO_API_KEY_SECRET:'key-secret',TWILIO_TWIML_APP_SID:'APtest',TWILIO_CALLER_ID:'+17023726399'};
  const handlers={};for(const [name,source] of Object.entries(sources))vm.runInNewContext(source,{URLSearchParams,Response,console:{error(){}},createClient:()=>db,twilio:{jwt:{AccessToken:Token},validateRequest:(token,signature,url,params)=>{signatureInput={token,url,params};return signature==='valid-signature'}},Deno:{env:{get:k=>env[k]},serve:fn=>{handlers[name]=fn}}});
@@ -77,4 +77,11 @@ test('server rechecks suppression on every call with an existing voice token',as
  const s=setup();await s.token();assert.match(await (await s.call()).text(),/<Dial/);
  s.env.DNC_RESULT=true;assert.doesNotMatch(await (await s.call()).text(),/<Dial/);
  assert.equal(s.checks.length,2);
+});
+
+test('a pause revokes tokens and calls immediately, and clearing it restores access',async()=>{
+ const s=setup();await s.token();s.env.PAUSED=true;
+ assert.equal((await s.token()).status,403);assert.doesNotMatch(await (await s.call()).text(),/<Dial/);
+ s.env.PAUSED=false;assert.equal((await s.token()).status,200);assert.match(await (await s.call()).text(),/<Dial/);
+ s.env.FAIL_ACCESS=true;assert.doesNotMatch(await (await s.call()).text(),/<Dial/);
 });
