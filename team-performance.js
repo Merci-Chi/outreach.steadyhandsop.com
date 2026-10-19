@@ -33,5 +33,5 @@
   }
   await load();
  }
- document.addEventListener('DOMContentLoaded',()=>{init().catch(console.error);});
+ window.steadyHandsInitTeamPerformance=()=>init().catch(console.error);
 })();
