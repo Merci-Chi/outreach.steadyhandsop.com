@@ -31,6 +31,32 @@ Deno.serve(async req=>{
    const saved=await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',userId).maybeSingle());
    return {settings:resolveRoutingSettings(saved),routing_source:'twilio'};
   };
+  if(action==='push_config'){
+   const publicKey=Deno.env.get('WEB_PUSH_VAPID_PUBLIC_KEY')||'';
+   return json({public_key:publicKey,configured:Boolean(publicKey&&Deno.env.get('WEB_PUSH_VAPID_PRIVATE_KEY')&&Deno.env.get('WEB_PUSH_VAPID_SUBJECT'))});
+  }
+  if(action==='push_subscribe'){
+   const subscription=body.subscription;
+   if(!validPushSubscription(subscription))return json({error:'Invalid browser push subscription.'},400);
+   if(!Deno.env.get('WEB_PUSH_VAPID_PUBLIC_KEY')||!Deno.env.get('WEB_PUSH_VAPID_PRIVATE_KEY')||!Deno.env.get('WEB_PUSH_VAPID_SUBJECT'))return json({error:'Server push keys are not configured.'},503);
+   await checked(await db.from('outreach_inbound_push_subscriptions').upsert({user_id:userId,endpoint:subscription.endpoint,p256dh:subscription.keys.p256dh,auth:subscription.keys.auth,enabled:true,updated_at:new Date().toISOString()},{onConflict:'endpoint'}));
+   return json({ok:true});
+  }
+  if(action==='push_disable'){
+   await checked(await db.from('outreach_inbound_push_subscriptions').update({enabled:false,updated_at:new Date().toISOString()}).eq('user_id',userId).eq('endpoint',String(body.endpoint||'')));
+   return json({ok:true});
+  }
+  if(action==='device_ready'){
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.device_id||''))return json({error:'Invalid device ID.'},400);
+   await checked(await db.from('outreach_inbound_devices').upsert({user_id:userId,device_id:body.device_id,ready:body.ready===true,updated_at:new Date().toISOString()},{onConflict:'user_id,device_id'}));
+   return json({ok:true});
+  }
+  if(action==='call_received'){
+   const callSid=String(body.call_sid||'');
+   if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
+   await checked(await db.from('outreach_inbound_calls').update({browser_alerted_at:new Date().toISOString()}).eq('call_sid',callSid).eq('user_id',userId).eq('route_destination','app'));
+   return json({ok:true});
+  }
   if(action==='transcript'){
    const callSid=String(body.call_sid||'');
    if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
@@ -88,3 +114,12 @@ Deno.serve(async req=>{
   return json({token:token.toJwt(),number:number.phone_number});
  }catch(error){console.error('Inbound session failed:',error);return json({error:'Inbound setup is unavailable. Check the deployed functions and server settings.'},500);}
 });
+
+function validPushSubscription(subscription) {
+ try {
+  const endpoint=new URL(subscription?.endpoint);
+  const host=endpoint.hostname;
+  const allowed=host==='fcm.googleapis.com'||host==='updates.push.services.mozilla.com'||host==='push.services.mozilla.com'||host==='web.push.apple.com'||host.endsWith('.push.apple.com')||host.endsWith('.notify.windows.com');
+  return endpoint.protocol==='https:'&&!endpoint.username&&!endpoint.password&&(!endpoint.port||endpoint.port==='443')&&allowed&&subscription.endpoint.length<=4096&&/^[A-Za-z0-9_-]{87}=?$/.test(subscription.keys?.p256dh||'')&&/^[A-Za-z0-9_-]{22}={0,2}$/.test(subscription.keys?.auth||'');
+ } catch { return false; }
+}
