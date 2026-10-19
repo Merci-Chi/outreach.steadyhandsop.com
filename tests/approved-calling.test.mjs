@@ -60,3 +60,20 @@ test('missing review module fails closed with a useful message',async()=>{
  const page=callPage({phone_number:'+17025550101'});delete page.window.SteadyHandsReviewBeforeCall;
  await page.handlers['steadyhands:start-call-request']();assert.equal(page.calls.length,0);assert.match(page.nodes.refMessage.textContent,/Prospect review is still loading/);
 });
+
+test('slow caller approval immediately shows progress and cannot dial before approval',async()=>{
+ const page=callPage({phone_number:'+17025550101'});let resolve;
+ page.window.SteadyHandsApprovedCaller=()=>new Promise(r=>resolve=r);
+ const pending=page.handlers['steadyhands:start-call-request']();
+ assert.match(page.nodes.refMessage.textContent,/Checking your approved calling number/);
+ assert.equal(page.nodes.refEndCall.disabled,true);assert.equal(page.calls.length,0);
+ resolve(null);await pending;assert.equal(page.nodes.refEndCall.disabled,false);
+ assert.match(page.nodes.refMessage.textContent,/No approved calling number/);assert.equal(page.calls.length,0);
+});
+test('call progress is rendered beside calling controls on both workspaces',async()=>{
+ for(const page of ['index.html','call.html']){
+  const html=await readFile(new URL('../'+page,import.meta.url),'utf8');
+  assert.equal((html.match(/id="refMessage"/g)||[]).length,1);
+  assert(html.indexOf('id="refMessage"')<html.indexOf('id="workflowReview"'));
+ }
+});

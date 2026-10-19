@@ -13,28 +13,26 @@ let checkingCaller = false;
 async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
- // App calls review the prospect at the final dial action on call.html.
- // Reviewing here as well sends the user through the same confirmation twice.
- if(mode==='regular'){
-  if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
-  if(!await window.SteadyHandsReviewBeforeCall(id))return;
+ if(mode==='app'){
+  if(checkingCaller)return;
+  checkingCaller=true;
+  const button=$('#refAppPhone');if(button)button.disabled=true;
+  tell('Opening the Outreach call screen…');
+  try{
+   // This only opens the dialer. Fresh caller approval, review, assignment,
+   // access and DNC checks run at the final dial action and on the backend.
+   try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
+   const params=new URLSearchParams({crm_id:id,number,company,contact,role,preview,timezone});
+   window.location.assign('call.html?'+params.toString());
+  }catch(error){tell(error.message||'Unable to open the call screen. Please try again.');}
+  finally{checkingCaller=false;if(button)button.disabled=false;}
+  return;
  }
+ if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
+ if(!await window.SteadyHandsReviewBeforeCall(id))return;
  if(currentLead()?.id!==id){tell('The selected prospect changed. Review the new prospect first.');return;}
  try{await window.SteadyHandsLeadDisposition.ensureCallable(id,number);}catch(error){tell(error.message);return;}
- try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
- if(mode==='regular'){openRegularPhonePopup(number);return;}
- if(checkingCaller)return;
- checkingCaller=true;
- const button=$('#refAppPhone');if(button)button.disabled=true;
- tell('Checking your approved calling number…');
- try{
-  const caller=await window.SteadyHandsApprovedCaller();
-  if(!caller){tell('');openOutreachSetupPopup();return;}
-  const params=new URLSearchParams({crm_id:id,number,company,contact,role,preview,timezone});
-  window.location.assign('call.html?'+params.toString());
- }catch(error){tell(error.message||'Unable to check phone approval. Please try again.');}
- finally{checkingCaller=false;if(button)button.disabled=false;}
-
+ openRegularPhonePopup(number);
 }
 
 function openOutreachSetupPopup(){

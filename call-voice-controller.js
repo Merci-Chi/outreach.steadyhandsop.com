@@ -11,10 +11,11 @@
     try {
       const lead = window.steadyHandsCallLead;
       if (!lead?.id || !lead.number) throw new Error('Select a prospect with a phone number first.');
+      message('Checking your approved calling number…');
       const caller = await window.SteadyHandsApprovedCaller();
       if (!caller) throw new Error('No approved calling number is assigned. Ask your administrator to assign an enabled Twilio Ready number.');
       if(typeof window.SteadyHandsReviewBeforeCall!=='function')throw Error('Prospect review is still loading. Please try again.');
-      if(!await window.SteadyHandsReviewBeforeCall(lead.id))return;
+      if(!await window.SteadyHandsReviewBeforeCall(lead.id)){message('Call canceled.');return;}
       if(window.steadyHandsCallLead?.id!==lead.id)throw Error('The prospect changed. Review the new prospect first.');
       const voice = window.SteadyHandsTwilioVoice;
       if (!voice) throw new Error('The browser phone is still loading. Please try again.');
