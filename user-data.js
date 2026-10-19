@@ -1108,137 +1108,19 @@
 
   async function loadActivity(session, ownProfile) {
     if (!['Activity','Performance'].includes(document.title)) return;
-
-    const c = client();
-    const main = document.getElementById('activityContent');
+    const c = client(), main = document.getElementById('activityContent');
     if (!main) return;
-
-    const { data: permission } = await c
-      .from('team_permissions')
-      .select('role,active')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    const isManager = ['ADMIN','MOD'].includes(permission?.role);
-    const requestedUserId = new URLSearchParams(location.search).get('user');
-    const selectedUserId = isManager && requestedUserId ? requestedUserId : session.user.id;
-
-    const [{ data: activities = [], error: activityError }, { data: selectedProfiles = [], error: profileError }] = await Promise.all([
-      c
-        .from('callcenter_call_activity')
-        .select('id,user_id,crm_id,duration_seconds,outcome,created_at')
-        .eq('user_id', selectedUserId)
-        .order('created_at', { ascending:false })
-        .limit(1000),
-      c
-        .from('callcenter_profiles')
-        .select('user_id,display_name,email,last_call_at,created_at,disabled_at')
-        .eq('user_id', selectedUserId)
-        .limit(1)
-    ]);
-
-    if (activityError || profileError) {
-      console.error('Unable to load Activity:', activityError || profileError);
-      main.innerHTML = '<section class="card light-card"><strong>Unable to load activity.</strong><p class="cc-muted">Please refresh and try again.</p></section>';
-      return;
-    }
-
-    const selectedProfile = selectedProfiles[0] || (selectedUserId === session.user.id ? ownProfile : null);
-
-    const crmIds = [...new Set(activities.map(row => row.crm_id).filter(Boolean))];
-    let leads = [];
-    if (crmIds.length) {
-      const { data } = await c
-        .from('crm')
-        .select('id,company,name,phone,callbackdate,callbackat,notes,stage,outcome,timezone')
-        .in('id', crmIds.slice(0,500));
-      leads = data || [];
-    }
-    const leadMap = new Map(leads.map(lead => [lead.id, lead]));
-
-    // Batch 4: active callback queue comes from the current CRM owner/status,
-    // not every historical activity labelled Call Back.
-    const { data: ownedCallbacks = [], error: callbackError } = await c
-      .from('crm')
-      .select('id,company,name,phone,callbackdate,callbackat,notes,stage,outcome,timezone,callback_owner_id')
-      .eq('callback_owner_id', selectedUserId)
-      .eq('stage', 'callback')
-      .order('callbackdate', { ascending: true, nullsFirst: false })
-      .limit(500);
-    if (callbackError) console.warn('Unable to load owned callbacks:', callbackError);
-    for (const lead of ownedCallbacks) leadMap.set(lead.id, lead);
-
+    // Outreach Performance always belongs to the signed-in account, including
+    // when a URL contains a user parameter. Team views live in the admin app.
+    const selectedUserId = session.user.id;
+    const {data,error} = await c.from('callcenter_call_activity')
+      .select('id,user_id,crm_id,duration_seconds,outcome,created_at')
+      .eq('user_id',selectedUserId).order('created_at',{ascending:false}).limit(1000);
+    const activities=data || [];
     const formatDuration = seconds => {
-      const total = Number(seconds) || 0;
-      const min = Math.floor(total / 60);
-      const sec = total % 60;
-      return min ? min + 'm ' + String(sec).padStart(2,'0') + 's' : sec + 's';
+      const total=Math.max(0,Math.floor(Number(seconds)||0));
+      return Math.floor(total/60)+'m '+String(total%60).padStart(2,'0')+'s';
     };
-
-    const formatTime = value => {
-      try { return new Date(value).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
-      catch (_) { return ''; }
-    };
-
-    const formatDate = value => {
-      try { return new Date(value).toLocaleDateString([], { month:'short', day:'numeric' }); }
-      catch (_) { return ''; }
-    };
-
-    const leadTimeZone = lead => {
-      const explicit = String(lead?.timezone || '').trim();
-      if (explicit) return explicit;
-      try {
-        return window.callcenterLeadZone?.(lead?.phone || '', '')?.zone || '';
-      } catch (_) {
-        return '';
-      }
-    };
-
-    const formatLeadDateTime = (value, lead) => {
-      try {
-        const zone = leadTimeZone(lead);
-        if (!zone) return formatDate(value) + ' · ' + formatTime(value);
-        return new Intl.DateTimeFormat([], {
-          timeZone: zone,
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        }).format(new Date(value));
-      } catch (_) {
-        return formatDate(value) + ' · ' + formatTime(value);
-      }
-    };
-
-    const normalizedOutcome = row => String(row.outcome || '').toLowerCase();
-    const isCallback = row => /follow up|call back|callback|requested text|requested email/i.test(row.outcome || '');
-    const isNotInterested = row => /not interested/i.test(row.outcome || '');
-
-    const totalCalls = activities.length;
-    const callbacks = activities.filter(isCallback);
-    const notInterested = activities.filter(isNotInterested);
-    const totalSeconds = activities.reduce((sum,row) => sum + (Number(row.duration_seconds)||0),0);
-
-    const initialsFor = lead => {
-      const label = lead?.company || lead?.name || 'Lead';
-      return label.split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join('').toUpperCase() || 'L';
-    };
-
-    const outcomeMeta = row => {
-      const text = String(row.outcome || 'Call completed');
-      const lower = text.toLowerCase();
-      if (/sale|sold|closed/.test(lower)) return { cls:'sale', icon:'circle-dollar-sign', label:'Sale' };
-      if (/not interested/.test(lower)) return { cls:'notinterested', icon:'ban', label:'Not Interested' };
-      if (/follow up/.test(lower)) return { cls:'followup', icon:'users', label:'Follow Up' };
-      if (/call back|callback|requested text|requested email/.test(lower)) return { cls:'callback', icon:'calendar-clock', label:'Call Back' };
-      if (/didn.t call/.test(lower)) return { cls:'noanswer', icon:'phone-off', label:"Didn't call" };
-      if (/no answer|voicemail|didn.t answer/.test(lower)) return { cls:'noanswer', icon:'phone-missed', label:/voicemail/.test(lower)?'Voicemail':'No Answer' };
-      return { cls:'noanswer', icon:'phone', label:text.length > 18 ? 'Called' : text };
-    };
-
-    // Productivity summary uses the SAME account-scoped call activity as the history below.
-    // Dates shown in local browser time; older rows may be capped by the 1,000-row query.
     const now = new Date();
     const since7 = new Date(now); since7.setDate(since7.getDate()-6); since7.setHours(0,0,0,0);
     const weekRows = activities.filter(row => { const d = new Date(row.created_at); return !Number.isNaN(d.getTime()) && d >= since7; });
@@ -1252,7 +1134,7 @@
     });
     const dailyMax = Math.max(1,...dailyCounts.map(day=>day.count));
     const perfSummary = `<section class="sh-performance-panel" aria-label="Weekly productivity">
-      <div class="sh-performance-heading"><div><h2>My Performance</h2><p>Last 7 days · ${selectedUserId===session.user.id?'Your':'Selected teammate’s'} recorded call activity</p></div><a href="sales.html">Sales Targets <i data-lucide="arrow-up-right"></i></a></div>
+      <div class="sh-performance-heading"><div><h2>My Performance</h2><p>Last 7 days · Your recorded call activity</p></div><a href="sales.html">Sales Targets <i data-lucide="arrow-up-right"></i></a></div>
       <div class="sh-performance-metrics">
         <div class="sh-performance-metric"><span>Calls Logged</span><strong>${contacted.length}</strong><small>Manually logged and app calls</small></div>
         <div class="sh-performance-metric"><span>Positive Outcomes</span><strong>${positive.length}</strong><small>Based on logged outcomes</small></div>
@@ -1263,161 +1145,9 @@
       <p class="sh-performance-disclaimer">Stats use your most recent 1,000 logged records. Regular-phone outcomes are self-reported; confirmed sales and commissions remain on Sales and Earnings.</p>
     </section>`;
 
-    const recentRows = activities;
 
-    const followups = ownedCallbacks.map(lead => ({
-      lead,
-      row: { crm_id: lead.id, created_at: lead.callbackdate || new Date().toISOString() }
-    })).sort((a, b) => {
-      const da = a.lead.callbackdate || '9999-12-31';
-      const db = b.lead.callbackdate || '9999-12-31';
-      return String(da).localeCompare(String(db));
-    });
-
-    const renderRecent = rows => rows.length ? rows.map(row => {
-      const lead = leadMap.get(row.crm_id);
-      const meta = outcomeMeta(row);
-      const label = lead?.company || lead?.name || 'Lead';
-      const yourDateTime = formatDate(row.created_at) + ' · ' + formatTime(row.created_at);
-      const theirDateTime = formatLeadDateTime(row.created_at, lead);
-
-      return `<div class="activity-call-row" data-activity-text="${esc((label+' '+(lead?.phone||'')+' '+(row.outcome||'')).toLowerCase())}" data-outcome="${esc(meta.cls)}">
-        <div class="activity-avatar">${esc(initialsFor(lead))}</div>
-        <div class="activity-call-main">
-          <strong>${esc(label)}</strong>
-          <small>${lead?.phone ? esc(lead.phone) + ' · ' : ''}${formatDuration(row.duration_seconds)}</small>
-          <div class="activity-call-times">
-            <span><b>You</b> ${esc(yourDateTime)}</span>
-            <span><b>Lead</b> ${esc(theirDateTime)}</span>
-          </div>
-        </div>
-        <div class="activity-call-side">
-          <button class="activity-transcript-btn activity-call-details-btn" type="button"
-            data-activity-id="${esc(row.id)}" aria-label="View call details for ${esc(label)}" title="View call details">
-            <i data-lucide="captions"></i><span>Call Details</span>
-          </button>
-          <span class="activity-outcome ${meta.cls}"><i data-lucide="${meta.icon}"></i>${esc(meta.label)}</span>
-        </div>
-      </div>`;
-    }).join('') : '<div class="activity-empty">No call history yet.</div>';
-
-    const renderFollowups = rows => rows.length ? rows.map(item => {
-      const { row, lead } = item;
-      const label = lead?.company || lead?.name || 'Lead';
-      const dateValue = lead?.callbackdate || row.created_at;
-      const date = new Date(dateValue);
-      const month = date.toLocaleDateString([], {month:'short'}).toUpperCase();
-      const day = date.getDate();
-      const callbackTime = lead?.callbackat || formatTime(row.created_at);
-      return `<div class="activity-followup-row">
-        <div class="activity-datebox"><small>${esc(month)}</small><strong>${esc(day)}</strong></div>
-        <div class="activity-followup-main">
-          <strong>${esc(label)}</strong>
-          <small>${lead?.phone ? esc(lead.phone) + ' · ' : ''}Call back</small>
-        </div>
-        <div class="activity-followup-side">
-          <time>${esc(callbackTime || '')}</time>
-          ${row.crm_id && lead?.phone ? '<a class="activity-call-btn" href="call.html?' + new URLSearchParams({ crm_id: String(row.crm_id), number: lead.phone, company: lead.company || lead.name || 'Business', contact: lead.name || '', timezone: lead.timezone || '' }).toString() + '">Open</a>' : '<span class="cc-muted">No phone</span>'}
-        </div>
-      </div>`;
-    }).join('') : '<div class="activity-empty">No upcoming call backs.</div>';
-
-    main.innerHTML = `
-      ${perfSummary}
-      ${isManager && requestedUserId ? '<a href="activity.html" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:900;color:#2579cf;margin:2px 2px 12px"><i data-lucide="chevron-left" style="width:15px;height:15px"></i> My Performance</a>' : ''}
-
-      <div class="activity-stats">
-        <div class="activity-stat">
-          <div class="activity-stat-icon blue"><i data-lucide="phone"></i></div>
-          <strong>${totalCalls}</strong><span>Total Calls</span>
-        </div>
-        <div class="activity-stat">
-          <div class="activity-stat-icon orange"><i data-lucide="calendar-clock"></i></div>
-          <strong>${followups.length}</strong><span>Call Backs</span>
-        </div>
-        <div class="activity-stat">
-          <div class="activity-stat-icon red"><i data-lucide="ban"></i></div>
-          <strong>${notInterested.length}</strong><span>Not Interested</span>
-        </div>
-      </div>
-
-      <div class="activity-tools">
-        <label class="activity-search">
-          <i data-lucide="search"></i>
-          <input id="activitySearch" type="search" placeholder="Search business or phone number…" />
-        </label>
-        <div class="activity-filter-row" id="activityFilters">
-          <button class="activity-filter active" type="button" data-filter="all">All</button>
-          <button class="activity-filter" type="button" data-filter="callback">Call Backs</button>
-          <button class="activity-filter" type="button" data-filter="notinterested">Not Interested</button>
-          <button class="activity-filter" type="button" data-filter="sale">Sales</button>
-          <button class="activity-filter" type="button" data-filter="noanswer">No Answer</button>
-        </div>
-      </div>
-
-      <div class="activity-section-head">
-        <h2>Recent Calls</h2>
-        <button type="button" id="activityViewAll">View All</button>
-      </div>
-      <section class="card light-card activity-list" id="activityRecentList">
-        ${renderRecent(recentRows.slice(0,8))}
-      </section>
-
-      <div class="activity-section-head">
-        <h2>Follow-Up Queue</h2>
-        <button type="button" id="followupViewAll">View All</button>
-      </div>
-      <section class="card light-card activity-list" id="activityFollowupList">
-        ${renderFollowups(followups.slice(0,4))}
-      </section>
-    `;
-
-    main.addEventListener('click', event => {
-      const button = event.target.closest?.('.activity-call-details-btn[data-activity-id]');
-      if (!button || !button.dataset.activityId) return;
-      window.steadyHandsOpenPerformanceCall?.({client:c,activityId:button.dataset.activityId,userId:selectedUserId,trigger:button});
-    });
-
-    let currentFilter = 'all';
-    let showAllRecent = false;
-    let showAllFollowups = false;
-
-    const refreshRecent = () => {
-      const search = String(document.getElementById('activitySearch')?.value || '').trim().toLowerCase();
-      const filtered = recentRows.filter(row => {
-        const lead = leadMap.get(row.crm_id);
-        const meta = outcomeMeta(row);
-        const haystack = [lead?.company,lead?.name,lead?.phone,row.outcome].join(' ').toLowerCase();
-        return (!search || haystack.includes(search)) && (currentFilter === 'all' || meta.cls === currentFilter);
-      });
-      const list = document.getElementById('activityRecentList');
-      if (list) list.innerHTML = renderRecent(showAllRecent ? filtered : filtered.slice(0,8));
-      window.lucide?.createIcons();
-    };
-
-    document.getElementById('activitySearch')?.addEventListener('input', refreshRecent);
-    document.querySelectorAll('#activityFilters .activity-filter').forEach(button => {
-      button.addEventListener('click', () => {
-        currentFilter = button.dataset.filter || 'all';
-        document.querySelectorAll('#activityFilters .activity-filter').forEach(item => item.classList.toggle('active', item === button));
-        refreshRecent();
-      });
-    });
-
-    document.getElementById('activityViewAll')?.addEventListener('click', event => {
-      showAllRecent = !showAllRecent;
-      event.currentTarget.textContent = showAllRecent ? 'Show Less' : 'View All';
-      refreshRecent();
-    });
-
-    document.getElementById('followupViewAll')?.addEventListener('click', event => {
-      showAllFollowups = !showAllFollowups;
-      event.currentTarget.textContent = showAllFollowups ? 'Show Less' : 'View All';
-      const list = document.getElementById('activityFollowupList');
-      if (list) list.innerHTML = renderFollowups(showAllFollowups ? followups : followups.slice(0,4));
-      window.lucide?.createIcons();
-    });
-
+    main.innerHTML = `${error ? '<p role="alert">Performance summary is unavailable. You can retry call history below.</p>' : perfSummary}<div id="performanceHistory"></div>`;
+    await window.steadyHandsMountPerformanceHistory({client:c,userId:selectedUserId,displayName:ownProfile?.display_name||'You',root:document.getElementById('performanceHistory')});
     window.lucide?.createIcons();
   }
   async function loadPersonalOutreachStats(session) {

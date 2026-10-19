@@ -30,3 +30,40 @@ html[data-theme="dark"] .sh-performance-bar-track{background:#223c58}html[data-t
 .performance-call-plain{padding:14px;border:1px solid #cbd5e166;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
 .performance-call-identifiers{grid-template-columns:1fr;font-family:ui-monospace,monospace}
 @media(max-width:480px){.performance-call-fields{grid-template-columns:1fr}.activity-call-details-btn{padding:8px;font-size:11px}.activity-call-details-btn i{display:none}}
+
+/* Two equal activity lists on desktop; one selected list on mobile. */
+.performance-history-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.performance-history-column{min-width:0;background:var(--card,#fff);color:var(--text,#172d46);border:1px solid var(--line,#dee6ef);border-radius:18px;padding:18px}
+.performance-history-column>header{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:16px}
+.performance-history-column h2{font-size:20px;margin:0}
+.performance-history-column>header>span{font-size:12px;color:var(--muted,#77869b);white-space:nowrap}
+.performance-history-toggle{display:none}
+.performance-history-search{display:block;margin:0 0 12px}
+.performance-history-search>span{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--muted,#77869b)}
+.performance-history-search input{width:100%;min-width:0;padding:11px 12px;border:1px solid var(--line,#dee6ef);border-radius:10px;background:var(--surface,#f7f9fc);color:inherit;font:inherit;font-size:14px;box-sizing:border-box}
+.performance-history-call,.performance-history-followup{display:flex;width:100%;align-items:center;text-align:left;gap:12px;padding:18px 0;border:0;border-bottom:1px solid var(--line,#dee6ef);background:transparent;color:inherit;font:inherit;box-sizing:border-box}
+.performance-history-call{cursor:pointer}
+.performance-history-call:hover{background:#1686ee08}
+.performance-history-call:focus-visible,.performance-history-toggle button:focus-visible,.performance-load-more:focus-visible{outline:3px solid #1686ee;outline-offset:3px}
+.performance-history-icon{width:46px;height:46px;flex:0 0 46px;display:grid;place-items:center;border-radius:14px;background:#1686ee15;color:#1686ee}
+.performance-history-icon svg{width:22px;height:22px}
+.performance-history-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.performance-history-copy strong{font-size:14px;line-height:1.35}
+.performance-history-owner{font-size:12px;font-weight:750}
+.performance-history-copy small{font-size:11px;line-height:1.5;color:var(--muted,#77869b)}
+.performance-history-side{display:flex;flex:0 1 125px;min-width:0;flex-direction:column;align-items:flex-end;gap:9px;text-align:right}
+.performance-history-outcome{background:#10b98118;color:#12855a;padding:4px 9px;border-radius:30px;font-size:10px;font-weight:800;overflow-wrap:anywhere;text-transform:capitalize}
+.performance-history-side small{font-size:11px;font-weight:800;color:#1686ee}
+.performance-history-open{color:#1686ee;border:1px solid #1686ee55;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800}
+.performance-history-status,.performance-history-empty{font-size:13px;color:var(--muted,#77869b);line-height:1.5}
+.performance-load-more{display:block;width:100%;padding:12px;border:1px solid #1686ee66;border-radius:11px;background:#1686ee10;color:#1686ee;font:inherit;font-size:14px;font-weight:800;margin-top:16px;cursor:pointer}
+.performance-load-more[hidden]{display:none}
+.performance-load-more:disabled{opacity:.6;cursor:wait}
+@media(max-width:899px){
+ .performance-history-columns{display:block}
+ .performance-history-toggle{display:flex;gap:6px;padding:5px;margin-bottom:16px;border:1px solid var(--line,#dee6ef);border-radius:13px;background:var(--card,#fff)}
+ .performance-history-toggle button{flex:1;border:0;border-radius:9px;padding:12px 6px;background:transparent;color:var(--text,#172d46);font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+ .performance-history-toggle button[aria-pressed="true"]{background:#1686ee;color:white}
+ #performanceHistory[data-view="calls"] #performanceFollowups,#performanceHistory[data-view="followups"] #performanceCalls{display:none}
+}
+@media(max-width:480px){.performance-history-column{padding:14px}.performance-history-icon{width:36px;height:40px;flex-basis:36px}.performance-history-call,.performance-history-followup{gap:9px}.performance-history-side{flex-basis:90px}.performance-history-copy strong{font-size:13px}}
