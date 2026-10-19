@@ -171,7 +171,7 @@
       if(action==='notes'){
         document.getElementById('workspaceQuickNotesInput')?.focus();
         document.getElementById('shQuickNotes')?.scrollIntoView({behavior:'smooth',block:'center'});
-      }else if(action==='preview'&&preview){preview.click();}
+      }else if(action==='preview'&&card.querySelector('.preview-link')){card.querySelector('.preview-link').click();}
       else card.querySelector('.call-btn[data-select-lead]')?.click();
     });
     card.prepend(showcase);
