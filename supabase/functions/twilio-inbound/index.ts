@@ -183,11 +183,19 @@ async function sendIncomingPush(db,subscriptions,call,deadline,vapidDetails) {
  const payload=JSON.stringify({kind:'incoming-call',call_sid:call.call_sid,title:'Incoming Steady Hands call',body:'Tap to open Outreach and answer. The caller is waiting.',tag:'steadyhands-incoming-'+call.call_sid,url:'/index.html?incoming='+encodeURIComponent(call.call_sid),expires_at:deadline});
  await Promise.all(subscriptions.map(async subscription=>{
   try {
+   await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_attempt_at:new Date().toISOString()});
    await webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},payload,{vapidDetails,TTL:60,urgency:'high',timeout:4000});
+   await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_success_at:new Date().toISOString(),last_error:null});
   }catch(error){
+   await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_error:'Push delivery failed ('+(error.statusCode||'network')+').'});
    if([404,410].includes(error.statusCode)){
     await db.from('outreach_inbound_push_subscriptions').delete().eq('user_id',call.user_id).eq('endpoint',subscription.endpoint);
    }else console.error('Incoming push delivery failed:',error.statusCode||error.message);
   }
  }));
+}
+
+async function recordPushDelivery(db,userId,endpoint,patch) {
+ try { const {error}=await db.from('outreach_inbound_push_subscriptions').update(patch).eq('user_id',userId).eq('endpoint',endpoint);if(error)console.error('Push status could not be saved:',error); }
+ catch(error){console.error('Push status could not be saved:',error);}
 }
