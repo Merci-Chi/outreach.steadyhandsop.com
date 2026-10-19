@@ -22,9 +22,9 @@ test('final utterances carry stable IDs and correct parent-leg speakers, ignorin
  const p=s.writes[0].args;assert.equal(p.p_call_sid,call);assert.equal(p.p_segment.speaker,'agent');assert.equal(p.p_segment.id,sid+':2');
  await s.request();assert.equal(s.writes[1].args.p_segment.speaker,'customer');
 });
-test('partial, empty and unknown events do not create saved utterances',async()=>{
+test('partial callbacks are marked provisional while empty and unknown events are ignored',async()=>{
  const s=setup();for(const f of [{Final:'false'},{TranscriptionData:'{"transcript":" "}'},{TranscriptionEvent:'unhandled'}])assert.equal((await s.request(f)).status,204);
- assert.equal(s.writes.length,0);
+ assert.equal(s.writes.length,1);assert.equal(s.writes[0].args.p_segment.final,false);
 });
 test('malformed data, sequence and identifiers fail without writing',async()=>{
  const s=setup();for(const f of [{TranscriptionData:'{'},{SequenceId:'bad'},{CallSid:'bad'},{TranscriptionSid:'bad'}])assert.equal((await s.request(f)).status,400);

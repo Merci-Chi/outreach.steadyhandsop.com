@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     if (!['transcription-started','transcription-content','transcription-stopped','transcription-error'].includes(event)) return new Response(null, {status:204});
     let segment = null;
     if (event === 'transcription-content') {
-      // Interim hypotheses must never become saved utterances or suggested actions.
-      if (form.Final !== 'true') return new Response(null, {status:204});
+      // Provisional text is stored separately from finalized transcript history.
+      if (!['true','false'].includes(form.Final)) return new Response('Invalid final flag.', {status:400});
       let data;
       try { data = JSON.parse(form.TranscriptionData || '{}'); }
       catch { return new Response('Invalid transcription data.', {status:400}); }
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
         sequence: Number(form.SequenceId),
         // Transcription starts on the browser parent leg, not its PSTN child.
         speaker: form.Track === 'inbound_track' ? 'agent' : form.Track === 'outbound_track' ? 'customer' : 'unknown',
-        text: String(data.transcript).trim().slice(0, 16000), final: true,
+        text: String(data.transcript).trim().slice(0, 16000), final: form.Final === 'true',
         timestamp: Number.isNaN(Date.parse(form.Timestamp)) ? null : new Date(form.Timestamp).toISOString(),
       };
     }

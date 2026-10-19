@@ -45,10 +45,11 @@ function scheduleReconnect(){if(readPref(offKey())==='true')return;clearTimeout(
 
 // Poll the incoming PSTN parent, not the browser child CallSid. Never use the
 // currently selected CRM lead to establish ownership or choose a transcript.
-let transcriptTimer=null,transcriptSid='',transcriptEpoch=0,transcriptDrain=0;
+let transcriptTimer=null,transcriptSid='',transcriptEpoch=0,transcriptDrain=0,transcriptChannel=null,transcriptClient=null;
 const transcriptEvent=detail=>window.dispatchEvent?.(new CustomEvent('steadyhands:inbound-transcript',{detail}));
 function stopTranscript(){
- clearInterval(transcriptTimer);transcriptTimer=null;transcriptEpoch++;transcriptSid='';transcriptDrain=0;
+ clearInterval(transcriptTimer);transcriptTimer=null;
+ if(transcriptChannel)void transcriptClient?.removeChannel?.(transcriptChannel);transcriptChannel=null;transcriptClient=null;transcriptEpoch++;transcriptSid='';transcriptDrain=0;
 }
 function clearTranscript(){
  stopTranscript();$('inboundTranscriptText').value='';$('inboundTranscriptPanel').hidden=true;
@@ -67,18 +68,35 @@ function startTranscript(incoming){
  }
  transcriptSid=sid;
  transcriptEvent({callSid:sid,started:true});
- const epoch=transcriptEpoch;let busy=false;
+ const epoch=transcriptEpoch;let busy=false,lastRevision=-1;
+ function render(transcript){
+  if(epoch!==transcriptEpoch)return;
+  if(transcriptDrain&&Date.now()>=transcriptDrain){stopTranscript();return;}
+  const revision=Number(transcript?.transcript_revision)||0;
+  if(transcript&&revision<lastRevision)return;
+  if(transcript)lastRevision=revision;
+  const provisional=Object.values(transcript?.interim_segments||{}).filter(part=>part?.text).map(part=>(part.speaker==='agent'?'You':part.speaker==='customer'?'Prospect':'Transcript')+' (speaking…): '+part.text);
+  const displayText=[transcript?.transcript||'',...provisional].filter(Boolean).join('\n');
+  const message=!transcript?'Waiting for the incoming transcript. Check the transcription deployment if no text appears.':transcript.transcription_status==='error'?'Transcription error: '+(transcript.transcription_error||'Check Twilio logs.'):provisional.length?'Listening… provisional text may change.':'';
+  $('inboundTranscriptStatus').textContent=message;$('inboundTranscriptText').value=displayText;
+  transcriptEvent({callSid:sid,transcript,displayText,message});
+ }
+ transcriptClient=window.steadyHandsCRMClient;
+ if(transcriptClient?.channel){
+  try { transcriptChannel=transcriptClient.channel('incoming-transcript-'+sid+'-'+epoch)
+   .on('postgres_changes',{event:'*',schema:'public',table:'callcenter_transcripts',filter:'call_sid=eq.'+sid},payload=>{
+    if(payload.new?.call_sid===sid)render(payload.new);
+   }).subscribe(state=>{if(state==='SUBSCRIBED')void poll();});
+  } catch(error) { console.warn('Live transcript subscription unavailable; using polling.',error); }
+ }
  async function poll(){
   if(busy||epoch!==transcriptEpoch)return;
   if(transcriptDrain&&Date.now()>=transcriptDrain){stopTranscript();return;}
   busy=true;
   try{
    const {transcript}=await invoke('transcript',{call_sid:sid});
-   if(epoch!==transcriptEpoch)return;
-   const message=!transcript?'Waiting for the incoming transcript. Check the transcription deployment if no text appears.':transcript.transcription_status==='error'?'Transcription error: '+(transcript.transcription_error||'Check Twilio logs.') : '';
-   $('inboundTranscriptStatus').textContent=message;
-   $('inboundTranscriptText').value=transcript?.transcript||'';
-   transcriptEvent({callSid:sid,transcript,message});
+   if(!transcript&&lastRevision>=0)return;
+   render(transcript);
   }catch(error){
    if(epoch!==transcriptEpoch)return;
    $('inboundTranscriptStatus').textContent=error.message;
@@ -86,7 +104,7 @@ function startTranscript(incoming){
   }finally{busy=false;}
  }
  $('inboundTranscriptStatus').textContent='Waiting for the incoming transcript…';
- transcriptTimer=setInterval(poll,3000);void poll();
+ transcriptTimer=setInterval(poll,1500);void poll();
 }
 window.addEventListener('pagehide',clearTranscript);
 

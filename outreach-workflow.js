@@ -113,6 +113,7 @@
   let syncTimer=null, since=null, syncEpoch=0, syncBusy=false, drainUntil=0, activeCallSid=null;
   function resetLead() {
     const id=leadId();if(id===current)return;
+    if(inboundCallSid){current=id;applied.clear();$('keywordFeedback').textContent='';renderActions();return;}
     stopSync();inboundCallSid=null;callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
     $('keywordFeedback').textContent='';
     $('refTranscriptStatus').textContent='';
@@ -131,14 +132,22 @@
   function renderActions() {
     // Latest prospect utterances determine suggestions; a DNC request takes precedence.
     const recent=entries.filter(entry=>entry.speaker==='prospect').slice(-4).map(entry=>entry.text).join(' ');
-    const suggested=(inboundCallSid?[]:core.suggestions(recent)).filter(action=>!applied.has(action.id));actions.replaceChildren();
+    const suggested=core.suggestions(recent).filter(action=>!applied.has(action.id));actions.replaceChildren();
     for(const action of suggested) {
       const button=make('button',action.label,'sh-tag-pill');button.type='button';actions.append(button);
       const id=current;
       button.onclick=async()=>{
         if(leadId()!==id){resetLead();return;}
+        if(!id){$('keywordFeedback').textContent='Select the caller’s prospect to apply this suggestion.';return;}
+        const incoming=inboundCallSid;
         button.disabled=true;
         try {
+          if(incoming){
+            const {row}=await core.load(window.steadyHandsCRMClient,id);
+            if(incoming!==inboundCallSid||leadId()!==id)return;
+            const target=[row.company||row.name||'selected prospect',row.phone].filter(Boolean).join(' · ');
+            if(!window.confirm('Apply “'+action.label+'” to '+target+'? Confirm this is the incoming caller’s prospect.'))return;
+          }
           if(action.id==='dnc'){$('refDoNotCall')?.click();}
           else if(action.id.startsWith('tag:')){await core.addTag(window.steadyHandsCRMClient,id,action.id.slice(4));if(leadId()===id)applied.add(action.id);}
           else if(action.id==='phone'){window.dispatchEvent(new CustomEvent('steadyhands:call-guide-step',{detail:{checklistStep:3}}));$('processPhone').focus();}
@@ -157,15 +166,17 @@
       return;
     }
     if(detail.started){
-      stopSync();callActive=false;inboundCallSid=detail.callSid;entries=[];applied.clear();history.value='';renderActions();
+      stopSync();callActive=false;current=leadId();inboundCallSid=detail.callSid;entries=[];applied.clear();history.value='';renderActions();
       feedback.textContent='Waiting for the incoming transcript…';$('refTranscriptStatus').textContent='Incoming call';
     }
     if(!inboundCallSid||detail.callSid!==inboundCallSid)return;
     if(detail.transcript){
-      history.value=detail.transcript.transcript||'';history.scrollTop=history.scrollHeight;
+      history.value=detail.displayText??detail.transcript.transcript??'';history.scrollTop=history.scrollHeight;
+      entries=core.transcriptSegments(detail.transcript);renderActions();
     }
     if(detail.message!==undefined)feedback.textContent=detail.message;
-    // Inbound calls are not implicitly attached to the selected prospect.
+    // Only finalized caller speech produces suggestions; applying one requires
+    // an explicitly confirmed prospect. Provisional speech is display-only.
   });
   window.addEventListener('steadyhands:transcript',event=>appendEntry(event.detail||{}));
   window.addEventListener('steadyhands:call-lead-ready',resetLead);
@@ -183,6 +194,9 @@
         const key=JSON.stringify([row.id,segment.segmentId ?? i,segment.speaker,segment.text]);
         if(!imported.has(key)){imported.add(key);appendEntry({id,...segment});}
       });
+      const provisional=Object.values(row.interim_segments||{}).filter(part=>part?.text).map(part=>(part.speaker==='agent'?'You':part.speaker==='customer'?'Prospect':'Transcript')+' (speaking…): '+part.text);
+      const finalText=entries.map(entry=>`${entry.speaker==='prospect'?'Prospect':entry.speaker==='agent'?'You':'Transcript'}: ${entry.text}`).join('\n');
+      history.value=[finalText,...provisional].filter(Boolean).join('\n');
       feedback.textContent=row.transcription_status==='error' ? 'Transcription error: '+(row.transcription_error || 'Please ask your administrator to check Twilio.') : '';
       if(!callActive && (Date.now()>=drainUntil)){clearInterval(syncTimer);syncTimer=null;}
     }catch(error){if(epoch===syncEpoch)feedback.textContent=error.message;}
@@ -192,7 +206,7 @@
   function callState(event) {
     const nextActive=!!event.detail?.active;
     if(nextActive)inboundCallSid=null;
-    if(nextActive&&!callActive){stopSync();drainUntil=0;entries=[];history.value='';$('refTranscriptStatus').textContent='';renderActions();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,5000);refreshTranscript();}
+    if(nextActive&&!callActive){stopSync();drainUntil=0;entries=[];history.value='';$('refTranscriptStatus').textContent='';renderActions();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,1500);refreshTranscript();}
     if(!nextActive&&callActive){drainUntil=Date.now()+30000;refreshTranscript();}
     callActive=nextActive;
     if(nextActive&&event.detail?.callSid){activeCallSid=event.detail.callSid;refreshTranscript();}
