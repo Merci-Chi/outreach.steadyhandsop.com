@@ -9,9 +9,7 @@ In the Supabase project's SQL Editor, run the complete contents of:
 `supabase/migrations/20261017010000_inbound_callbacks.sql`
 
 Then run `supabase/migrations/20261018060000_twilio_only_inbound.sql`.
-The second migration makes the legacy cellphone field optional. Run it before
-deploying the updated session function so voicemail settings can save without a
-personal number. It preserves existing settings and call history.
+The second migration makes the legacy cellphone field optional and preserves existing call history. Apply `supabase/migrations/20261019060000_admin_phone_voicemail.sql` for the current Admin-only business-number greeting editor; see [Admin voicemail deployment](ADMIN-VOICEMAIL.md).
 
 It creates the per-user routing settings and private incoming-call/voicemail records. Authenticated users may read only their own records. All writes are performed by the protected Edge Functions. Re-running the migration preserves records.
 
@@ -96,7 +94,7 @@ endpoint when closed-app telephone reception is needed. Browser autoplay policie
 can limit audible ringing; the visible call alert remains available. Notification
 support varies by device/browser. Closed-app notification delivery is available through the separate server push setup in [PWA-CALL-NOTIFICATIONS.md](PWA-CALL-NOTIFICATIONS.md). Tap the push notification to reopen Outreach while the caller waits; it does not provide closed-app background audio.
 
-Open **Incoming calls → Voicemail settings** to customize the business greeting.
+Open **Admin → Phone Numbers → Voicemail greeting** on the relevant business number. Apply `20261019060000_admin_phone_voicemail.sql` first (the same SQL is in the Admin repository as `sql/admin-phone-voicemail.sql`; run only once). Outreach users can play their voicemail but cannot configure greetings.
 
 ## 6. Provision a new Twilio number
 

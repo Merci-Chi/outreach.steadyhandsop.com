@@ -1,6 +1,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
 import webpush from 'npm:web-push@3.6.7';
+const DEFAULT_VOICEMAIL_GREETING = 'Thank you for calling Steady Hands. We are unavailable to take your call at the moment. Please try again or contact our support team at (702) 775-9756. You may also leave a message after the beep.';
 const identity = userId => 'sh_inbound_' + userId;
 const escapeXML = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const response = inner => '<?xml version="1.0" encoding="UTF-8"?><Response>' + inner + '</Response>';
@@ -18,7 +19,7 @@ function screen(base,parent) {
  return response(`<Gather numDigits="1" timeout="7" action="${escapeXML(endpoint(base,'accept-cell',parent))}" method="POST"><Say>Incoming Steady Hands call. Press 1 to answer.</Say></Gather><Hangup/>`);
 }
 function voicemail(base,greeting) {
-  return response(`<Say>${escapeXML(greeting||'Thank you for calling Steady Hands. Please leave your name, number, and message after the beep.')}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
+  return response(`<Say>${escapeXML(greeting||DEFAULT_VOICEMAIL_GREETING)}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
 }
 const answered = status => status==='completed';
 
@@ -30,6 +31,9 @@ function resolveRoutingSettings(saved) {
 
 const xml=(body:string,status=200)=>new Response(body,{status,headers:{'Content-Type':'text/xml; charset=utf-8'}});
 Deno.serve(async req=>{
+ // Twilio fetches Play audio by GET without a signed voice form. This route
+ // serves only a fixed original melody and never reads account/call data.
+ if(req.method==='GET'&&new URL(req.url).searchParams.get('stage')==='hold-music')return holdMusicResponse();
  if(req.method!=='POST')return new Response('Method not allowed',{status:405});
  try{
   const url=Deno.env.get('SUPABASE_URL')||'';
@@ -74,7 +78,7 @@ Deno.serve(async req=>{
      if(publicKey&&privateKey&&subject){
       const subscriptions=await checked(await db.from('outreach_inbound_push_subscriptions').select('endpoint,p256dh,auth').eq('user_id',incoming.user_id).eq('enabled',true));
       if(subscriptions?.length){
-       const deadline=new Date(Date.now()+60000).toISOString();
+       const deadline=new Date(Date.now()+30000).toISOString();
        await checked(await db.from('outreach_inbound_calls').update({push_wait_until:deadline}).eq('call_sid',callSid));
        const task=sendIncomingPush(db,subscriptions,incoming,deadline,{publicKey,privateKey,subject}).catch(error=>console.error('Incoming push failed:',error));
        if(typeof EdgeRuntime!=='undefined')EdgeRuntime.waitUntil(task);else await task;
@@ -95,7 +99,13 @@ Deno.serve(async req=>{
   if(call.status==='completed'||call.status==='voicemail'||call.status==='missed')return xml(hangup());
   const saved=call.user_id?await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle()):null;
   const settings=resolveRoutingSettings(saved);
-  const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
+  // Use the originally dialed business number, including managed forwarding chains.
+  // Legacy per-user greetings are deliberately ignored. A missing migration falls
+  // back to the business default so a staged deploy does not break reception.
+  const business=await db.from('callcenter_phone_numbers').select('voicemail_greeting').eq('phone_number',call.to_number).maybeSingle();
+  if(business.error&&!['42703','PGRST204'].includes(business.error.code))throw business.error;
+  const greeting=business.data?.voicemail_greeting||DEFAULT_VOICEMAIL_GREETING;
+  const mailbox=()=>xml(voicemail(base,greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
   if(stage==='incoming'||stage==='wait'){
    if(call.route_destination==='forward'){await patch({status:'forwarding'});return xml(phoneDial(base,call,settings));}
@@ -104,7 +114,7 @@ Deno.serve(async req=>{
     let devices=[];
     try { devices=await checked(await db.from('outreach_inbound_devices').select('updated_at').eq('user_id',call.user_id).eq('ready',true)); }catch(error){console.error('Incoming readiness failed:',error);}
     const recent=devices?.some(device=>Date.parse(device.updated_at)>Date.now()-35000&&(!call.browser_attempted_at||Date.parse(device.updated_at)>Date.parse(call.browser_attempted_at)));
-    if(!recent)return xml(waitForApp(base,stage==='incoming'));
+    if(!recent)return xml(waitForApp(base,stage==='incoming',call.push_wait_until));
    }
    await patch({browser_attempted_at:new Date().toISOString()});
    // Transcription is best-effort: configuration errors must not block reception.
@@ -130,10 +140,10 @@ Deno.serve(async req=>{
    if(answered(form.DialCallStatus)){await patch({status:'completed',answered_via:'outreach'});return finish('<Hangup/>');}
    const alerted=call.browser_alerted_at&&(!call.browser_attempted_at||Date.parse(call.browser_alerted_at)>=Date.parse(call.browser_attempted_at));
    if(call.push_wait_until&&Date.now()<Date.parse(call.push_wait_until)&&!alerted&&form.DialCallStatus!=='busy'){
-    const body=waitForApp(base,false).replace(/^.*?<Response>|<\/Response>$/g,'');
+    const body=waitForApp(base,false,call.push_wait_until).replace(/^.*?<Response>|<\/Response>$/g,'');
     return xml(response(body));
    }
-   const body=voicemail(base,settings?.voicemail_greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
+   const body=voicemail(base,greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
    return finish(body);
   }
   if(stage==='screen'){
@@ -176,15 +186,38 @@ async function resolveForwardRoute(number, loadNumber) {
  throw Error('Forwarding route is too long');
 }
 
-function waitForApp(base,announce) {
- return response((announce?'<Say>Please hold while we notify your contact.</Say>':'')+'<Pause length="2"/><Redirect method="POST">'+escapeXML(endpoint(base,'wait'))+'</Redirect>');
+function waitForApp(base,announce,deadline) {
+ // Short music segments let us recheck registration promptly rather than
+ // playing a long track that would delay answering or exceed the deadline.
+ const remaining=(Date.parse(deadline)-Date.now())/1000;
+ const sound=remaining<2?'<Pause length="1"/>':'<Play>'+escapeXML(endpoint(base,'hold-music'))+'</Play>';
+ return response((announce?'<Say>Please hold while we connect your call.</Say>':'')+sound+'<Redirect method="POST">'+escapeXML(endpoint(base,'wait'))+'</Redirect>');
+}
+function holdMusicResponse() {
+ // Original soft arpeggio: 2 seconds, mono 8 kHz PCM16 WAV. No external asset
+ // or third-party track is required. Twilio can cache this fixed public audio.
+ const rate=8000,samples=rate*2,bytes=new Uint8Array(44+samples*2),view=new DataView(bytes.buffer);
+ const label=(offset,value)=>{for(let i=0;i<value.length;i++)bytes[offset+i]=value.charCodeAt(i);};
+ label(0,'RIFF');view.setUint32(4,bytes.length-8,true);label(8,'WAVE');label(12,'fmt ');
+ view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+ view.setUint32(24,rate,true);view.setUint32(28,rate*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);
+ label(36,'data');view.setUint32(40,samples*2,true);
+ const notes=[261.6256,329.6276,391.9954,329.6276];
+ for(let i=0;i<samples;i++){
+  const t=i/rate,local=t%0.5,f=notes[Math.min(3,Math.floor(t/0.5))];
+  const envelope=Math.min(1,local/0.025)*Math.exp(-local*5)*Math.min(1,(0.5-local)/0.03);
+  const tone=Math.sin(2*Math.PI*f*local)+0.16*Math.sin(4*Math.PI*f*local);
+  const fade=Math.min(1,t/0.04,(2-t)/0.04);
+  view.setInt16(44+i*2,Math.round(32767*0.15*tone*envelope*fade),true);
+ }
+ return new Response(bytes,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=86400','Content-Length':String(bytes.length)}});
 }
 async function sendIncomingPush(db,subscriptions,call,deadline,vapidDetails) {
  const payload=JSON.stringify({kind:'incoming-call',call_sid:call.call_sid,title:'Incoming Steady Hands call',body:'Tap to open Outreach and answer. The caller is waiting.',tag:'steadyhands-incoming-'+call.call_sid,url:'/index.html?incoming='+encodeURIComponent(call.call_sid),expires_at:deadline});
  await Promise.all(subscriptions.map(async subscription=>{
   try {
    await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_attempt_at:new Date().toISOString()});
-   await webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},payload,{vapidDetails,TTL:60,urgency:'high',timeout:4000});
+   await webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},payload,{vapidDetails,TTL:30,urgency:'high',timeout:4000});
    await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_success_at:new Date().toISOString(),last_error:null});
   }catch(error){
    await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_error:'Push delivery failed ('+(error.statusCode||'network')+').'});

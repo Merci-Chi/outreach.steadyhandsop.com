@@ -25,9 +25,11 @@ test('disabled agents and invalid logins are denied',async()=>{
  const disabled=setup({active:false});assert.equal((await disabled.request('token')).status,403);assert.equal((await disabled.request('save_settings',{voicemail_greeting:'Hello',enabled:true})).status,403);
  const invalid=setup({validAuth:false});assert.equal((await invalid.request('settings')).status,401);assert.equal(invalid.access(),0);
 });
-test('voicemail settings save without collecting a personal phone and ignore old client phone values',async()=>{
- const s=setup();const result=await s.request('save_settings',{user_id:'other',cellphone_number:'+17025550103',voicemail_greeting:'Hello',enabled:true});
- assert.equal(result.status,200);const saved=s.rows.outreach_inbound_settings[0];assert.equal(saved.user_id,'agent');assert.equal(saved.cellphone_number,null);assert.equal(saved.voicemail_greeting,'Hello');
+test('legacy Outreach clients cannot change voicemail greetings',async()=>{
+ const s=setup(),before=structuredClone(s.rows.outreach_inbound_settings);
+ const response=await s.request('save_settings',{voicemail_greeting:'Unauthorized change',enabled:true});
+ assert.equal(response.status,403);assert.match((await response.json()).error,/Admin → Phone Numbers/);
+ assert.deepEqual(s.rows.outreach_inbound_settings,before);
 });
 test('Admin app routing supersedes the obsolete per-user disabled toggle',async()=>{
  const s=setup();s.rows.outreach_inbound_settings[0].enabled=false;s.rows.callcenter_profiles[0].phone='+17025550103';
@@ -44,7 +46,7 @@ test('voicemail remains private to its assigned user',async()=>{
  const s=setup();assert.equal((await (await s.request('settings')).json()).calls.length,0);assert.equal((await s.request('play_voicemail',{call_sid:'other-call'})).status,404);
 });
 test('an empty greeting cannot replace voicemail settings',async()=>{
- const s=setup();assert.equal((await s.request('save_settings',{voicemail_greeting:'',enabled:true})).status,400);
+ const s=setup();assert.equal((await s.request('save_settings',{voicemail_greeting:'',enabled:true})).status,403);
 });
 
 test('phone-forwarded assignments return their Admin destination without issuing a browser token',async()=>{

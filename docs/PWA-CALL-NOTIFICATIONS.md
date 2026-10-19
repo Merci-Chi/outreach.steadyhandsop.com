@@ -1,7 +1,7 @@
 # Incoming calls while the PWA is closed
 
 Incoming calls can send a Web Push notification to each enabled device. The
-caller waits up to 60 seconds for an eligible browser to register. Tap the
+caller waits up to 30 seconds for an eligible browser to register. Tap the
 notification to open/focus Outreach, then use Answer and grant microphone access.
 If no device answers in time, the caller reaches the existing business voicemail.
 A registered browser receives the call directly; a failed offline dial returns
@@ -80,7 +80,7 @@ The payload is generic and does not include caller phone numbers or CRM details.
 The incoming handler only sends to enabled subscriptions belonging to the resolved
 route owner. The subscription API restricts endpoints to supported Apple, Google,
 Mozilla and Windows push services, and never accepts browser-supplied ownership.
-Expired endpoints (HTTP 404/410) are pruned. Push TTL is 60 seconds and the worker
+Expired endpoints (HTTP 404/410) are pruned. Push TTL is 30 seconds and the worker
 discards expired alerts. Clicking a notification focuses an existing same-origin
 window without navigation, preserving pending/active calls; otherwise it opens
 `/index.html?incoming=<CallSid>`. The URL does not authorize access to the call.
@@ -135,8 +135,27 @@ is active. Initial service-worker installation does not trigger a reload loop.
 Returning to the app leaves a 15-second grace period for pending calls to arrive.
 Successful forms can signal `steadyhands:changes-saved` with `{form}`; a form
 submission alone does not prove a save succeeded. Removing/resetting a draft
-also releases the update hold. Voicemail settings emit the success event.
+also releases the update hold. Voicemail greetings are configured in Admin → Phone Numbers.
 One initial page refresh/navigation may be needed to load this updater in an
 already-open older PWA; no app uninstall or OS restart is required. The deployed
 Supabase functions/SQL still require deployment; browser updates do not deploy
 backend code or secrets.
+
+## Shorter hold with music
+
+Redeploy the latest `twilio-inbound` function to use a 30-second connection window
+and the announcement “Please hold while we connect your call.” A short original
+instrumental arpeggio plays while waiting for the PWA, with readiness checked
+between two-second segments. The final fraction of the window uses a brief
+pause instead of starting another segment. Webhook/audio retrieval and speech
+playback can add a small amount of timing overhead; this is approximately a
+30-second window, not a frame-accurate limit. Once a browser is ready it rings
+for at most 20 seconds, capped by time remaining in the window.
+
+Audio is served by the same function's public GET `?stage=hold-music` endpoint
+as a cacheable 8 kHz mono PCM16 WAV. It returns fixed synthesized audio without
+reading any call/account data. Other GET requests remain rejected; signed POST
+validation for routing is unchanged. There is no music-file upload, SQL migration,
+new secret, external audio host, or frontend change for this update. The voicemail
+greeting remains editable in Outreach. Test a closed-PWA call after deployment
+and verify music, notification-click answer, and voicemail on timeout.
