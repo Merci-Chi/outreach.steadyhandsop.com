@@ -50,12 +50,58 @@ function view(){
  q('#shFeedbackLater',overlay).onclick=hideActive;
  const form=q('#shFeedbackForm',overlay);form.onsubmit=save;form.oninput=captureAnswers;form.onchange=captureAnswers;
 }
+
+function showCompletion(result,activityId){
+ const overlay=q('#shFeedbackOverlay');if(!overlay)return;
+ const detail={crmId:String(result.crm_id),activityId:String(activityId),callSid:result.call_sid||'',company:result.company||'Prospect'};
+ overlay.innerHTML=`<section class="sh-tool-sheet" role="dialog" aria-modal="true" aria-labelledby="shFeedbackCompleteTitle"><div class="sh-sheet-head"><h2 id="shFeedbackCompleteTitle">Call result saved</h2></div><div class="sh-sheet-body"><p>Your questionnaire has been saved. Choose what to do next.</p><div class="sh-feedback-complete-actions"><button class="sh-sheet-primary" type="button" id="shFeedbackContinue">Continue</button><button class="sh-sheet-secondary" type="button" id="shFeedbackOverview">Overview</button></div><p id="shFeedbackCompleteError" class="sh-sheet-status" role="status"></p></div></section>`;
+ q('#shFeedbackContinue',overlay).onclick=()=>{overlay.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));window.dispatchEvent(new CustomEvent('steadyhands:questionnaire-continued',{detail}));};
+ q('#shFeedbackOverview',overlay).onclick=()=>showSavedOverview(detail);
+ q('#shFeedbackContinue',overlay).focus();
+}
+async function showSavedOverview(detail){
+ const overlay=q('#shFeedbackOverlay');if(!overlay)return;
+ const error=q('#shFeedbackCompleteError',overlay),button=q('#shFeedbackOverview',overlay);
+ button.disabled=true;if(error)error.textContent='Loading this call’s saved details…';
+ try{
+  const c=client();if(!c)throw Error('Sign in to view your call.');
+  const {data:auth,error:authError}=await c.auth.getUser();
+  if(authError||!auth?.user)throw Error('Sign in to view your call.');
+  // Never substitute the most recent call for the completed attempt.
+  const {data:activity,error:activityError}=await c.from('callcenter_call_activity')
+   .select('id,crm_id,user_id,outcome,ended_at,duration_seconds,call_sid')
+   .eq('id',detail.activityId).eq('crm_id',detail.crmId).eq('user_id',auth.user.id).single();
+  if(activityError||!activity)throw Error('This saved call is unavailable to your account.');
+  const {data:answer,error:answerError}=await c.from('callcenter_post_call_questionnaires')
+   .select('outcome,notes,interest_stages,portal_link_sent,registered,site_reviewed,ready_to_buy,call_method,elapsed_seconds_estimate')
+   .eq('call_activity_id',activity.id).eq('crm_id',detail.crmId).eq('user_id',auth.user.id).single();
+  if(answerError||!answer)throw Error('Saved questionnaire details could not be loaded.');
+  let transcriptText='No transcript available for this call.';
+  if(activity.call_sid){
+   const {data:transcript,error:transcriptError}=await c.from('callcenter_transcripts')
+    .select('transcript,segments').eq('call_sid',activity.call_sid)
+    .eq('crm_id',detail.crmId).eq('user_id',auth.user.id).limit(1).maybeSingle();
+   if(transcriptError)throw Error('Could not load this call’s transcript: '+transcriptError.message);
+   if(transcript){
+    let segments=transcript.segments;
+    if(typeof segments==='string'){try{segments=JSON.parse(segments)}catch{segments=[]}}
+    transcriptText=transcript.transcript|| (Array.isArray(segments)?segments.filter(x=>x?.final!==false&&x?.text).map(x=>(x.speaker||'Speaker')+': '+x.text).join('\\n'):'')||transcriptText;
+   }
+  }
+  // The result is rendered only after ownership checks complete.
+  const duration=Number(activity.duration_seconds)||0;
+  overlay.innerHTML=`<section class="sh-tool-sheet" role="dialog" aria-modal="true" aria-labelledby="shSavedCallTitle"><div class="sh-sheet-head"><h2 id="shSavedCallTitle">Saved call overview</h2></div><div class="sh-sheet-body"><p><strong>${esc(detail.company)}</strong></p><p>Outcome: ${esc(answer.outcome||activity.outcome||'—')}</p><p>Ended: ${esc(activity.ended_at?new Date(activity.ended_at).toLocaleString():'Not recorded')}</p><p>Verified call duration: ${duration?esc(Math.floor(duration/60)+'m '+duration%60+'s'):'Not available'}</p><p>Notes: ${esc(answer.notes||'None')}</p><p>Interest: ${esc((answer.interest_stages||[]).join(', ')||'None')}</p><p>Portal sent: ${answer.portal_link_sent?'Yes':'No'} · Registered: ${answer.registered?'Yes':'No'} · Site reviewed: ${answer.site_reviewed?'Yes':'No'} · Ready to buy: ${answer.ready_to_buy?'Yes':'No'}</p><label class="sh-field-label">Saved transcript<textarea class="sh-note-input" rows="8" readonly>${esc(transcriptText)}</textarea></label><button type="button" class="sh-sheet-primary" id="shOverviewContinue">Continue</button></div></section>`;
+  q('#shOverviewContinue',overlay).onclick=()=>{overlay.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));window.dispatchEvent(new CustomEvent('steadyhands:questionnaire-continued',{detail}));};
+ }catch(ex){if(error)error.textContent=ex.message||'Could not load this call.';button.disabled=false;}
+}
+
 async function save(e){e.preventDefault();if(!pending||submitting)return;const result=pending,overlay=q('#shFeedbackOverlay'),c=client(),f=e.currentTarget,btn=q('#shFeedbackSave'),message=q('#shFeedbackStatus');captureAnswers();if(!c){message.textContent='Sign in before saving.';return;}submitting=true;btn.disabled=true;
  try{const d=new FormData(f);const selected=String(d.get('outcome')||'');
  if(!choices.some(x=>x[0]===selected))throw new Error('Choose an outcome.');
  const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call',has_website:'called',not_interested:'not_interested',do_not_call:'not_interested'};
  const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.',has_website:'Prospect has a website.',not_interested:'Prospect is not interested.',do_not_call:'Prospect requested Do Not Call.'}[selected]||'';
  const args={p_crm_id:result.crm_id,p_client_event_id:result.event_id,p_outcome:mapped[selected],p_elapsed_seconds:Math.max(0,Math.min(86400,Number(result.elapsed_seconds)||0)),p_interest_stages:d.getAll('interest'),p_notes:[prefix,String(d.get('notes')||'').trim()].filter(Boolean).join('\n'),p_portal_link_sent:d.has('portal_link_sent'),p_registered:d.has('registered'),p_site_reviewed:d.has('site_reviewed'),p_ready_to_buy:d.has('ready_to_buy')};const isVoicemail=selected==='left_voicemail';
+ let savedActivityId=result.activity_id||null;
  if(result.call_method==='outreach'){
    const {data:auth,error:authError}=await c.auth.getUser();if(authError)throw authError;
    if(!auth?.user)throw Error('Sign in before saving.');
@@ -76,10 +122,13 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
      result.activity_id=activity.id;
      storeDraft(result);
    }
+   savedActivityId=activity.id;
    const {error}=await c.from('callcenter_post_call_questionnaires').upsert({call_activity_id:activity.id,user_id:auth.user.id,crm_id:result.crm_id,outcome:args.p_outcome,interest_stages:args.p_interest_stages,notes:args.p_notes,portal_link_sent:args.p_portal_link_sent,registered:args.p_registered,site_reviewed:args.p_site_reviewed,ready_to_buy:args.p_ready_to_buy,client_event_id:result.event_id,call_method:'outreach',elapsed_seconds_estimate:args.p_elapsed_seconds},{onConflict:'call_activity_id'});
    if(error)throw error;
  }else{
-   const {error}=await c.rpc('record_regular_outreach_call_v1',args);if(error)throw error;
+   const {data:activityId,error}=await c.rpc('record_regular_outreach_call_v1',args);if(error)throw error;
+   if(!activityId)throw Error('The saved call ID was not returned. Retry saving.');
+   savedActivityId=activityId;
  }
  // Save the lead-specific outcome through existing CRM fields/workflows.
  // Keep the questionnaire draft until both writes succeed so a failed second
@@ -109,7 +158,8 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
    const {data:updated,error:tagError}=await c.from('crm').update({tags,outcome:'Left Voicemail'}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
    if(tagError||!updated)throw new Error('Call recorded, but the voicemail status could not be saved: '+(tagError?.message||'No assigned lead updated.'));
  }
- drafts=drafts.filter(d=>d.event_id!==result.event_id);persist();if(pending===result)pending=null;renderDrafts();message.textContent='Saved to Supabase.';setTimeout(()=>{if(!pending||pending.event_id===result.event_id)overlay?.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));},400);
+ if(!savedActivityId)throw Error('The saved call ID is missing. Retry saving.');
+ drafts=drafts.filter(d=>d.event_id!==result.event_id);persist();if(pending===result)pending=null;renderDrafts();showCompletion(result,savedActivityId);
  }catch(ex){console.error('Questionnaire save failed:',ex);message.textContent=`Not saved: ${ex.message||'Try again'}. Your answers are still here.`;}
  finally{submitting=false;if(btn?.isConnected)btn.disabled=false;}
 }

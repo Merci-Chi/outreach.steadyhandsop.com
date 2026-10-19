@@ -11,14 +11,14 @@ function page({storageBlocked=false,activity={id:'activity'},writeError=null,sto
  const nodes=new Map(),events={},saved=[],rpcs=[],filters=[];let uuid=0;
  const values={outcome:'good',notes:'',interest:[]};
  const node=()=>({textContent:'',isConnected:true,querySelector:s=>nodes.get(s),querySelectorAll:()=>[],remove(){nodes.delete('#'+this.id);this.isConnected=false},className:''});
- for(const id of ['#shFeedbackLater','#shFeedbackForm','#shFeedbackSave','#shFeedbackStatus'])nodes.set(id,node());
+ for(const id of ['#shFeedbackLater','#shFeedbackForm','#shFeedbackSave','#shFeedbackStatus','#shFeedbackContinue','#shFeedbackOverview','#shFeedbackCompleteError'])nodes.set(id,node());
  const append=n=>nodes.set('#'+n.id,n);
  if(showRecovery)nodes.set('main.content',{prepend:append});
  const document={readyState:'complete',querySelector:s=>nodes.get(s),createElement:()=>node(),head:{append},body:{append}};
- const client={auth:{getUser:async()=>({data:{user:{id:'agent'}}})},rpc:async(...args)=>{rpcs.push(args);return {}},from(table){const q={select(){return q},eq(k,v){filters.push([k,v]);return q},maybeSingle:async()=>({data:activity}),upsert:async data=>{saved.push({table,data});return {error:writeError}}};return q}};
+ const client={auth:{getUser:async()=>({data:{user:{id:'agent'}}})},rpc:async(...args)=>{rpcs.push(args);return {data:'activity',error:null}},from(table){const q={select(){return q},eq(k,v){filters.push([k,v]);return q},maybeSingle:async()=>({data:activity}),upsert:async data=>{saved.push({table,data});return {error:writeError}}};return q}};
  const window={steadyHandsCRMClient:client,steadyHandsCallLead:{id:'original',company:'Original'},addEventListener:(k,fn)=>(events[k]??=[]).push(fn),dispatchEvent(event){for(const fn of events[event.type]||[])fn(event)}};
  const emit=(type,detail)=>{for(const fn of events[type]||[])fn({type,detail})};
- vm.runInNewContext(source,{document,window,console:{warn(){},error(){}},crypto:{randomUUID:()=> 'event-'+(++uuid)},Date,sessionStorage:{getItem:k=>storage.get(k),setItem(k,v){if(storageBlocked)throw Error('storage blocked');storage.set(k,v)},removeItem:k=>storage.delete(k)},FormData:class{get(k){return values[k]??''}getAll(k){return values[k]||[]}has(k){return values[k]===true}},setTimeout:fn=>fn()});
+ vm.runInNewContext(source,{document,window,console:{warn(){},error(){}},crypto:{randomUUID:()=> 'event-'+(++uuid)},Date,sessionStorage:{getItem:k=>storage.get(k),setItem(k,v){if(storageBlocked)throw Error('storage blocked');storage.set(k,v)},removeItem:k=>storage.delete(k)},FormData:class{get(k){return values[k]??''}getAll(k){return values[k]||[]}has(k){return values[k]===true}},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args?.detail}},setTimeout:fn=>fn()});
  vm.runInNewContext(controller,{document:{getElementById:()=>null},window,CustomEvent:class{constructor(type,args){this.type=type;this.detail=args.detail}},Date});
  return {window,nodes,saved,rpcs,filters,storage,values,event:emit,emit:detail=>emit('steadyhands:voice-state',detail),async submit(){await nodes.get('#shFeedbackForm').onsubmit({preventDefault(){},currentTarget:{}})}};
 }
@@ -31,7 +31,7 @@ test('outbound hangup opens one questionnaire for the original lead even after s
 });
 test('failed authorization does not open a post-call form',()=>{const p=page();p.emit({state:'error'});p.emit({state:'ended',reason:'error'});assert(!p.nodes.has('#shFeedbackOverlay'))});
 test('blocked session storage cannot prevent the regular-phone questionnaire opening or saving',async()=>{
- const p=page({storageBlocked:true});assert.equal(p.window.steadyHandsOpenPostCallQuestionnaire(finished()),true);await p.submit();assert.equal(p.rpcs[0][0],'record_regular_outreach_call_v1');assert(!p.nodes.has('#shFeedbackOverlay'));
+ const p=page({storageBlocked:true});assert.equal(p.window.steadyHandsOpenPostCallQuestionnaire(finished()),true);await p.submit();assert.equal(p.rpcs[0][0],'record_regular_outreach_call_v1');assert.match(p.nodes.get('#shFeedbackOverlay').innerHTML,/Call result saved/);p.nodes.get('#shFeedbackContinue').onclick();assert(!p.nodes.has('#shFeedbackOverlay'));
 });
 test('browser answers attach to the existing owned call without creating manual call activity',async()=>{
  const p=page();p.emit({state:'calling'});p.emit({state:'connected',callSid:'CAoriginal'});p.emit({state:'ended',reason:'disconnect'});await p.submit();
@@ -70,7 +70,7 @@ test('a call ending before SID assignment saves a zero-duration attempt and its 
  p.emit({state:'calling'});p.emit({state:'dialed'});p.emit({state:'ended',reason:'cancel'});await p.submit();
  assert.equal(logs.length,1);assert.equal(logs[0].callSid,'');assert.equal(logs[0].duration,0);
  assert.equal(p.saved[0].data.call_activity_id,'attempt');assert.equal(p.saved[0].data.call_method,'outreach');assert.equal(p.rpcs.length,0);
- assert(!p.nodes.has('#shFeedbackOverlay'));
+ assert.match(p.nodes.get('#shFeedbackOverlay').innerHTML,/Call result saved/);p.nodes.get('#shFeedbackContinue').onclick();assert(!p.nodes.has('#shFeedbackOverlay'));
 });
 test('retry after questionnaire failure reuses the owned activity instead of logging the call twice',async()=>{
  const p=page({writeError:{message:'temporary failure'}}),logs=[];
@@ -117,6 +117,8 @@ test('each dialed attempt opens only once, even after dismissal or saving',async
  const id=JSON.parse(p.storage.get(storageKey)).drafts[0].event_id;
  p.window.steadyHandsResumePostCallQuestionnaire(id);assert.match(p.nodes.get('#shFeedbackOverlay').innerHTML,/Do not reset my answers/);
  await p.submit();assert.equal(JSON.parse(p.storage.get(storageKey)).drafts.length,0);
+ assert.match(p.nodes.get('#shFeedbackOverlay').innerHTML,/Call result saved/);
+ p.nodes.get('#shFeedbackContinue').onclick();
  p.window.steadyHandsOpenPostCallQuestionnaire(detail);assert(!p.nodes.has('#shFeedbackOverlay'));
 });
 test('new calls preserve earlier drafts and late previous-call events cannot finish a new call',()=>{
