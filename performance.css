@@ -13,3 +13,20 @@
 @media(max-width:700px){.page-activity .sh-performance-panel{padding:13px}.sh-performance-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.sh-performance-metric{padding:12px}.sh-performance-heading h2{font-size:19px}.sh-performance-bars{height:125px;gap:5px}}
 @media(max-width:370px){.sh-performance-heading a{font-size:11px}.sh-performance-metric span{font-size:11px}}
 html[data-theme="dark"] .sh-performance-bar-track{background:#223c58}html[data-theme="dark"] .sh-performance-metric{background:#142b45}
+
+/* Saved call details on each associate's Performance page. */
+.activity-call-details-btn{display:flex;align-items:center;justify-content:center;width:auto;height:auto;min-height:34px;min-width:42px;padding:9px 12px;gap:6px;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}
+.performance-call-sheet{width:min(760px,100%)}
+.performance-call-body{color:var(--text,#243a51);font-size:14px;line-height:1.5}
+.performance-call-body h3{font-size:16px;margin:24px 0 10px}
+.performance-call-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.performance-call-fields>div{padding:12px;border:1px solid #cbd5e166;border-radius:12px;min-width:0}
+.performance-call-fields dt{font-size:11px;font-weight:800;text-transform:uppercase;opacity:.7}
+.performance-call-fields dd{margin:4px 0 0;overflow-wrap:anywhere}
+.performance-call-line{padding:12px 14px;border-radius:12px;background:#64748b14;margin:8px 0}
+.performance-call-line.customer{background:#1686ee18}
+.performance-call-line strong{font-size:11px;color:#1686ee;text-transform:uppercase}
+.performance-call-line p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.performance-call-plain{padding:14px;border:1px solid #cbd5e166;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.performance-call-identifiers{grid-template-columns:1fr;font-family:ui-monospace,monospace}
+@media(max-width:480px){.performance-call-fields{grid-template-columns:1fr}.activity-call-details-btn{padding:8px;font-size:11px}.activity-call-details-btn i{display:none}}
