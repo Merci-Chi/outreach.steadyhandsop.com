@@ -103,7 +103,7 @@
       const kind = button.dataset.historyMore;
       if(kind === 'calls' || kind === 'followups')void load(kind);
       const id = button.dataset.historyCall;
-      if(id && (state.calls.rows.some(row=>String(row.id) === String(id))||state.followups.rows.some(row=>String(row.call?.id)===String(id))))void window.steadyHandsOpenPerformanceCall?.({client,activityId:id,userId,trigger:button,ids:(button.closest('[data-history-list="followups"]')?state.followups.rows.filter(row=>row.call?.id).map(row=>row.call.id):state.calls.rows.map(row=>row.id)).filter(Boolean)});
+      if(id && (state.calls.rows.some(row=>String(row.id) === String(id))||state.followups.rows.some(row=>String(row.call?.id)===String(id))))void window.steadyHandsOpenPerformanceCall?.({client,activityId:id,userId,trigger:button,ids:(button.closest('[data-history-list="followups"]')?state.followups.rows.filter(row=>row.call?.id && [row.company,row.name,row.phone,row.outcome].join(' ').toLowerCase().includes(find('followups','search').value.trim().toLowerCase())).map(row=>row.call.id):state.calls.rows.filter(row=>{const lead=leads.get(String(row.crm_id))||{};return [lead.company,lead.name,lead.phone,row.outcome].join(' ').toLowerCase().includes(find('calls','search').value.trim().toLowerCase());}).map(row=>row.id)).filter(Boolean)});
     });
     window.addEventListener?.('steadyhands:followup-saved',()=>render('followups'));
     for(const kind of ['calls','followups'])find(kind,'search').addEventListener('input',()=>render(kind));
