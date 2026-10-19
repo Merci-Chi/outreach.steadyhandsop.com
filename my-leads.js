@@ -272,7 +272,7 @@
   function hasPreview(row) { return !!String(row.sitekey || '').trim(); }
 
   function createdValue(row) {
-    const date = Date.parse(row.created_at || row.createdat || row.assigned_at || '');
+    const date = Date.parse(row.created || row.created_at || row.createdat || row.assigned_at || '');
     return Number.isFinite(date) ? date : null;
   }
 
@@ -534,15 +534,10 @@
     if (!userId) throw new Error('Please sign in to view your assigned leads.');
     const all = [];
     for (let offset = 0; offset < 50000; offset += 1000) {
-      const columns = 'id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id';
-      // Support CRM schemas both with and without a created_at timestamp.
-      let response = await client.from('crm').select(columns + ',created_at')
+      const columns = 'id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id,created';
+      // This CRM stores the timestamp in created; avoid a failing schema probe per batch.
+      const {data,error}=await client.from('crm').select(columns)
         .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);
-      if (response.error && /created_at|column.*not.*exist|schema cache/i.test(response.error.message || '')) {
-        response = await client.from('crm').select(columns)
-          .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);
-      }
-      const { data, error } = response;
       if (error) throw error;
       all.push(...(data || []));
       if (!data || data.length < 1000) break;
