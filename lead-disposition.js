@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const normalized = value => String(value || '').toLowerCase().replace(/[^a-z]/g, '');
-  const blocked = row => [row.stage, row.outcome, ...(Array.isArray(row.tags) ? row.tags : [])]
+  const blocked = row => row.do_not_call === true || [row.stage, row.outcome, ...(Array.isArray(row.tags) ? row.tags : [])]
     .some(value => ['donotcall','donotcontact','dnc'].includes(normalized(value)));
   async function load(id) {
     const client = window.steadyHandsCRMClient;
@@ -10,13 +10,18 @@
     const {data:auth,error:authError} = await client.auth.getUser();
     if (authError || !auth?.user) throw new Error('Please sign in again.');
     const {data,error} = await client.from('crm')
-      .select('id,stage,outcome,tags,notes,assigned_user_id').eq('id',id).single();
+      .select('id,phone,do_not_call,stage,outcome,tags,notes,assigned_user_id').eq('id',id).single();
     if (error || !data) throw new Error('Unable to check this lead. Please refresh and try again.');
     return {client,row:data,user:auth.user};
   }
-  async function ensureCallable(id) {
-    const {row} = await load(id);
+  async function ensureCallable(id, destination) {
+    const {client,row} = await load(id);
     if (blocked(row)) throw new Error('DO NOT CALL: this lead has requested no further calls.');
+    const {data,error} = await client.rpc('outreach_call_is_blocked', {
+      p_phone: destination || row.phone, p_crm_id: String(id)
+    });
+    if (error || typeof data !== 'boolean') throw new Error('Unable to verify Do Not Call status. Calling is blocked until the check succeeds.');
+    if (data) throw new Error('DO NOT CALL: this number is on the suppression list.');
     return true;
   }
   async function save(id,action,note='') {
@@ -27,7 +32,7 @@
     if (action === 'development' && !note.trim()) throw new Error('Add a short handoff note for the development team.');
     const tags = [...new Set([...(Array.isArray(row.tags)?row.tags:[]), ...(action==='dnc'?['Do Not Call']:['Warm Lead','Development Team'])])];
     const entry = '[' + new Date().toISOString() + '] ' + (action==='dnc'?'DO NOT CALL confirmed':'Sent to Development Team as a warm lead') + ' by ' + (user.email||user.id) + (note.trim()?': '+note.trim():'');
-    const patch = {stage:action==='dnc'?'donotcall':'review',outcome:action==='dnc'?'Do Not Call':'Warm Lead — Development Team',tags,notes:[row.notes,entry].filter(Boolean).join('\n'),callbackdate:null,callbackat:null};
+    const patch = {...(action==='dnc'?{do_not_call:true}:{}),stage:action==='dnc'?'donotcall':'review',outcome:action==='dnc'?'Do Not Call':'Warm Lead — Development Team',tags,notes:[row.notes,entry].filter(Boolean).join('\n'),callbackdate:null,callbackat:null};
     const {data,error} = await client.from('crm').update(patch).eq('id',id).eq('assigned_user_id',user.id).select('id').single();
     if (error || !data) throw new Error(error?.message || 'The change was not saved. Refresh and try again.');
     window.dispatchEvent(new CustomEvent('steadyhands:lead-disposition',{detail:{id,action}}));

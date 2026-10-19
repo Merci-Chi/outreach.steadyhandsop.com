@@ -11,7 +11,11 @@ for(const row of rows){
  card.append(make('span','ml-mobile-avatar',read(row,'.company-avatar')||'•'));
  const info=make('div','ml-mobile-info');info.append(make('div','ml-mobile-name',read(row,'.company-name')));
  const contact=read(row,'.contact-name'),title=read(row,'.contact-sub');if(contact||title)info.append(make('div','ml-mobile-contact',[contact,title].filter(Boolean).join(' · ')));
- const phone=read(row,'.phone-main');if(phone&&phone!=='No phone'){const link=make('a','ml-mobile-phone','☎ '+phone);link.href='tel:'+phone.replace(/[^+\d]/g,'');info.append(link);}
+ const phone=read(row,'.phone-main');if(phone&&phone!=='No phone'){const link=make('a','ml-mobile-phone','☎ '+phone);link.href='#';link.addEventListener('click',async event=>{event.preventDefault();try{
+ if(!window.SteadyHandsLeadDisposition)throw Error('Lead status checks are still loading.');
+ await window.SteadyHandsLeadDisposition.ensureCallable(row.dataset.rowId,phone);
+ window.location.assign('tel:'+phone.replace(/[^+\d]/g,''));
+ }catch(error){window.alert(error.message);}});info.append(link);}
  const loc=[read(row,'.location-main'),read(row,'.location-time')].filter(Boolean).join(' · ');if(loc)info.append(make('div','ml-mobile-location','⌖ '+loc));card.append(info);
  const menu=make('button','ml-mobile-menu','⋮');menu.type='button';menu.setAttribute('aria-label','Lead actions for '+read(row,'.company-name'));menu.addEventListener('click',()=>row.querySelector('[data-open-menu]')?.click());card.append(menu);
  const pills=make('div','ml-mobile-pills');row.querySelectorAll('.data-pill').forEach(p=>pills.append(p.cloneNode(true)));card.append(pills);fragment.append(card);

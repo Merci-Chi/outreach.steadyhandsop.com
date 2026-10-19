@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 
 const source = (await readFile(new URL('../twilio-voice.js', import.meta.url), 'utf8')).replace(/^import .*;\n/, '');
 const controller = await readFile(new URL('../call-voice-controller.js', import.meta.url), 'utf8');
-function phone(result) {
+function phone(result, guard = async()=>{}) {
   const steps = [];
   const call = {on(){}};
   class Device {
@@ -13,7 +13,7 @@ function phone(result) {
     async connect() { steps.push('connect'); return call; }
   }
   const window = {isSecureContext:true,dispatchEvent(){},
-    SteadyHandsLeadDisposition:{ensureCallable:async()=>{}},
+    SteadyHandsLeadDisposition:{ensureCallable:guard},
     steadyHandsCRMClient:{functions:{invoke:async()=>{steps.push('token');return result;}},
       auth:{getSession:async()=>({data:{session:{user:{id:'agent'}}}})}}};
   vm.runInNewContext(source,{window,Device,console,CustomEvent:class {},navigator:{mediaDevices:{getUserMedia:async()=>{
@@ -45,4 +45,12 @@ test('Twilio failure survives subsequent error-ended notification',()=>{
   assert.equal(output.textContent,'Calling error 31005: Signaling connection failed');
   handlers['steadyhands:voice-state']({detail:{state:'ended',reason:'disconnect'}});
   assert.equal(output.textContent,'Call ended.');
+});
+
+test('a DNC rejection prevents token issuance, microphone access, and connection',async()=>{
+ const checked=[];
+ const page=phone({data:{token:'test-token'}},async(id,number)=>{checked.push([id,number]);throw Error('DO NOT CALL');});
+ await assert.rejects(page.window.SteadyHandsTwilioVoice.start('(702) 555-0101',{crmId:'lead'}),/DO NOT CALL/);
+ assert.deepEqual(checked,[['lead','+17025550101']]);assert.deepEqual(page.steps,[]);
+ assert.equal(page.window.SteadyHandsTwilioVoice.isActive(),false);
 });

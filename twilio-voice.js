@@ -227,7 +227,7 @@ async function start(destination, metadata = {}) {
   starting = true;
   try {
   if (!window.SteadyHandsLeadDisposition) throw new Error('Lead status checks are still loading. Please try again.');
-  await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId);
+  await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId, to);
   emit('preparing', { message: 'Authorizing browser calling…' });
   const readyDevice = await ensureDevice();
   emit('preparing', { message: 'Enabling microphone…' });
