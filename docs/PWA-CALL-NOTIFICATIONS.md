@@ -103,3 +103,40 @@ Existing foreground alerts and voicemail remain available if push fails.
 Automated tests mock browser/push/Twilio delivery and exercise the SQL migration
 locally; they do not establish actual APNs/FCM/browser delivery or microphone
 behavior. A real call after deployment is necessary on each target platform.
+
+## Automatic updates and missing-alert diagnostics
+
+After deploying the PWA push setup above, apply
+`supabase/migrations/20261019050000_push_delivery_status.sql`, then redeploy
+`twilio-inbound` and `twilio-inbound-session` with gateway Verify JWT off and
+publish the updated frontend. No new secrets are needed for this follow-up.
+
+The app automatically attempts incoming push enrollment when device permission
+is already granted, unless the user explicitly disabled alerts or went offline.
+Incomplete setup reports its error and retries without requesting permission
+again. The existing foreground notification remains available unless this device
+already has the matching server alert. Enrollment alone no longer suppresses it.
+
+Use **Incoming calls → Test device call alerts** to explicitly send a test to
+this device's enrolled endpoint. The result distinguishes missing server keys,
+expired subscriptions and provider rejection. An accepted push request is not
+proof that the OS displayed it: also check device/browser notification and Focus
+settings. The UI shows the last server delivery error when present. Actual call
+sends record attempt/success/error metadata in the protected subscription table;
+no secret key is returned to the browser. A 404/410 test result disables the
+expired endpoint so enrollment can replace it.
+
+Once this updater version is loaded, it checks deployment headers every minute
+and on return to the app/network. GitHub Pages ETag and Last-Modified headers
+identify a new published page, including deployments retaining script URLs. It
+automatically refreshes a visible idle page, deferring while a browser/regular
+phone call, incoming invite, transcript drain, editable focus or unsaved input
+is active. Initial service-worker installation does not trigger a reload loop.
+Returning to the app leaves a 15-second grace period for pending calls to arrive.
+Successful forms can signal `steadyhands:changes-saved` with `{form}`; a form
+submission alone does not prove a save succeeded. Removing/resetting a draft
+also releases the update hold. Voicemail settings emit the success event.
+One initial page refresh/navigation may be needed to load this updater in an
+already-open older PWA; no app uninstall or OS restart is required. The deployed
+Supabase functions/SQL still require deployment; browser updates do not deploy
+backend code or secrets.

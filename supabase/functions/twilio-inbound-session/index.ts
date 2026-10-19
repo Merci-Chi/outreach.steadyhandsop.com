@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
+import webpush from 'npm:web-push@3.6.7';
 function resolveRoutingSettings(saved) {
  // Admin number routing is authoritative; legacy per-user toggles do not block it.
  return {outreach_ring_seconds:20,...saved,enabled:true,cellphone_number:null};
@@ -34,6 +35,27 @@ Deno.serve(async req=>{
   if(action==='push_config'){
    const publicKey=Deno.env.get('WEB_PUSH_VAPID_PUBLIC_KEY')||'';
    return json({public_key:publicKey,configured:Boolean(publicKey&&Deno.env.get('WEB_PUSH_VAPID_PRIVATE_KEY')&&Deno.env.get('WEB_PUSH_VAPID_SUBJECT'))});
+  }
+  if(action==='push_status'||action==='push_test'){
+   const endpoint=String(body.endpoint||'');
+   const subscription=await checked(await db.from('outreach_inbound_push_subscriptions').select('endpoint,p256dh,auth,enabled,last_attempt_at,last_success_at,last_error').eq('user_id',userId).eq('endpoint',endpoint).maybeSingle());
+   const publicKey=Deno.env.get('WEB_PUSH_VAPID_PUBLIC_KEY')||'',privateKey=Deno.env.get('WEB_PUSH_VAPID_PRIVATE_KEY')||'',subject=Deno.env.get('WEB_PUSH_VAPID_SUBJECT')||'';
+   const configured=Boolean(publicKey&&privateKey&&subject);
+   if(action==='push_status')return json({configured,enrolled:Boolean(subscription?.enabled),last_attempt_at:subscription?.last_attempt_at||null,last_success_at:subscription?.last_success_at||null,last_error:subscription?.last_error||null});
+   if(!configured)return json({error:'Server push keys are missing. Configure the three WEB_PUSH_VAPID secrets.'},503);
+   if(!subscription?.enabled)return json({error:'Enable device call alerts on this device first.'},404);
+   const attempted=new Date().toISOString();
+   try{
+    await webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},JSON.stringify({kind:'call-alert-test',title:'Steady Hands call alerts',body:'Device call notifications are working.',tag:'steadyhands-call-alert-test',url:'/index.html'}),{vapidDetails:{publicKey,privateKey,subject},TTL:30,urgency:'high',timeout:4000});
+    await checked(await db.from('outreach_inbound_push_subscriptions').update({last_attempt_at:attempted,last_success_at:new Date().toISOString(),last_error:null}).eq('user_id',userId).eq('endpoint',endpoint));
+    return json({ok:true,message:'Push service accepted the test alert. If it does not appear, check this device’s notification and Focus settings.'});
+   }catch(error){
+    const code=Number(error.statusCode)||0;
+    const message=[404,410].includes(code)?'This device subscription expired. Enable device call alerts again.':[400,401,403].includes(code)?'Push service rejected the request ('+code+'). Check the matching VAPID public/private keys and subject.':'Push delivery failed. Check the function logs and try again.';
+    await db.from('outreach_inbound_push_subscriptions').update({last_attempt_at:attempted,last_error:message,...([404,410].includes(code)?{enabled:false}:{})}).eq('user_id',userId).eq('endpoint',endpoint);
+    console.error('Call alert test failed:',code||error.message);
+    return json({error:message},502);
+   }
   }
   if(action==='push_subscribe'){
    const subscription=body.subscription;

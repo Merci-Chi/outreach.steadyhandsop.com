@@ -97,6 +97,7 @@ test('live interim revisions replace text without entering history and cannot re
  }finally{await db.close();}
 });
 
+const pushStatusMigration=await readFile(new URL('../migrations/20261019050000_push_delivery_status.sql',import.meta.url),'utf8');
 const pushMigration=await readFile(new URL('../migrations/20261019040000_pwa_call_push.sql',import.meta.url),'utf8');
 test('PWA push/device storage is idempotent and inaccessible to direct browser database writes',async()=>{
  const db=new PGlite(),user='11111111-2222-3333-4444-555555555555';
@@ -105,7 +106,7 @@ test('PWA push/device storage is idempotent and inaccessible to direct browser d
  create table auth.users(id uuid primary key);insert into auth.users values('${user}');
  create table public.outreach_inbound_calls(call_sid text primary key,user_id uuid);
  `);
- await db.exec(pushMigration);await db.exec(pushMigration);
+ await db.exec(pushMigration);await db.exec(pushMigration);await db.exec(pushStatusMigration);await db.exec(pushStatusMigration);
  await db.exec(`grant usage on schema public to service_role,authenticated;set role service_role;
  insert into outreach_inbound_push_subscriptions(user_id,endpoint,p256dh,auth) values('${user}','https://web.push.apple.com/test','key','auth');
  insert into outreach_inbound_devices(user_id,device_id,ready) values('${user}','aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',true);`);

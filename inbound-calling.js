@@ -1,6 +1,6 @@
 import {Device} from './twilio-sdk.js?v=2.18.5-browser';
 let device=null,call=null,pending=null,starting=false,userId='',retryTimer=null,desktopNotice=null;
-let watchedClient=null,authVersion=0,presenceTimer=null,alertedCallSid='';
+let watchedClient=null,authVersion=0,presenceTimer=null,alertedCallSid='',pushSyncPromise=null,pushRetryTimer=null,pushVersion=0;
 const incomingDeviceId=globalThis.crypto?.randomUUID?.()||'';
 const callPushScope='/call-push/';
 const callPushKey=()=>userId?'steadyhands-call-push-'+userId:'';
@@ -11,7 +11,7 @@ const readPref=key=>{try{return localStorage.getItem(key)}catch{return null}};
 const writePref=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 
 const root=document.createElement('div');root.id='shInbound';
-root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><button type="button" id="inboundAlertsOff">Turn off device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Enable device call alerts to receive a notification when Outreach is closed. Tap the notification to reopen Outreach and answer while the caller waits.</p><details><summary>Voicemail settings</summary><form id="inboundSettings"><label>Business voicemail greeting<textarea id="inboundGreeting" rows="4" maxlength="500" required>Thank you for calling Steady Hands. Please leave your name, number, and a message after the beep.</textarea></label><p>Incoming destinations are managed in Admin. For closed-app alerts, enable device call alerts on each device. Unanswered calls go to this voicemail.</p><button type="submit">Save routing settings</button><p id="inboundSaveStatus" role="status"></p></form></details><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><section id="inboundTranscriptPanel" hidden><h3>Incoming call transcript</h3><p id="inboundTranscriptStatus" role="status"></p><textarea id="inboundTranscriptText" rows="8" readonly aria-label="Incoming call transcript"></textarea></section><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
+root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><button type="button" id="inboundAlertsTest">Test device call alerts</button><button type="button" id="inboundAlertsOff">Turn off device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Enable device call alerts to receive a notification when Outreach is closed. Tap the notification to reopen Outreach and answer while the caller waits.</p><details><summary>Voicemail settings</summary><form id="inboundSettings"><label>Business voicemail greeting<textarea id="inboundGreeting" rows="4" maxlength="500" required>Thank you for calling Steady Hands. Please leave your name, number, and a message after the beep.</textarea></label><p>Incoming destinations are managed in Admin. For closed-app alerts, enable device call alerts on each device. Unanswered calls go to this voicemail.</p><button type="submit">Save routing settings</button><p id="inboundSaveStatus" role="status"></p></form></details><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><section id="inboundTranscriptPanel" hidden><h3>Incoming call transcript</h3><p id="inboundTranscriptStatus" role="status"></p><textarea id="inboundTranscriptText" rows="8" readonly aria-label="Incoming call transcript"></textarea></section><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
 const css=document.createElement('link');css.rel='stylesheet';css.href='inbound-calling.css?v=20261018-alerts';document.head.append(css);document.body.append(root);
 const $=id=>root.querySelector('#'+id);
 const status=text=>{$('inboundStatus').textContent=text;};
@@ -33,9 +33,18 @@ function startPresence(){
  stopPresence();if(!incomingDeviceId)return;void publishPresence(true);
  presenceTimer=setInterval(()=>{if(device&&userId)void publishPresence(true)},15000);
 }
-async function syncCallPush(){
+function schedulePushRetry(){
+ clearTimeout(pushRetryTimer);
+ if(!userId||readPref(callPushKey())==='false'||readPref(offKey())==='true')return;
+ pushRetryTimer=setTimeout(()=>{if(typeof Notification!=='undefined'&&Notification.permission==='granted')void syncCallPush().catch(error=>{$('inboundAlertStatus').textContent=error.message;schedulePushRetry();});},30000);
+}
+function syncCallPush(){
+ if(pushSyncPromise)return pushSyncPromise;
+ pushSyncPromise=syncCallPushNow().finally(()=>{pushSyncPromise=null;});return pushSyncPromise;
+}
+async function syncCallPushNow(){
  if(!userId||!('serviceWorker' in navigator)||!('PushManager' in window))throw Error('Install Outreach on your Home Screen or use a browser that supports push notifications.');
- const version=authVersion;
+ const version=authVersion,intent=pushVersion;
  const config=await invoke('push_config');
  if(!config.configured||!config.public_key)throw Error('Closed-app call alerts need server push keys configured by your administrator.');
  const registration=await navigator.serviceWorker.register('/call-push-sw.js',{scope:callPushScope,updateViaCache:'none'});
@@ -46,7 +55,7 @@ async function syncCallPush(){
   const check=()=>{if(worker.state==='activated'){clearTimeout(timeout);resolve();}else if(worker.state==='redundant'){clearTimeout(timeout);reject(Error('Notification setup failed. Try again.'));}};
   worker.addEventListener('statechange',check);check();
  });}
- if(version!==authVersion||!userId)return;
+ if(version!==authVersion||intent!==pushVersion||!userId)return;
  const padding='='.repeat((4-config.public_key.length%4)%4);
  const bytes=Uint8Array.from(atob((config.public_key+padding).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
  let subscription=await registration.pushManager.getSubscription();
@@ -55,13 +64,17 @@ async function syncCallPush(){
   if(existing.length!==bytes.length||existing.some((value,index)=>value!==bytes[index])){await subscription.unsubscribe();subscription=null;}
  }
  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes});
- if(version!==authVersion){await subscription.unsubscribe();return;}
+ if(version!==authVersion||intent!==pushVersion){await subscription.unsubscribe();return;}
  await invoke('push_subscribe',{subscription:subscription.toJSON()});
- if(version!==authVersion){await subscription.unsubscribe();return;}
+ if(version!==authVersion||intent!==pushVersion){await subscription.unsubscribe();return;}
  writePref(callPushKey(),'true');writePref(notificationsKey,'true');
- $('inboundAlertStatus').textContent='Closed-app call alerts enabled on this device. Tap a call notification to reopen Outreach and answer.';
+ clearTimeout(pushRetryTimer);
+ const delivery=await invoke('push_status',{endpoint:subscription.endpoint});
+ if(version!==authVersion||intent!==pushVersion)return;
+ $('inboundAlertStatus').textContent=delivery.last_error?'Device enrolled, but the last push failed: '+delivery.last_error:'Closed-app call alerts enabled on this device. Use Test device call alerts to verify delivery.';
 }
 async function disableCallPush(){
+ pushVersion++;writePref(callPushKey(),'false');writePref(notificationsKey,'false');clearTimeout(pushRetryTimer);
  const registration=await navigator.serviceWorker?.getRegistration?.(callPushScope);
  const subscription=await registration?.pushManager.getSubscription();
  if(subscription){
@@ -81,8 +94,17 @@ function closeNotice(){
 }
 function resetCall(){if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
- if(!missed&&readPref(callPushKey())==='true')return;
- if(!('Notification' in window)||Notification.permission!=='granted'||readPref(notificationsKey)!=='true')return;
+ // Enrollment does not guarantee delivery; preserve the foreground fallback.
+ if(!missed&&readPref(callPushKey())==='true'){
+  try{
+   const registration=await navigator.serviceWorker?.getRegistration?.(callPushScope);
+   const notices=await registration?.getNotifications?.()||[];
+   const sid=incoming.customParameters?.get('parentCallSid');
+   if(sid&&notices.some(item=>item.data?.callSid===sid))return;
+  }catch{}
+ }
+ if(!('Notification' in window)||Notification.permission!=='granted'||readPref(notificationsKey)==='false')return;
+ if(!missed&&pending!==incoming)return;
  const title=missed?'Missed incoming call':'Incoming call';
  const options={body:'From '+(incoming.parameters.From||'Unknown caller'),tag:'steadyhands-incoming-call',requireInteraction:!missed,icon:'images/icon-192.png'};
  try{
@@ -234,10 +256,10 @@ $('inboundMute').onclick=()=>{if(!call)return;const muted=$('inboundMute').datas
 $('inboundRefresh').onclick=()=>refresh().catch(error=>status(error.message));
 $('inboundSettings').onsubmit=async event=>{
  event.preventDefault();const button=event.submitter;button.disabled=true;
- try{await invoke('save_settings',{voicemail_greeting:$('inboundGreeting').value.trim()});$('inboundSaveStatus').textContent='Routing settings saved.';}
+ try{await invoke('save_settings',{voicemail_greeting:$('inboundGreeting').value.trim()});$('inboundSaveStatus').textContent='Routing settings saved.';window.dispatchEvent?.(new CustomEvent('steadyhands:changes-saved',{detail:{form:event.target}}));}
  catch(error){$('inboundSaveStatus').textContent=error.message;}finally{button.disabled=false;}
 };
-window.SteadyHandsInboundVoice={isActive:()=>Boolean(call||pending)};
+window.SteadyHandsInboundVoice={isActive:()=>Boolean(call||pending),isBusyForUpdate:()=>Boolean(call||pending||starting||transcriptSid)};
 
 $('inboundAlerts').onclick=async()=>{
  const alertStatus=text=>$('inboundAlertStatus').textContent=text;
@@ -246,8 +268,22 @@ $('inboundAlerts').onclick=async()=>{
   // Permission must be requested directly from the device's button click.
   const permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
   if(permission!=='granted'){alertStatus('Allow notifications for Outreach in device settings to enable call alerts.');return;}
+  writePref(callPushKey(),'pending');writePref(notificationsKey,'true');
   await syncCallPush();
- }catch(error){alertStatus(error.message||'Could not enable device call alerts.');}
+ }catch(error){schedulePushRetry();alertStatus(error.message||'Could not enable device call alerts.');}
+};
+$('inboundAlertsTest').onclick=async()=>{
+ const button=$('inboundAlertsTest');button.disabled=true;
+ try{
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')throw Error('Allow notifications on this device, then enable device call alerts.');
+  await syncCallPush();
+  const registration=await navigator.serviceWorker?.getRegistration?.(callPushScope);
+  const subscription=await registration?.pushManager.getSubscription();
+  if(!subscription)throw Error('Enable device call alerts on this device first.');
+  const result=await invoke('push_test',{endpoint:subscription.endpoint});
+  $('inboundAlertStatus').textContent=result.message;
+ }catch(error){$('inboundAlertStatus').textContent=error.message;}
+ finally{button.disabled=false;}
 };
 $('inboundAlertsOff').onclick=()=>disableCallPush().catch(error=>{$('inboundAlertStatus').textContent=error.message;});
 async function bootstrap(attempt=0){
@@ -262,7 +298,7 @@ async function bootstrap(attempt=0){
     const oldKey=callPushKey();writePref(oldKey,'false');
     void navigator.serviceWorker?.getRegistration?.(callPushScope).then(async registration=>{const sub=await registration?.pushManager.getSubscription();await sub?.unsubscribe();}).catch(()=>{});
    }
-   stopPresence();authVersion++;clearTranscript();device?.destroy();device=null;resetCall();$('inboundInbox').replaceChildren();userId=nextId;
+   clearTimeout(pushRetryTimer);stopPresence();authVersion++;clearTranscript();device?.destroy();device=null;resetCall();$('inboundInbox').replaceChildren();userId=nextId;
    clearTimeout(retryTimer);
    if(nextId)retryTimer=setTimeout(()=>bootstrap(),0);else status('Sign in to receive incoming calls.');
   });
@@ -276,7 +312,9 @@ async function bootstrap(attempt=0){
   userId=data.user.id;
   if(readPref(offKey())==='true'){status('Offline on this device. Connect incoming calls to receive them here.');return;}
   await enable({automatic:true});
-  if(readPref(callPushKey())==='true'&&typeof Notification!=='undefined'&&Notification.permission==='granted')void syncCallPush().catch(error=>{$('inboundAlertStatus').textContent=error.message;});
+  if(readPref(callPushKey())!=='false'&&readPref(notificationsKey)!=='false'&&typeof Notification!=='undefined'&&Notification.permission==='granted')void syncCallPush().catch(error=>{$('inboundAlertStatus').textContent=error.message;schedulePushRetry();});
+  else if(typeof Notification!=='undefined'&&Notification.permission==='denied')$('inboundAlertStatus').textContent='Notifications are blocked in this device’s settings.';
+  else $('inboundAlertStatus').textContent=readPref(callPushKey())==='false'?'Device call alerts are off.':'Enable device call alerts to receive calls when Outreach is closed.';
  }catch(error){status(error.message||'Incoming calls could not connect.');scheduleReconnect();}
 }
 window.addEventListener('online',()=>bootstrap());

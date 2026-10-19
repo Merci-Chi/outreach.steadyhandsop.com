@@ -121,3 +121,11 @@ test('denied device permission never creates a push subscription',async()=>{
 test('sign-out invalidates the dedicated call push endpoint on that device',async()=>{
  const s=await setup({pushSupport:true});await s.nodes.get('inboundAlerts').onclick();s.events.auth('SIGNED_OUT',null);await tick();assert.equal(s.unsubscribed(),1);assert.equal(s.prefs.get('steadyhands-call-push-agent'),'false');
 });
+
+test('enrolled push never suppresses foreground notification when the server alert is absent',async()=>{
+ const s=await setup({pushSupport:true});await s.nodes.get('inboundAlerts').onclick();s.incoming();await tick();assert.equal(s.notices.length,1);
+});
+test('device push test explicitly invokes the server test for this endpoint',async()=>{
+ const s=await setup({pushSupport:true});await s.nodes.get('inboundAlertsTest').onclick();assert(s.requests.includes('push_test'));
+ const request=s.bodies.find(body=>body.action==='push_test');assert.equal(request.endpoint,'https://web.push.apple.com/test');
+});
