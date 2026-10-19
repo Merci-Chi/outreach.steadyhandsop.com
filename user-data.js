@@ -1146,7 +1146,7 @@
     </section>`;
 
 
-    main.innerHTML = `<div id="teamPerformanceAccess" hidden></div>${error ? '<p role="alert">Performance summary is unavailable. You can retry call history below.</p>' : perfSummary}<div id="performanceHistory"></div>`;
+    main.innerHTML = `<div id="teamPerformanceAccess" hidden></div><div id="personalPerformanceContent">${error ? '<p role="alert">Performance summary is unavailable. You can retry call history below.</p>' : perfSummary}<div id="performanceHistory"></div></div>`;
     await window.steadyHandsMountPerformanceHistory({client:c,userId:selectedUserId,displayName:ownProfile?.display_name||'You',root:document.getElementById('performanceHistory')});
     await window.steadyHandsInitTeamPerformance?.();
     window.lucide?.createIcons();
