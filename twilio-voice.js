@@ -5,6 +5,8 @@ let activeCall = null;
 let starting = false;
 let attemptSequence = 0;
 let tokenRefreshPromise = null;
+let tokenExpiresAt = 0;
+let deviceUserId = '';
 let userMuted = false;
 let held = false;
 let preferredSpeakerDeviceId = null;
@@ -92,25 +94,33 @@ async function requestMicrophonePermission() {
 
 async function fetchAuthenticatedUserId() {
   const client = window.steadyHandsCRMClient;
-  if (!client) return '';
-
-  try {
-    const { data, error } = await client.auth.getSession();
-    if (error) throw error;
-    return String(data?.session?.user?.id || '');
-  } catch (error) {
-    console.warn('Unable to resolve signed-in caller account:', error);
-    return '';
-  }
+  if (!client) throw new Error('The signed-in CRM session is not ready yet.');
+  const {data,error}=await client.auth.getSession();
+  if(error)throw new Error('Unable to read your calling session. Check your connection and retry.');
+  if(!data?.session?.user?.id)throw new Error('Your calling session has ended. Sign in again before calling.');
+  return String(data.session.user.id);
 }
 
-async function fetchToken() {
+async function refreshCallingSession(client,expectedUserId) {
+  if(window.SteadyHandsCallingSession?.refresh)return window.SteadyHandsCallingSession.refresh(client,expectedUserId);
+  if(typeof client.auth.refreshSession!=='function')throw new Error('Your calling session has expired. Sign out and sign in again.');
+  const {data,error}=await client.auth.refreshSession();
+  if(error||!data?.session?.user?.id)throw new Error('Unable to refresh your calling session. Retry or sign in again.');
+  if(data.session.user.id!==expectedUserId)throw new Error('The signed-in account changed. Retry the call from the current account.');
+}
+
+async function fetchToken(expectedUserId = deviceUserId) {
   const client = window.steadyHandsCRMClient;
   if (!client) throw new Error('The signed-in CRM session is not ready yet.');
 
-  const { data, error } = await client.functions.invoke('twilio-voice-token', {
-    body: {}
-  });
+  const userId=await fetchAuthenticatedUserId();
+  if(expectedUserId&&userId!==expectedUserId)throw new Error('The signed-in account changed. Retry the call from the current account.');
+  let { data, error } = await client.functions.invoke('twilio-voice-token', {body:{}});
+  if(error?.context?.status===401) {
+    await refreshCallingSession(client,userId);
+    if(await fetchAuthenticatedUserId()!==userId)throw new Error('The signed-in account changed. Retry the call from the current account.');
+    ({data,error}=await client.functions.invoke('twilio-voice-token',{body:{}}));
+  }
 
   if (error) {
     // Supabase puts the function's useful rejection reason in the response body.
@@ -128,15 +138,18 @@ async function fetchToken() {
     throw new Error(message || 'Unable to authorize browser calling. ' + (error.message || 'Please try again.'));
   }
   if (!data?.token) throw new Error(data?.error || 'Twilio token was not returned.');
+  if(window.steadyHandsCRMClient!==client||await fetchAuthenticatedUserId()!==userId)throw new Error('The signed-in account changed. Retry the call from the current account.');
+  tokenExpiresAt=Date.now()+(Number(data.expires_in)>0?Number(data.expires_in):3600)*1000;
   return data.token;
 }
 
 async function refreshToken() {
   if (tokenRefreshPromise) return tokenRefreshPromise;
 
+  const target=device;
   tokenRefreshPromise = (async () => {
     const token = await fetchToken();
-    if (device) device.updateToken(token);
+    if (device&&device===target) device.updateToken(token);
     return token;
   })();
 
@@ -148,9 +161,14 @@ async function refreshToken() {
 }
 
 async function ensureDevice() {
-  if (device) return device;
+  const userId=await fetchAuthenticatedUserId();
+  if(device&&deviceUserId!==userId){device.destroy();device=null;deviceUserId='';tokenExpiresAt=0;}
+  if(device){
+    if(tokenExpiresAt<=Date.now()+60000)await refreshToken();
+    return device;
+  }
 
-  const token = await fetchToken();
+  const token = await fetchToken(userId);
 
   device = new Device(token, {
     logLevel: 'warn',
@@ -159,7 +177,10 @@ async function ensureDevice() {
     maxCallSignalingTimeoutMs: 30000
   });
 
+  deviceUserId=userId;
+  const registered=device;
   device.on('error', error => {
+    if(device!==registered)return;
     console.error('Twilio Device error:', error);
     const detail = error?.twilioError || error;
     emit('error', {
@@ -173,6 +194,7 @@ async function ensureDevice() {
   });
 
   device.on('tokenWillExpire', () => {
+    if(device!==registered)return;
     refreshToken().catch(error => {
       console.error('Unable to refresh Twilio token:', error);
     });
@@ -240,6 +262,7 @@ async function start(destination, metadata = {}) {
   emit('preparing', { message: 'Enabling microphone…' });
   await requestMicrophonePermission();
   const agentUserId = await fetchAuthenticatedUserId();
+  if(agentUserId!==deviceUserId)throw new Error('The signed-in account changed. Retry the call from the current account.');
   const attemptId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-'+(++attemptSequence);
   const attempt = {attemptId,crmId:metadata.crmId,company:metadata.company};
   emit('calling', attempt);

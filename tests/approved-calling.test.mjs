@@ -6,10 +6,10 @@ const helper=await readFile(new URL('../approved-caller.js',import.meta.url),'ut
 const controller=await readFile(new URL('../call-voice-controller.js',import.meta.url),'utf8');
 function checker({assignment={phone_number_id:'number'},number={id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'},error=null}={}) {
  const queries=[];
- const window={steadyHandsCRMClient:{auth:{getUser:async()=>({data:{user:{id:'signed-in-user'}}})},from(table){
+ const window={steadyHandsCRMClient:{auth:{getSession:async()=>({data:{session:{user:{id:'signed-in-user'}}}}),refreshSession:async()=>({data:{session:{user:{id:'signed-in-user'}}}}),getUser:async()=>({data:{user:{id:'signed-in-user'}}})},from(table){
   const query={select(){return query},eq(column,value){queries.push([table,column,value]);return query},maybeSingle:async()=>({data:table==='callcenter_phone_assignments'?assignment:number,error})};return query;
  }}};
- vm.runInNewContext(helper,{window});
+ vm.runInNewContext(helper,{window,setTimeout:fn=>fn()});
  return {window,queries};
 }
 test('approved assignment works without personal SMS verification and scopes lookup to signed-in user',async()=>{
@@ -20,14 +20,14 @@ test('approved assignment works without personal SMS verification and scopes loo
 for(const [name,options] of [
  ['unassigned',{assignment:null}],['disabled',{number:{phone_number:'+17025550101',active:false,twilio_status:'ready'}}],
  ['pending',{number:{phone_number:'+17025550101',active:true,twilio_status:'pending'}}],['missing number',{number:null}]
-])test(name+' cannot call',async()=>assert.equal(await checker(options).window.SteadyHandsApprovedCaller(),null));
+])test(name+' cannot call',async()=>{const check=checker(options).window.SteadyHandsApprovedCaller();if(name==='unassigned')assert.equal(await check,null);else await assert.rejects(check,/disabled|Twilio Ready|could not be loaded/);});
 test('database error fails closed',async()=>assert.rejects(checker({error:{message:'denied'}}).window.SteadyHandsApprovedCaller(),/Unable to check/));
 test('approval is fetched again after admin changes',async()=>{
  const number={phone_number:'+17025550101',active:true,twilio_status:'pending'};
  const {window}=checker({number});
- assert.equal(await window.SteadyHandsApprovedCaller(),null);
+ await assert.rejects(window.SteadyHandsApprovedCaller(),/Twilio Ready/);
  number.twilio_status='ready';assert(await window.SteadyHandsApprovedCaller());
- number.active=false;assert.equal(await window.SteadyHandsApprovedCaller(),null);
+ number.active=false;await assert.rejects(window.SteadyHandsApprovedCaller(),/disabled/);
 });
 function callPage(approved) {
  const handlers={},events=[],calls=[];

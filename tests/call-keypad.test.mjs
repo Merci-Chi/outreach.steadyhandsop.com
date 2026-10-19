@@ -42,7 +42,7 @@ test('phone sends DTMF to the connected SDK call only',async()=>{
  let state='ringing';const sent=[],events={};
  const call={status:()=>state,on(n,f){events[n]=f;},sendDigits(d){sent.push(d);}};
  class Device{on(){}async connect(){return call;}}
- const window={dispatchEvent(){},isSecureContext:true,SteadyHandsLeadDisposition:{ensureCallable:async()=>{}},steadyHandsCRMClient:{functions:{invoke:async()=>({data:{token:'test'}})},auth:{getSession:async()=>({data:{}})}}};
+ const window={dispatchEvent(){},isSecureContext:true,SteadyHandsLeadDisposition:{ensureCallable:async()=>{}},steadyHandsCRMClient:{functions:{invoke:async()=>({data:{token:'test'}})},auth:{getSession:async()=>({data:{session:{user:{id:'agent'}}}})}}};
  vm.runInNewContext(phoneSource,{window,Device,console,CustomEvent:class{},navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[]})}}});
  const voice=window.SteadyHandsTwilioVoice;
  assert.equal(voice.sendDigits('1'),false);
