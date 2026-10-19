@@ -35,3 +35,36 @@ test('access follows all outstanding actions and live agreement status without a
  assert.equal((await db.query('select auth.uid() as id')).rows[0].id,a);
  }finally{await db.close();}
 });
+
+test('missing pause row is active while real pauses and required actions stay enforced',async()=>{
+ const db=new PGlite();const user='11111111-1111-1111-1111-111111111111';
+ const fix=await readFile(new URL('../supabase/migrations/20261019093000_active_account_pause_boolean.sql',import.meta.url),'utf8');
+ try {
+ await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create function auth.role() returns text language sql as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb->>'role'$$;
+ create table outreach_action_assignments(id int,user_id uuid,status text);
+ create table sh_associate_pause(user_id uuid primary key,status text,selected_track text);
+ create function sh_get_my_access_pause() returns table(is_paused boolean,status text,selected_track text)
+ language sql stable security definer set search_path to '' as $$
+ select (p.status='pause_action_needed'),coalesce(p.status,'active'),p.selected_track
+ from (select auth.uid() as uid) u left join public.sh_associate_pause p on p.user_id=u.uid where u.uid is not null $$;
+ create table crm(id int);insert into crm values(1);grant select on crm to authenticated;
+ create policy existing_access on crm for select to authenticated using(true);
+ grant usage on schema auth to authenticated,service_role;`);
+ await db.exec(migration);
+ await db.exec(`set request.jwt.claim.sub='${user}';set request.jwt.claims='{"role":"authenticated"}';set role authenticated;`);
+ const status=async()=>(await db.query('select outreach_access_status() as s')).rows[0].s;
+ await assert.rejects(status(),/Account access could not be verified/); // reproduces reported error
+ await db.exec('reset role');await db.exec(fix);await db.exec(fix);await db.exec('set role authenticated');
+ assert.equal((await status()).is_paused,false);assert.equal((await db.query('select * from crm')).rows.length,1);
+ await db.exec(`reset role;insert into sh_associate_pause values('${user}','pause_action_needed','sales');set role authenticated;`);
+ assert.equal((await status()).is_paused,true);assert.equal((await db.query('select * from crm')).rows.length,0);
+ await db.exec(`reset role;update sh_associate_pause set status='active';insert into outreach_action_assignments values(1,'${user}','assigned');set role authenticated;`);
+ assert.equal((await status()).action_required,true);assert.equal((await status()).is_paused,true);
+ await db.exec(`reset role;update outreach_action_assignments set status='completed';set role authenticated;`);
+ assert.equal((await status()).is_paused,false);
+ await db.exec("reset role;set request.jwt.claim.sub='';");
+ assert.equal((await db.query('select * from sh_get_my_access_pause()')).rows.length,0);
+ } finally {await db.close();}
+});
