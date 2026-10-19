@@ -183,7 +183,7 @@ async function ensureDevice() {
 function bindCall(call) {
   const finish = (reason = 'ended') => {
     if (activeCall === call) activeCall = null;
-    emit('ended', { reason });
+    emit('ended', { reason, callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || '' });
   };
 
   call.on('ringing', () => emit('ringing'));

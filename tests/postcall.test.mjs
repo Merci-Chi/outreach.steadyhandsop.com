@@ -58,3 +58,29 @@ test('regular Finish Call hides the regular call dialog only after the questionn
   assert.equal(popup.hidden,opens);assert.equal(vm.runInContext('regularCall===null',context),opens);assert.deepEqual(calls,opens?['open','clear']:['open']);
  }
 });
+
+test('a call ending before SID assignment saves a zero-duration attempt and its questionnaire',async()=>{
+ const p=page(),logs=[];
+ p.window.callcenterRecordCall=async data=>{logs.push(data);return {id:'attempt'}};
+ p.emit({state:'calling'});p.emit({state:'ended',reason:'cancel'});await p.submit();
+ assert.equal(logs.length,1);assert.equal(logs[0].callSid,'');assert.equal(logs[0].duration,0);
+ assert.equal(p.saved[0].data.call_activity_id,'attempt');assert.equal(p.saved[0].data.call_method,'outreach');assert.equal(p.rpcs.length,0);
+ assert(!p.nodes.has('#shFeedbackOverlay'));
+});
+test('retry after questionnaire failure reuses the owned activity instead of logging the call twice',async()=>{
+ const p=page({writeError:{message:'temporary failure'}}),logs=[];
+ p.window.callcenterRecordCall=async data=>{logs.push(data);return {id:'activity'}};
+ p.window.steadyHandsOpenPostCallQuestionnaire({crm_id:'lead',call_method:'outreach'});
+ await p.submit();await p.submit();
+ assert.equal(logs.length,1);assert.equal(p.saved.length,2);
+ assert(p.filters.some(([k,v])=>k==='id'&&v==='activity'));
+ assert(p.filters.some(([k,v])=>k==='user_id'&&v==='agent'));
+});
+test('terminal Twilio events forward a SID that only becomes available at disconnect',async()=>{
+ const voice=await readFile(new URL('../twilio-voice.js',import.meta.url),'utf8');
+ const bind=voice.slice(voice.indexOf('function bindCall(call)'),voice.indexOf('async function start('));
+ const listeners={},events=[],call={parameters:{},on(name,handler){listeners[name]=handler}};
+ vm.runInNewContext('let activeCall=call;'+bind+';bindCall(call)',{call,emit:(state,detail)=>events.push({state,...detail}),console});
+ call.parameters.CallSid='CAlate';listeners.disconnect();
+ assert.equal(events[0].state,'ended');assert.equal(events[0].callSid,'CAlate');
+});

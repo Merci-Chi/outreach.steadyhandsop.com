@@ -33,13 +33,22 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const c
  if(pending.call_method==='outreach'){
    const {data:auth,error:authError}=await c.auth.getUser();if(authError)throw authError;
    if(!auth?.user)throw Error('Sign in before saving.');
-   if(!pending.call_sid)throw Error('The call has no call ID. Please contact your administrator.');
-   let {data:activity,error:activityError}=await c.from('callcenter_call_activity').select('id').eq('call_sid',pending.call_sid).eq('crm_id',pending.crm_id).eq('user_id',auth.user.id).maybeSingle();
-   if(activityError)throw activityError;
+   // Calls can end before Twilio assigns a SID. Reuse only this attempt's
+   // saved activity ID; never guess by taking the lead's most recent call.
+   let activity=null;
+   if(pending.activity_id || pending.call_sid){
+     let lookup=c.from('callcenter_call_activity').select('id').eq('crm_id',pending.crm_id).eq('user_id',auth.user.id);
+     lookup=pending.activity_id?lookup.eq('id',pending.activity_id):lookup.eq('call_sid',pending.call_sid);
+     const result=await lookup.maybeSingle();
+     if(result.error)throw result.error;
+     activity=result.data;
+   }
    if(!activity){
      if(typeof window.callcenterRecordCall!=='function')throw Error('Call logging is not ready. Keep this form open and try again.');
-     activity=await window.callcenterRecordCall({crmId:pending.crm_id,callSid:pending.call_sid,duration:0,outcome:args.p_outcome,endedAt:Date.now()});
+     activity=await window.callcenterRecordCall({crmId:pending.crm_id,callSid:pending.call_sid||'',duration:0,outcome:args.p_outcome,endedAt:Date.now()});
      if(!activity?.id)throw Error('The call record could not be saved. Try Save Call Result again.');
+     pending.activity_id=activity.id;
+     try{sessionStorage.setItem(storage,JSON.stringify(pending))}catch{}
    }
    const {error}=await c.from('callcenter_post_call_questionnaires').upsert({call_activity_id:activity.id,user_id:auth.user.id,crm_id:pending.crm_id,outcome:args.p_outcome,interest_stages:args.p_interest_stages,notes:args.p_notes,portal_link_sent:args.p_portal_link_sent,registered:args.p_registered,site_reviewed:args.p_site_reviewed,ready_to_buy:args.p_ready_to_buy,client_event_id:pending.event_id,call_method:'outreach',elapsed_seconds_estimate:args.p_elapsed_seconds},{onConflict:'call_activity_id'});
    if(error)throw error;
