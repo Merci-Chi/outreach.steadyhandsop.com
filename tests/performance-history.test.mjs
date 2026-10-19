@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+const actionSource=await readFile(new URL('../performance-followup-actions.js',import.meta.url),'utf8');
 const followupSource=await readFile(new URL('../performance-followups.js',import.meta.url),'utf8');
 const source=await readFile(new URL('../performance-history.js',import.meta.url),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -14,7 +15,7 @@ function setup({calls=205,followups=101,failFirstCall=false}={}){
  let failed=false;
  const client={from(table){const query={table,filters:[],orders:[]};queries.push(query);const chain={select(fields,options){query.options=options;return chain},eq(k,v){query.filters.push([k,v]);return chain},order(k,o){query.orders.push([k,o]);return chain},in(k,v){query.in=[k,v];return chain},range(a,b){query.range=[a,b];return Promise.resolve(response())},then(resolve,reject){return Promise.resolve(response()).then(resolve,reject)}};
  function response(){if(failFirstCall&&!failed&&table==='callcenter_call_activity'){failed=true;return {error:{message:'offline'}}}let rows=datasets[table].filter(row=>query.filters.every(([k,v])=>row[k]===v));if(query.in)rows=rows.filter(row=>query.in[1].includes(row[query.in[0]]));return {data:query.range?rows.slice(query.range[0],query.range[1]+1):rows,count:rows.length}}return chain}};
- const window={steadyHandsOpenPerformanceCall:args=>opened.push(args)};vm.runInNewContext(followupSource,{window});vm.runInNewContext(source,{window,URLSearchParams,Date});
+ const window={steadyHandsOpenPerformanceCall:args=>opened.push(args)};vm.runInNewContext(actionSource,{window});vm.runInNewContext(followupSource,{window});vm.runInNewContext(source,{window,URLSearchParams,Date});
  return {root,queries,opened,tabs,datasets,init:()=>window.steadyHandsMountPerformanceHistory({client,userId:'own',displayName:'My Name',root}),node:(kind,part)=>root.querySelector(`[data-history-${part}="${kind}"]`),async click(dataset){handlers.click({target:{closest:()=>({dataset})}});await tick();await tick()}};
 }
 test('calls and follow-ups independently request 100 owned rows with stable order',async()=>{
@@ -66,4 +67,9 @@ test('pipeline follow-ups and tagged call results appear even without a legacy c
  p.datasets.sh_pipeline_records.push({id:'pipeline-0',crm_id:'lead-0',salesperson_user_id:'own',stage:'follow_up',follow_up_at:'2026-11-02T12:00:00Z',follow_up_category:'Interested'});
  p.datasets.callcenter_call_activity[1].outcome='follow_up';
  await p.init();assert.equal(p.node('followups','count').textContent,'2 of 2');assert.match(p.node('followups','list').innerHTML,/Business 0/);assert.match(p.node('followups','list').innerHTML,/Business 1/);assert.match(p.node('followups','list').innerHTML,/Interested/);assert.match(p.node('followups','list').innerHTML,/Date not set/);
+});
+test('follow-up cards reuse call-details/transcript controls even when the associated call is not in loaded Recent Calls',async()=>{
+ const p=setup({calls:205,followups:0});p.datasets.crm.forEach(r=>{r.stage='called';r.callback_owner_id=null});p.datasets.callcenter_call_activity[204].outcome='follow_up';
+ await p.init();const html=p.node('followups','list').innerHTML;assert.match(html,/class="performance-history-call"/);assert.match(html,/data-history-call="call-204"/);assert.match(html,/Transcript/);assert.match(html,/Add to calendar/);assert.match(html,/Add to tasks/);
+ await p.click({historyCall:'call-204'});assert.equal(p.opened[0].activityId,'call-204');assert.equal(p.opened[0].userId,'own');
 });
