@@ -12,6 +12,9 @@ const json = (body: any, status = 200) => new Response(JSON.stringify(body), {
 async function assignedCaller(db: any, userId: string) {
   const read = (r: any) => { if (r.error) throw Error('Could not read calling configuration.'); return r.data; };
   const deny = (message: string) => { throw Object.assign(Error(message), {status: 403}); };
+  const access = read(await db.rpc('outreach_access_status', {p_user_id: userId}));
+  if (typeof access?.is_paused !== 'boolean') throw Error('Could not verify account access.');
+  if (access.is_paused) deny('Outreach is paused. Complete required actions and agreements, then recheck access.');
   const permission = read(await db.from('team_permissions').select('role,active,listed').eq('user_id', userId).maybeSingle());
   const profile = read(await db.from('callcenter_profiles').select('disabled_at').eq('user_id', userId).maybeSingle());
   if (!permission?.active || permission.listed === false || !['ADMIN','SALES'].includes(permission.role) || !profile || profile.disabled_at) deny('Active sales or admin access is required.');
