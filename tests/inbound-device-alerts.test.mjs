@@ -4,13 +4,13 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../inbound-calling.js',import.meta.url),'utf8')).replace(/^import .*;\n/,'');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function setup({forward=false,permission='granted',off=false,tokenResult=null,transcriptResult=null,realtime=false,pushSupport=false,presence=false,microphone=async()=>({getTracks:()=>[{stop(){}}]})}={}){
- const nodes=new Map(),events={},posts=[],devices=[],notices=[],requests=[],bodies=[],registrations=[],prefs=new Map([['steadyhands-setting-device-notifications','true']]);let micCalls=0,permissionCalls=0;const intervals=new Map(),emitted=[],channels=[],removed=[];let intervalId=0;
+async function setup({dock=false,forward=false,permission='granted',off=false,tokenResult=null,transcriptResult=null,realtime=false,pushSupport=false,presence=false,microphone=async()=>({getTracks:()=>[{stop(){}}]})}={}){
+ const nodes=new Map(),events={},posts=[],devices=[],notices=[],requests=[],bodies=[],registrations=[],prefs=new Map([['steadyhands-setting-device-notifications','true']]);let mounted=null,micCalls=0,permissionCalls=0;const intervals=new Map(),emitted=[],channels=[],removed=[];let intervalId=0;
  if(off)prefs.set('steadyhands-incoming-off-agent','true');
  const node=()=>({hidden:false,disabled:false,textContent:'',value:'',dataset:{},checked:false,classList:{add(){},remove(){}},setAttribute(){},append(){},replaceChildren(){},scrollIntoView(){},focus(){this.focused=true},querySelector(selector){const id=selector.slice(1);if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)}});
  class Device{constructor(token){this.handlers={};devices.push(this)}on(name,fn){this.handlers[name]=fn}async register(){this.handlers.registered()}async unregister(){this.handlers.unregistered()}destroy(){this.destroyed=true}updateToken(){}}
  class Notice{static permission=permission;static async requestPermission(){permissionCalls++;return 'granted'}constructor(title,options){this.title=title;this.options=options;notices.push(this)}close(){this.closed=true}}
- const document={title:'Outreach',hidden:false,head:{append(){}},body:{append(){}},createElement:node,addEventListener:(name,fn)=>events[name]=fn};
+ const document={getElementById:id=>dock&&id==='inboundCallSlot'?{append:root=>{mounted=root}}:null,title:'Outreach',hidden:false,head:{append(){}},body:{append(){}},createElement:node,addEventListener:(name,fn)=>events[name]=fn};
  const client={
   auth:{getUser:async()=>({data:{user:{id:'agent'}}}),onAuthStateChange:fn=>events.auth=fn},
   functions:{invoke:async(name,{body})=>{
@@ -37,7 +37,7 @@ async function setup({forward=false,permission='granted',off=false,tokenResult=n
  }
  vm.runInNewContext(source,{atob,Uint8Array,crypto:presence?{randomUUID:()=> '11111111-2222-3333-4444-555555555555'}:undefined,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}},setInterval:fn=>{intervals.set(++intervalId,fn);return intervalId},clearInterval:id=>intervals.delete(id),window,document,Device,Notification:Notice,navigator:{serviceWorker,mediaDevices:{getUserMedia:async()=>{micCalls++;return microphone()}}},localStorage:{getItem:k=>prefs.get(k)||null,setItem:(k,v)=>prefs.set(k,v)},setTimeout:()=>1,clearTimeout(){},console:{warn(){}}});await tick();
  const incoming=()=>{const handlers={};const call={handlers,parameters:{From:'+17025550103',CallSid:'CA'+'2'.repeat(32)},customParameters:new Map([['parentCallSid','CA'+'1'.repeat(32)]]),on:(name,fn)=>handlers[name]=fn,async accept(){call.accepted=true;handlers.accept()},reject(){call.rejected=true;handlers.reject?.()},disconnect(){handlers.disconnect()}};devices[0].handlers.incoming(call);return call};
- return {bodies,registrations,unsubscribed:()=>unsubscribed,channels,removed,intervals,emitted,nodes,events,posts,devices,notices,requests,window,document,prefs,incoming,micCalls:()=>micCalls,permissionCalls:()=>permissionCalls};
+ return {mounted:()=>mounted,bodies,registrations,unsubscribed:()=>unsubscribed,channels,removed,intervals,emitted,nodes,events,posts,devices,notices,requests,window,document,prefs,incoming,micCalls:()=>micCalls,permissionCalls:()=>permissionCalls};
 }
 test('signed-in app registers automatically without microphone or notification permission prompts',async()=>{
  const s=await setup();assert.equal(s.devices.length,1);assert.equal(s.micCalls(),0);assert.equal(s.permissionCalls(),0);assert.match(s.nodes.get('inboundStatus').textContent,/Ready for incoming/);
@@ -128,4 +128,9 @@ test('enrolled push never suppresses foreground notification when the server ale
 test('device push test explicitly invokes the server test for this endpoint',async()=>{
  const s=await setup({pushSupport:true});await s.nodes.get('inboundAlertsTest').onclick();assert(s.requests.includes('push_test'));
  const request=s.bodies.find(body=>body.action==='push_test');assert.equal(request.endpoint,'https://web.push.apple.com/test');
+});
+
+test('incoming launcher mounts into the shared dock when present',async()=>{
+ const s=await setup({dock:true});assert.equal(s.mounted().id,'shInbound');
+ s.mounted().querySelector('#inboundPanel').hidden=true;await s.nodes.get('inboundToggle').onclick();assert.equal(s.nodes.get('inboundPanel').hidden,false);
 });

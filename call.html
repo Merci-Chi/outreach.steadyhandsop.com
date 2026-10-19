@@ -20,7 +20,7 @@
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
   <link rel="stylesheet" href="sidebar.css?v=20261018-outreach-guide" />
-  <script src="sidebar.js?v=20261019-auto-update-alerts" defer></script>
+  <script src="sidebar.js?v=20261019-shared-controls" defer></script>
 <link rel="stylesheet" href="queue.css?v=queue-b2" />
 <link rel="stylesheet" href="leads-batch9.css?v=9" />
 <link rel="stylesheet" href="outreach-desktop-redesign.css?v=compact-20261011" /><link rel="stylesheet" href="outreach-tasks.css?v=1" />
@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="fit-control-labels.css?v=20261018-full">
 <script src="fit-control-labels.js?v=20261018-full" defer></script>
 <link rel="stylesheet" href="workflow-simple.css?v=20261018-column-fit">
+<link rel="stylesheet" href="lead-navigation.css?v=20261019-shared-controls">
 </head>
 <body class="page-outreach page-call">
 <div class="app">
@@ -264,6 +265,15 @@ try {
 <script src="starter-scripts.js?v=3" defer></script><script src="outreach-process.js?v=20261018-startup" defer></script><script src="outreach-workflow-core.js?v=20261019-transcript-live-updates" defer></script>
 <script src="call-guide.js?v=20261018-column-fit" defer></script>
 <script src="outreach-workflow.js?v=20261019-transcript-live-updates" defer></script>
+<nav id="outreachLeadDock" class="ref-side-card" aria-label="Call and lead controls">
+  <div class="ref-next-buttons">
+    <button type="button" id="refRandomLead"><i data-lucide="shuffle" aria-hidden="true"></i><span>Random Lead</span></button>
+    <button type="button" class="ref-primary" id="refNextQueue"><i data-lucide="arrow-right" aria-hidden="true"></i><span>Next in Queue</span></button>
+  </div>
+  <div id="inboundCallSlot"></div>
+  <p id="leadNavigationStatus" role="status" aria-live="polite" hidden></p>
+</nav>
+<script src="lead-navigation.js?v=20261019-shared-controls" defer></script>
 </body>
 </html>
 
