@@ -18,7 +18,7 @@
     const [callbacks,pipeline,calls]=await Promise.all([
       all('crm','id,company,name,phone,timezone,callbackdate,callbackat,callback_owner_id,stage,outcome,do_not_call',scope('callback_owner_id',q=>q.eq('stage','callback'))),
       all('sh_pipeline_records','*',scope('salesperson_user_id')),
-      activities||all('callcenter_call_activity','id,user_id,crm_id,outcome,created_at',scope('user_id'))
+      activities||all('callcenter_call_activity','id,user_id,crm_id,outcome,created_at,duration_seconds',scope('user_id'))
     ]);
     // Defense in depth: never render another associate's records in Outreach.
     const owned=(rows,key)=>rows.filter(r=>!userId||String(r[key])===String(userId));
@@ -58,7 +58,7 @@
     const result=new Map();
     const add=(lead,owner,extra={})=>{
       if(!lead||terminal(lead)||(userId&&String(owner)!==String(userId)))return;
-      result.set(key(lead.id,owner),{...lead,callback_owner_id:owner,...extra});
+      result.set(key(lead.id,owner),{...lead,callback_owner_id:owner,call:latest.get(key(lead.id,owner))||null,...extra});
     };
     for(const row of owned(callbacks,'callback_owner_id')){
       const current=stages.get(key(row.id,row.callback_owner_id));

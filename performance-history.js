@@ -12,6 +12,11 @@
     const find = (kind,part) => root.querySelector(`[data-history-${part}="${kind}"]`);
     const state = {calls:{rows:[],offset:0,more:true,busy:false,total:null},followups:{rows:[],offset:0,more:true,busy:false,total:null}};
     const leads = new Map(), transcripts = new Set();
+    function callHTML(row,lead,followup=false){
+      const label=lead.company||lead.name||'Lead',id=row?.id;
+      const content=`<span class="performance-history-icon" aria-hidden="true"><i data-lucide="phone-call"></i></span><span class="performance-history-copy"><span class="performance-history-owner">${esc(displayName||'You')}</span><strong>${esc(label)}</strong><small>${id?esc(stamp(row.created_at))+' · '+esc(duration(row.duration_seconds)):'No linked call'}${lead.phone?' · '+esc(lead.phone):''}</small>${followup?`<small>Follow-up: ${esc(lead.follow_up_at?stamp(lead.follow_up_at):lead.callbackdate||'Date not set')}${!lead.follow_up_at&&lead.callbackat?' · '+esc(lead.callbackat):''}${lead.follow_up_category?' · '+esc(lead.follow_up_category):''}</small>`:''}</span><span class="performance-history-side"><span class="performance-history-outcome">${esc(String(row?.outcome||'Follow-up').replace(/_/g,' '))}</span>${id?`<small>${transcripts.has(String(id))?'Transcript':'Call Details'} <span aria-hidden="true">›</span></small>`:'<small>No linked call</small>'}</span>`;
+      return id?`<button type="button" class="performance-history-call" data-history-call="${esc(id)}" aria-label="View call details for ${esc(label)}">${content}</button>`:`<div class="performance-history-call">${content}</div>`;
+    }
     function render(kind) {
       const current = state[kind], term = String(find(kind,'search').value || '').trim().toLowerCase();
       const rows = current.rows.filter(row => {
@@ -21,9 +26,9 @@
       find(kind,'list').innerHTML = rows.map(row => {
         const lead = kind === 'calls' ? leads.get(String(row.crm_id)) || {} : row;
         const label = lead.company || lead.name || 'Lead';
-        if(kind === 'calls')return `<button type="button" class="performance-history-call" data-history-call="${esc(row.id)}" aria-label="View call details for ${esc(label)}"><span class="performance-history-icon" aria-hidden="true"><i data-lucide="phone-call"></i></span><span class="performance-history-copy"><span class="performance-history-owner">${esc(displayName || 'You')}</span><strong>${esc(label)}</strong><small>${esc(stamp(row.created_at))} · ${esc(duration(row.duration_seconds))}${lead.phone ? ' · '+esc(lead.phone) : ''}</small></span><span class="performance-history-side"><span class="performance-history-outcome">${esc(String(row.outcome || 'Called').replace(/_/g,' '))}</span><small>${transcripts.has(String(row.id)) ? 'Transcript' : 'Call Details'} <span aria-hidden="true">›</span></small></span></button>`;
-        const href = 'call.html?'+new URLSearchParams({crm_id:String(lead.id),number:lead.phone||'',company:label,contact:lead.name||'',timezone:lead.timezone||''}).toString();
-        return `<article class="performance-history-followup"><span class="performance-history-icon" aria-hidden="true"><i data-lucide="calendar-clock"></i></span><div class="performance-history-copy"><strong>${esc(label)}</strong><small>${esc(lead.follow_up_at ? stamp(lead.follow_up_at) : lead.callbackdate || 'Date not set')}${!lead.follow_up_at && lead.callbackat ? ' · '+esc(lead.callbackat) : ''}</small><small>${esc(lead.phone || 'No phone number')}</small>${lead.follow_up_category ? '<small>'+esc(lead.follow_up_category)+'</small>' : ''}</div>${lead.phone ? `<a class="performance-history-open" href="${esc(href)}">Open</a>` : ''}</article>`;
+        if(kind === 'calls')return callHTML(row,lead);
+        const href='call.html?'+new URLSearchParams({crm_id:String(lead.id),number:lead.phone||'',company:label,contact:lead.name||'',timezone:lead.timezone||''}).toString();
+        return `<article class="performance-followup-card">${callHTML(lead.call,lead,true)}${window.PerformanceFollowupActions.buttons(lead)}${!lead.call&&lead.phone?`<a class="performance-history-open" href="${esc(href)}">Open lead</a>`:''}</article>`;
       }).join('') || `<p class="performance-history-empty">${current.busy ? 'Loading…' : term ? 'No matches in loaded records.' : kind === 'calls' ? 'No call history yet.' : 'No follow-ups scheduled.'}</p>`;
       find(kind,'count').textContent = current.total == null ? `${current.rows.length} loaded` : `${current.rows.length} of ${current.total}`;
       const button = find(kind,'more');
@@ -62,6 +67,13 @@
           for(const lead of leadResult.data || [])leads.set(String(lead.id),lead);
           for(const transcript of transcriptResult.error ? [] : transcriptResult.data || [])transcripts.add(String(transcript.call_activity_id));
         }
+        if(kind==='followups'){
+          const ids=owned.map(r=>r.call?.id).filter(Boolean);
+          if(ids.length){
+            const {data,error}=await client.from('callcenter_transcripts').select('id,call_activity_id').eq('user_id',userId).in('call_activity_id',ids);
+            if(!error)for(const t of data||[])transcripts.add(String(t.call_activity_id));
+          }
+        }
         const seen = new Set(current.rows.map(row=>String(row.id)));
         current.rows.push(...owned.filter(row=>!seen.has(String(row.id))));
         current.offset += page.length;
@@ -78,6 +90,11 @@
     root.addEventListener('click',event => {
       const button = event.target.closest?.('button');
       if(!button)return;
+      if(button.dataset.followupAction){
+        const lead=state.followups.rows.find(r=>String(r.id)===button.dataset.followupId&&String(r.callback_owner_id)===String(userId));
+        if(lead)window.PerformanceFollowupActions.open({client,lead,userId,mode:button.dataset.followupAction,trigger:button});
+        return;
+      }
       const view = button.dataset.historyView;
       if(view === 'calls' || view === 'followups') {
         root.dataset.view = view;
@@ -86,8 +103,9 @@
       const kind = button.dataset.historyMore;
       if(kind === 'calls' || kind === 'followups')void load(kind);
       const id = button.dataset.historyCall;
-      if(id && state.calls.rows.some(row=>String(row.id) === String(id)))void window.steadyHandsOpenPerformanceCall?.({client,activityId:id,userId,trigger:button});
+      if(id && (state.calls.rows.some(row=>String(row.id) === String(id))||state.followups.rows.some(row=>String(row.call?.id)===String(id))))void window.steadyHandsOpenPerformanceCall?.({client,activityId:id,userId,trigger:button});
     });
+    window.addEventListener?.('steadyhands:followup-saved',()=>render('followups'));
     for(const kind of ['calls','followups'])find(kind,'search').addEventListener('input',()=>render(kind));
     await Promise.all([load('calls'),load('followups')]);
   };
