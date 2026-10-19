@@ -1,0 +1,15 @@
+#callKeypad {
+  border: 0;
+  border-radius: 28px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+#callKeypad::backdrop { background: rgba(6,18,31,.52); backdrop-filter: blur(5px); }
+#callKeypad .call-keypad-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#callKeypad .call-keypad-key { width: min(74px, 100%); }
+#callKeypad .call-keypad-key:disabled { opacity: .45; cursor: not-allowed; }
+#callKeypad .call-keypad-key:not(:disabled):active { background: var(--blue-soft); transform: scale(.95); }
+#callKeypad button:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+#callKeypadStatus { text-align: center; color: var(--muted); }
