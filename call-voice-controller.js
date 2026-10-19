@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   let starting = false;
+  let callResult = null;
   const message = text => { const el = document.getElementById('refMessage'); if (el) el.textContent = text; };
   const state = (active, callSid) => window.dispatchEvent(new CustomEvent('steadyhands:call-state', {detail:{active,callSid}}));
   const button = () => document.getElementById('refEndCall');
@@ -22,9 +23,11 @@
       message('Calling from ' + caller.phone_number + '…');
       // The authenticated Twilio backend remains responsible for resolving and
       // validating the assigned caller ID. Never accept a caller-supplied From.
-      await voice.start(lead.number, {crmId:lead.id,company:lead.company,transcribe:true});
+      const call = await voice.start(lead.number, {crmId:lead.id,company:lead.company,transcribe:true});
+      if(callResult)callResult.call_sid = call?.parameters?.CallSid || callResult.call_sid;
       state(true);
     } catch (error) {
+      callResult = null;
       state(false);
       message(error.message || 'The call could not be started.');
     } finally {
@@ -35,12 +38,23 @@
   window.addEventListener('steadyhands:end-call-request', () => window.SteadyHandsTwilioVoice?.hangup());
   window.addEventListener('steadyhands:voice-state', event => {
     const detail = event.detail || {};
+    if (detail.state === 'calling' && window.steadyHandsCallLead?.id) {
+      const lead = window.steadyHandsCallLead;
+      callResult = {crm_id:lead.id,company:lead.company,call_method:'outreach',started_at:Date.now(),called:true};
+    }
+    if (callResult && detail.callSid) callResult.call_sid = detail.callSid;
     if (['calling','ringing','connected'].includes(detail.state)) state(true,detail.callSid);
     if (detail.state === 'connected') message('Call connected.');
     if (detail.state === 'preparing') message(detail.message || 'Preparing browser calling…');
     if (detail.state === 'ended') {
       state(false);
       if (detail.reason !== 'error') message('Call ended.');
+      if (callResult) {
+        const result = callResult;
+        callResult = null; // Twilio can emit more than one terminal event.
+        result.elapsed_seconds = Math.max(0,Math.floor((Date.now()-result.started_at)/1000));
+        if (window.steadyHandsOpenPostCallQuestionnaire?.(result) === false) message('Unable to open the questionnaire. Refresh and try again.');
+      }
     }
     if (detail.state === 'error') {
       state(false);

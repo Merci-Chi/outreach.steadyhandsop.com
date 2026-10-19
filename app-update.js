@@ -18,7 +18,7 @@
       window.SteadyHandsTwilioVoice?.isActive?.() ||
       window.SteadyHandsInboundVoice?.isBusyForUpdate?.() ||
       window.SteadyHandsInboundVoice?.isActive?.() ||
-      document.querySelector('#refRegularCallTracker:not([hidden])');
+      document.querySelector('#refRegularCallTracker:not([hidden]),#shFeedbackOverlay');
   }
   function applyWhenIdle() {
     if (!pending || reloading) return;

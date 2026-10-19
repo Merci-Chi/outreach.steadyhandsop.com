@@ -209,6 +209,8 @@ function finishRegularCall(wasCalled){
  try{
   const opened=opener(detail);
   if(opened===false){tell('Unable to open the questionnaire. Please try again.');return;}
+  const popup=$('#refPhonePopup');if(popup){popup.hidden=true;const process=popup.querySelector('.outreach-process');if(process)window.SteadyHandsRestoreProcess?.(process);}
+  window.dispatchEvent(new CustomEvent('steadyhands:process-mode',{detail:{guided:false}}));
   regularCall=null;savePendingRegularCall();renderRegularCall();
   window.dispatchEvent(new CustomEvent('steadyhands:regular-call-state',{detail:{active:false,id:current.id}}));
  }catch(ex){console.error('Post-call questionnaire failed to open',ex);tell('Could not open the questionnaire. Refresh and try again.');}
