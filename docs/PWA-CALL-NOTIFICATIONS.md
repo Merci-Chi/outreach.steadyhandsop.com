@@ -135,7 +135,7 @@ is active. Initial service-worker installation does not trigger a reload loop.
 Returning to the app leaves a 15-second grace period for pending calls to arrive.
 Successful forms can signal `steadyhands:changes-saved` with `{form}`; a form
 submission alone does not prove a save succeeded. Removing/resetting a draft
-also releases the update hold. Voicemail settings emit the success event.
+also releases the update hold. Voicemail greetings are configured in Admin → Phone Numbers.
 One initial page refresh/navigation may be needed to load this updater in an
 already-open older PWA; no app uninstall or OS restart is required. The deployed
 Supabase functions/SQL still require deployment; browser updates do not deploy

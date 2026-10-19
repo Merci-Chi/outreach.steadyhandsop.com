@@ -173,3 +173,21 @@ test('hold audio is a short non-silent WAV available without secrets or database
  let peak=0;for(let i=44;i<bytes.length;i+=2)peak=Math.max(peak,Math.abs(view.getInt16(i,true)));
  assert(peak>1000&&peak<10000);assert.equal(s.access(),0);assert.equal((await s.getOther()).status,405);
 });
+
+test('voicemail uses the Admin business-number greeting and ignores legacy user text',async()=>{
+ const s=setup();s.rows.callcenter_phone_numbers[0].voicemail_greeting='Admin says <hello> & welcome';
+ await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
+ assert.match(xml,/Admin says &lt;hello&gt; &amp; welcome/);assert.doesNotMatch(xml,/Business greeting/);
+ assert.match(xml,/<Record /);
+});
+test('default greeting includes support number even with a legacy per-user greeting',async()=>{
+ const s=setup();await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
+ assert.match(xml,/unavailable to take your call/);assert.match(xml,/\(702\) 775-9756/);assert.doesNotMatch(xml,/Business greeting/);
+});
+test('managed forwarding keeps the originally called number greeting',async()=>{
+ const s=setup();Object.assign(s.rows.callcenter_phone_numbers[0],{voicemail_greeting:'Original business greeting',inbound_destination:'forward',inbound_forward_number:'+17025550105'});
+ s.rows.callcenter_phone_numbers.push({id:'second',phone_number:'+17025550105',active:true,twilio_status:'ready',inbound_destination:'app',voicemail_greeting:'Wrong destination greeting'});
+ s.rows.callcenter_phone_assignments.push({phone_number_id:'second',user_id:'agent'});
+ await s.request();const xml=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
+ assert.match(xml,/Original business greeting/);assert.doesNotMatch(xml,/Wrong destination greeting/);
+});

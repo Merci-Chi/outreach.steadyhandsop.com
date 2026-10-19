@@ -1,6 +1,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
 import webpush from 'npm:web-push@3.6.7';
+const DEFAULT_VOICEMAIL_GREETING = 'Thank you for calling Steady Hands. We are unavailable to take your call at the moment. Please try again or contact our support team at (702) 775-9756. You may also leave a message after the beep.';
 const identity = userId => 'sh_inbound_' + userId;
 const escapeXML = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const response = inner => '<?xml version="1.0" encoding="UTF-8"?><Response>' + inner + '</Response>';
@@ -18,7 +19,7 @@ function screen(base,parent) {
  return response(`<Gather numDigits="1" timeout="7" action="${escapeXML(endpoint(base,'accept-cell',parent))}" method="POST"><Say>Incoming Steady Hands call. Press 1 to answer.</Say></Gather><Hangup/>`);
 }
 function voicemail(base,greeting) {
-  return response(`<Say>${escapeXML(greeting||'Thank you for calling Steady Hands. Please leave your name, number, and message after the beep.')}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
+  return response(`<Say>${escapeXML(greeting||DEFAULT_VOICEMAIL_GREETING)}</Say><Record maxLength="120" timeout="5" playBeep="true" action="${escapeXML(endpoint(base,'goodbye'))}" method="POST" recordingStatusCallback="${escapeXML(endpoint(base,'recorded'))}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/><Hangup/>`);
 }
 const answered = status => status==='completed';
 
@@ -98,7 +99,13 @@ Deno.serve(async req=>{
   if(call.status==='completed'||call.status==='voicemail'||call.status==='missed')return xml(hangup());
   const saved=call.user_id?await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle()):null;
   const settings=resolveRoutingSettings(saved);
-  const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
+  // Use the originally dialed business number, including managed forwarding chains.
+  // Legacy per-user greetings are deliberately ignored. A missing migration falls
+  // back to the business default so a staged deploy does not break reception.
+  const business=await db.from('callcenter_phone_numbers').select('voicemail_greeting').eq('phone_number',call.to_number).maybeSingle();
+  if(business.error&&!['42703','PGRST204'].includes(business.error.code))throw business.error;
+  const greeting=business.data?.voicemail_greeting||DEFAULT_VOICEMAIL_GREETING;
+  const mailbox=()=>xml(voicemail(base,greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
   if(stage==='incoming'||stage==='wait'){
    if(call.route_destination==='forward'){await patch({status:'forwarding'});return xml(phoneDial(base,call,settings));}
@@ -136,7 +143,7 @@ Deno.serve(async req=>{
     const body=waitForApp(base,false,call.push_wait_until).replace(/^.*?<Response>|<\/Response>$/g,'');
     return xml(response(body));
    }
-   const body=voicemail(base,settings?.voicemail_greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
+   const body=voicemail(base,greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
    return finish(body);
   }
   if(stage==='screen'){

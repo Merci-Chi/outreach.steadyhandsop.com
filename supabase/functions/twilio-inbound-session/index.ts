@@ -92,12 +92,7 @@ Deno.serve(async req=>{
    const calls=await checked(await db.from('outreach_inbound_calls').select('call_sid,from_number,to_number,status,answered_via,recording_sid,recording_duration,created_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(50));
    return json({...routing,calls});
   }
-  if(action==='save_settings'){
-   const greeting=String(body.voicemail_greeting||'').trim();
-   if(!greeting||greeting.length>500)return json({error:'Enter a voicemail greeting between 1 and 500 characters.'},400);
-   await checked(await db.from('outreach_inbound_settings').upsert({user_id:userId,cellphone_number:null,enabled:true,voicemail_greeting:greeting,outreach_ring_seconds:20,cellphone_ring_seconds:20,updated_at:new Date().toISOString()}));
-   return json({ok:true});
-  }
+  if(action==='save_settings')return json({error:'Voicemail greetings are managed in Admin → Phone Numbers.'},403);
   if(action==='play_voicemail'){
    const call=await checked(await db.from('outreach_inbound_calls').select('recording_sid').eq('call_sid',String(body.call_sid||'')).eq('user_id',userId).maybeSingle());
    if(!/^RE[0-9a-fA-F]{32}$/.test(call?.recording_sid||''))return json({error:'Voicemail not found.'},404);
@@ -127,7 +122,7 @@ Deno.serve(async req=>{
   if(!number?.active||number.twilio_status!=='ready')return json({error:'Your assigned calling number is not enabled and Twilio Ready.'},403);
   if(number.inbound_destination==='forward')return json({destination:'forward',number:number.phone_number,forward_number:number.inbound_forward_number});
   const {settings}=await loadRouting();
-  if(!settings?.enabled)return json({error:'Incoming routing is disabled. Enable it in Incoming calls → Voicemail settings.'},403);
+  if(!settings?.enabled)return json({error:'Ask your administrator to check incoming routing in Admin → Phone Numbers.'},403);
   const account=Deno.env.get('TWILIO_ACCOUNT_SID')||'',apiKey=Deno.env.get('TWILIO_API_KEY_SID')||'',secret=Deno.env.get('TWILIO_API_KEY_SECRET')||'';
   if(!account||!apiKey||!secret)throw Error('Twilio incoming-token settings are missing');
   const AccessToken=twilio.jwt.AccessToken;
