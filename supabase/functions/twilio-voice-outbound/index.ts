@@ -53,6 +53,13 @@ Deno.serve(async (req) => {
     if (!/^\+[1-9]\d{7,14}$/.test(destination)) return xml('<Say>The destination number is invalid.</Say><Hangup/>');
     const transcribe = /^(1|true|yes)$/i.test(params.transcribe || '');
     const crmId = String(params.crm_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0,80);
+    // Always check the signed destination, even without a CRM ID or with a forged ID.
+    // A failed/missing migration must never fall through to Dial.
+    const {data: blocked, error: dncError} = await db.rpc('outreach_call_is_blocked', {
+      p_phone: destination, p_crm_id: crmId || null,
+    });
+    if (dncError || typeof blocked !== 'boolean') throw Error('Could not verify Do Not Call status.');
+    if (blocked) return xml('<Say>This number is marked Do Not Call. Calling is blocked.</Say><Hangup/>');
     const callback = Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL') || url + '/functions/v1/twilio-transcription-webhook';
     if (transcribe) {
       const {error} = await db.rpc('outreach_start_transcript', {

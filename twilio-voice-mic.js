@@ -213,6 +213,8 @@ async function start(destination, metadata = {}) {
     throw new Error('This lead does not have a valid phone number.');
   }
 
+  if (!window.SteadyHandsLeadDisposition) throw new Error('Lead status checks are still loading. Please try again.');
+  await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId, to);
   await requestMicrophonePermission();
 
   const readyDevice = await ensureDevice();

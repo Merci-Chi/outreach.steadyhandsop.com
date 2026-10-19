@@ -16,7 +16,7 @@ async function linkCall(mode){
  if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
  if(!await window.SteadyHandsReviewBeforeCall(id))return;
  if(currentLead()?.id!==id){tell('The selected prospect changed. Review the new prospect first.');return;}
- try{await window.SteadyHandsLeadDisposition.ensureCallable(id);}catch(error){tell(error.message);return;}
+ try{await window.SteadyHandsLeadDisposition.ensureCallable(id,number);}catch(error){tell(error.message);return;}
  try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id);sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify({id,number,company,contact,role,preview,timezone}));}catch{}
  if(mode==='regular'){openRegularPhonePopup(number);return;}
  if(checkingCaller)return;
@@ -104,16 +104,26 @@ function openRegularPhonePopup(phone){
       $('#refRegularPhone')?.focus();
     };
     $('#refPhoneClose').addEventListener('click',close);
-    $('#refOpenDialer').addEventListener('click',()=>{
+    $('#refOpenDialer').addEventListener('click',async event=>{
+      event.preventDefault();
       const lead=currentLead();
-      if(!lead)return;
-      beginRegularCall(lead);
+      if(!lead || lead.number!==popup.dataset.phone)return;
+      try {
+        if(!window.SteadyHandsLeadDisposition)throw Error('Lead status checks are still loading.');
+        await window.SteadyHandsLeadDisposition.ensureCallable(lead.id,popup.dataset.phone);
+        if(currentLead()?.id!==lead.id || popup.dataset.phone!==lead.number)return;
+        beginRegularCall(lead);
+        window.location.assign('tel:'+lead.number.replace(/[^+0-9]/g,''));
+      }catch(error){$('#refPhonePopupFeedback').textContent=error.message;}
     });
     popup.addEventListener('click',e=>{if(e.target===popup)close();});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!popup.hidden)close();});
     $('#refCopyPhone').addEventListener('click',async()=>{
       const value=popup.dataset.phone||'';
       try{
+        const lead=currentLead();
+        if(!lead || lead.number!==value)throw Error('Select the prospect again.');
+        await window.SteadyHandsLeadDisposition.ensureCallable(lead.id,value);
         if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
         else {
           const el=document.createElement('textarea');el.value=value;el.style.position='fixed';el.style.opacity='0';document.body.append(el);el.select();
@@ -127,7 +137,7 @@ function openRegularPhonePopup(phone){
   }
   popup.dataset.phone=number;
   $('#refPhonePopupNumber').textContent=number;
-  $('#refOpenDialer').href='tel:'+number.replace(/[^+0-9]/g,'');
+  $('#refOpenDialer').href='#';
   $('#refPhonePopupFeedback').textContent='';
   const process=document.querySelector('.outreach-process');
   if(process)popup.querySelector('.regular-call-shell').append(process);
