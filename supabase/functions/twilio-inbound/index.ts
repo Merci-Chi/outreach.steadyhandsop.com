@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2';
 import twilio from 'npm:twilio@5';
+import webpush from 'npm:web-push@3.6.7';
 const identity = userId => 'sh_inbound_' + userId;
 const escapeXML = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const response = inner => '<?xml version="1.0" encoding="UTF-8"?><Response>' + inner + '</Response>';
@@ -65,6 +66,23 @@ Deno.serve(async req=>{
    const {destination,forward}=route;
    await checked(await db.from('outreach_inbound_calls').upsert({call_sid:callSid,user_id:owner,from_number:form.From||'Unknown',to_number:form.To,route_destination:destination,forward_number:forward},{onConflict:'call_sid',ignoreDuplicates:true}));
   }
+  if(stage==='incoming'){
+   const incoming=await checked(await db.from('outreach_inbound_calls').select('*').eq('call_sid',callSid).single());
+   if(incoming.route_destination==='app'&&incoming.user_id&&!incoming.push_wait_until&&!['completed','voicemail','missed'].includes(incoming.status)){
+    try{
+     const publicKey=Deno.env.get('WEB_PUSH_VAPID_PUBLIC_KEY')||'',privateKey=Deno.env.get('WEB_PUSH_VAPID_PRIVATE_KEY')||'',subject=Deno.env.get('WEB_PUSH_VAPID_SUBJECT')||'';
+     if(publicKey&&privateKey&&subject){
+      const subscriptions=await checked(await db.from('outreach_inbound_push_subscriptions').select('endpoint,p256dh,auth').eq('user_id',incoming.user_id).eq('enabled',true));
+      if(subscriptions?.length){
+       const deadline=new Date(Date.now()+60000).toISOString();
+       await checked(await db.from('outreach_inbound_calls').update({push_wait_until:deadline}).eq('call_sid',callSid));
+       const task=sendIncomingPush(db,subscriptions,incoming,deadline,{publicKey,privateKey,subject}).catch(error=>console.error('Incoming push failed:',error));
+       if(typeof EdgeRuntime!=='undefined')EdgeRuntime.waitUntil(task);else await task;
+      }
+     }
+    }catch(error){console.error('Incoming push setup failed:',error);}
+   }
+  }
   call=await checked(await db.from('outreach_inbound_calls').select('*').eq('call_sid',callSid).single());
   if(stage==='recorded'){
    if(form.RecordingStatus==='completed'&&/^RE[0-9a-fA-F]{32}$/.test(form.RecordingSid||''))await checked(await db.from('outreach_inbound_calls').update({recording_sid:form.RecordingSid,recording_duration:Number(form.RecordingDuration)||0,status:'voicemail',updated_at:new Date().toISOString()}).eq('call_sid',callSid));
@@ -74,21 +92,33 @@ Deno.serve(async req=>{
    if(form.CallStatus==='completed'&&!['completed','voicemail'].includes(call.status))await checked(await db.from('outreach_inbound_calls').update({status:'missed',updated_at:new Date().toISOString()}).eq('call_sid',callSid));
    return new Response('ok');
   }
-  if(call.status==='completed'||call.status==='voicemail')return xml(hangup());
+  if(call.status==='completed'||call.status==='voicemail'||call.status==='missed')return xml(hangup());
   const saved=call.user_id?await checked(await db.from('outreach_inbound_settings').select('*').eq('user_id',call.user_id).maybeSingle()):null;
   const settings=resolveRoutingSettings(saved);
   const mailbox=()=>xml(voicemail(base,settings?.voicemail_greeting));
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
-  if(stage==='incoming'){
+  if(stage==='incoming'||stage==='wait'){
    if(call.route_destination==='forward'){await patch({status:'forwarding'});return xml(phoneDial(base,call,settings));}
+   if(stage==='wait'&&Date.now()>=Date.parse(call.push_wait_until||''))return mailbox();
+   if(call.push_wait_until){
+    let devices=[];
+    try { devices=await checked(await db.from('outreach_inbound_devices').select('updated_at').eq('user_id',call.user_id).eq('ready',true)); }catch(error){console.error('Incoming readiness failed:',error);}
+    const recent=devices?.some(device=>Date.parse(device.updated_at)>Date.now()-35000&&(!call.browser_attempted_at||Date.parse(device.updated_at)>Date.parse(call.browser_attempted_at)));
+    if(!recent)return xml(waitForApp(base,stage==='incoming'));
+   }
+   await patch({browser_attempted_at:new Date().toISOString()});
    // Transcription is best-effort: configuration errors must not block reception.
    let transcription='';
    try {
+    const {data:existing}=await db.from('callcenter_transcripts').select('id').eq('call_sid',callSid).maybeSingle();
+    if(!existing){
     await checked(await db.rpc('outreach_start_inbound_transcript',{p_call_sid:callSid}));
     const callback=Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL')||url.replace(/\/$/,'')+'/functions/v1/twilio-transcription-webhook';
     transcription=`<Start><Transcription name="inbound" statusCallbackUrl="${escapeXML(callback)}" track="both_tracks" inboundTrackLabel="customer" outboundTrackLabel="agent" languageCode="en-US" partialResults="true" enableAutomaticPunctuation="true" transcriptionEngine="google"/></Start>`;
+    }
    } catch(error) { console.error('Inbound transcription initialization failed:',error); }
-   return xml(browserDial(base,call,settings,transcription));
+   const ringSettings=call.push_wait_until?{...settings,outreach_ring_seconds:Math.max(1,Math.min(settings.outreach_ring_seconds||20,Math.ceil((Date.parse(call.push_wait_until)-Date.now())/1000)))}:settings;
+   return xml(browserDial(base,call,ringSettings,transcription));
   }
   if(stage==='browser-ended'){
    // End capture before any voicemail greeting or recording.
@@ -98,6 +128,11 @@ Deno.serve(async req=>{
    catch(error) { console.error('Inbound transcription lookup failed:',error); }
    const finish=inner=>xml(response((transcript?stop:'')+inner));
    if(answered(form.DialCallStatus)){await patch({status:'completed',answered_via:'outreach'});return finish('<Hangup/>');}
+   const alerted=call.browser_alerted_at&&(!call.browser_attempted_at||Date.parse(call.browser_alerted_at)>=Date.parse(call.browser_attempted_at));
+   if(call.push_wait_until&&Date.now()<Date.parse(call.push_wait_until)&&!alerted&&form.DialCallStatus!=='busy'){
+    const body=waitForApp(base,false).replace(/^.*?<Response>|<\/Response>$/g,'');
+    return xml(response(body));
+   }
    const body=voicemail(base,settings?.voicemail_greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
    return finish(body);
   }
@@ -139,4 +174,20 @@ async function resolveForwardRoute(number, loadNumber) {
   current=managed;
  }
  throw Error('Forwarding route is too long');
+}
+
+function waitForApp(base,announce) {
+ return response((announce?'<Say>Please hold while we notify your contact.</Say>':'')+'<Pause length="2"/><Redirect method="POST">'+escapeXML(endpoint(base,'wait'))+'</Redirect>');
+}
+async function sendIncomingPush(db,subscriptions,call,deadline,vapidDetails) {
+ const payload=JSON.stringify({kind:'incoming-call',call_sid:call.call_sid,title:'Incoming Steady Hands call',body:'Tap to open Outreach and answer. The caller is waiting.',tag:'steadyhands-incoming-'+call.call_sid,url:'/index.html?incoming='+encodeURIComponent(call.call_sid),expires_at:deadline});
+ await Promise.all(subscriptions.map(async subscription=>{
+  try {
+   await webpush.sendNotification({endpoint:subscription.endpoint,keys:{p256dh:subscription.p256dh,auth:subscription.auth}},payload,{vapidDetails,TTL:60,urgency:'high',timeout:4000});
+  }catch(error){
+   if([404,410].includes(error.statusCode)){
+    await db.from('outreach_inbound_push_subscriptions').delete().eq('user_id',call.user_id).eq('endpoint',subscription.endpoint);
+   }else console.error('Incoming push delivery failed:',error.statusCode||error.message);
+  }
+ }));
 }

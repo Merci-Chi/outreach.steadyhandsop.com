@@ -89,12 +89,12 @@ Device Notifications preferences are respected. Notification clicks focus the
 live receiving tab without reloading and dropping its pending call. Missed calls
 appear on the call badge and in the incoming inbox (with the status callback).
 
-Keep Outreach open, connected, and awake for browser reception. A browser tab
+Keep Outreach open, connected, and awake for immediate browser reception, or configure [PWA call notifications](PWA-CALL-NOTIFICATIONS.md) to reopen it from a device alert. A browser tab
 cannot provide native carrier/CallKit reception when closed or suspended; those
 calls reach voicemail. Choose Phone forwarding for an explicit telephone
 endpoint when closed-app telephone reception is needed. Browser autoplay policies
 can limit audible ringing; the visible call alert remains available. Notification
-support varies by device/browser. This change adds no server-side incoming push.
+support varies by device/browser. Closed-app notification delivery is available through the separate server push setup in [PWA-CALL-NOTIFICATIONS.md](PWA-CALL-NOTIFICATIONS.md). Tap the push notification to reopen Outreach while the caller waits; it does not provide closed-app background audio.
 
 Open **Incoming calls → Voicemail settings** to customize the business greeting.
 

@@ -45,6 +45,7 @@ self.addEventListener('push', event => {
     } catch {}
   }
 
+  if(data.kind==='incoming-call'&&Date.parse(data.expires_at||'')<=Date.now())return;
   const title = data.title || 'Scheduled call';
   const options = {
     body: data.body || '',
@@ -53,15 +54,21 @@ self.addEventListener('push', event => {
     tag: data.tag || 'scheduled-call',
     renotify: true,
     data: {
+      kind: data.kind || null,
+      callSid: data.call_sid || null,
       url: data.url || 'index.html',
       crm_id: data.crm_id || null,
       reminder_minutes: data.reminder_minutes ?? null
     }
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  event.waitUntil((async()=>{
+    await self.registration.showNotification(title, options);
+    if(data.kind==='incoming-call'){
+      const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+      list.forEach(client=>client.postMessage({type:'steadyhands:incoming-wake',callSid:data.call_sid}));
+    }
+  })());
 });
 
 self.addEventListener('message', event => {
@@ -76,9 +83,15 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   if(event.notification?.data?.kind==='incoming-call'){
     event.waitUntil((async()=>{
-      const client=await self.clients.get(event.notification.data.clientId);
-      if(client){client.postMessage({type:'steadyhands:open-incoming'});return client.focus();}
-      return self.clients.openWindow('index.html');
+      const data=event.notification.data;
+      let client=data.clientId?await self.clients.get(data.clientId):null;
+      if(!client){
+       const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+       client=list.find(item=>{try{return new URL(item.url).origin===self.location.origin}catch{return false}});
+      }
+      if(client){client.postMessage({type:'steadyhands:open-incoming',callSid:data.callSid});return client.focus();}
+      const sid=/^CA[0-9a-fA-F]{32}$/.test(data.callSid||'')?data.callSid:'';
+      return self.clients.openWindow(sid?'/index.html?incoming='+encodeURIComponent(sid):'/index.html');
     })());return;
   }
   const target = event.notification?.data?.url || 'index.html';

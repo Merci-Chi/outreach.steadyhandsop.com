@@ -6,16 +6,16 @@ import * as routing from '../supabase/functions/twilio-inbound/routing.mjs';
 const source=(await readFile(new URL('../supabase/functions/twilio-inbound/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/:(?:string|any)\b/g,'');
 const account='AC'+'a'.repeat(32),parent='CA'+'1'.repeat(32),child='CA'+'2'.repeat(32),base='https://example.supabase.co/functions/v1/twilio-inbound';
 function setup(){
- const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],callcenter_transcripts:[],outreach_inbound_calls:[]};
- const writes=[];let failTranscript=false;
- const db={async rpc(name,args){writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null;const q={select(){return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
-  async function run(single){if(insert&&!rows[table].some(x=>x.call_sid===insert.call_sid))rows[table].push({status:'ringing',cellphone_accepted:false,...insert});const found=rows[table].filter(row=>filters.every(([k,v])=>row[k]===v));if(patch)found.forEach(x=>Object.assign(x,patch));return {data:structuredClone(single==='many'?found:found[0]||null),error:single===true&&!found.length?{message:'not found'}:null};}return q;
+ const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],outreach_inbound_push_subscriptions:[],outreach_inbound_devices:[],callcenter_transcripts:[],outreach_inbound_calls:[]};
+ const writes=[],pushes=[],deleted=[];let failTranscript=false,pushError=null;
+ const db={async rpc(name,args){writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null,removing=false;const q={select(){return q},delete(){removing=true;return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
+  async function run(single){if(insert&&!rows[table].some(x=>x.call_sid===insert.call_sid))rows[table].push({status:'ringing',cellphone_accepted:false,...insert});const found=rows[table].filter(row=>filters.every(([k,v])=>row[k]===v));if(patch)found.forEach(x=>Object.assign(x,patch));if(removing){found.forEach(x=>deleted.push(x.endpoint));rows[table]=rows[table].filter(x=>!found.includes(x));}return {data:structuredClone(single==='many'?found:found[0]||null),error:single===true&&!found.length?{message:'not found'}:null};}return q;
  }};
  let handler,dbAccess=0;
  const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test-server-key',TWILIO_ACCOUNT_SID:account,TWILIO_AUTH_TOKEN:'test-token',TWILIO_INBOUND_WEBHOOK_URL:base};
- vm.runInNewContext(source,{...routing,URL,URLSearchParams,Response,Date,console:{error(){}},createClient(){dbAccess++;return db},twilio:{validateRequest:(_token,signature)=>signature==='valid'},Deno:{env:{get:key=>env[key]},serve:fn=>{handler=fn}}});
+ vm.runInNewContext(source,{...routing,URL,URLSearchParams,Response,Date,webpush:{async sendNotification(subscription,payload,options){pushes.push({subscription,payload:JSON.parse(payload),options});if(pushError)throw pushError;}},console:{error(){}},createClient(){dbAccess++;return db},twilio:{validateRequest:(_token,signature)=>signature==='valid'},Deno:{env:{get:key=>env[key]},serve:fn=>{handler=fn}}});
  const request=(stage='incoming',form={},query='',signature='valid')=>handler(new Request(base+(stage==='incoming'?'':'?stage='+stage+query),{method:'POST',headers:{'X-Twilio-Signature':signature,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({AccountSid:account,CallSid:parent,To:'+17025550101',From:'+17025550103',...form})}));
- return {request,rows,writes,failTranscript:()=>{failTranscript=true},access:()=>dbAccess};
+ return {request,rows,writes,env,pushes,deleted,setPushError:error=>{pushError=error},failTranscript:()=>{failTranscript=true},access:()=>dbAccess};
 }
 test('signed calls ring Outreach without saved routing or a personal number',async()=>{
  const s=setup();s.rows.outreach_inbound_settings=[];assert.match(await (await s.request()).text(),/<Client>/);
@@ -127,4 +127,33 @@ test('transcription initialization failure never blocks app reception or voicema
  const s=setup();s.failTranscript();const response=await s.request();assert.equal(response.status,200);
  const xml=await response.text();assert.match(xml,/<Client>/);assert.doesNotMatch(xml,/<Start>/);
  const ended=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();assert.match(ended,/<Record /);assert.doesNotMatch(ended,/<Stop>/);
+});
+
+function enablePush(s){
+ Object.assign(s.env,{WEB_PUSH_VAPID_PUBLIC_KEY:'public',WEB_PUSH_VAPID_PRIVATE_KEY:'private',WEB_PUSH_VAPID_SUBJECT:'mailto:admin@example.com'});
+ s.rows.outreach_inbound_push_subscriptions.push({user_id:'agent',enabled:true,endpoint:'https://web.push.apple.com/test',p256dh:'key',auth:'auth'},{user_id:'agent',enabled:false,endpoint:'https://fcm.googleapis.com/disabled'},{user_id:'other',enabled:true,endpoint:'https://fcm.googleapis.com/other'});
+}
+test('closed PWA receives owner-only enabled push and caller waits until browser registers',async()=>{
+ const s=setup();enablePush(s);const first=await (await s.request()).text();assert.match(first,/<Redirect method="POST">/);assert.doesNotMatch(first,/<Client>|<Start>/);
+ assert.equal(s.pushes.length,1);assert.equal(s.pushes[0].payload.kind,'incoming-call');assert.equal(s.pushes[0].payload.call_sid,parent);assert.equal(s.pushes[0].options.TTL,60);assert.equal(s.pushes[0].options.urgency,'high');
+ assert.equal(s.pushes[0].payload.body.includes('+1702'),false);
+ s.rows.outreach_inbound_devices.push({user_id:'agent',ready:true,updated_at:new Date().toISOString()});
+ const resumed=await (await s.request('wait')).text();assert.match(resumed,/<Client>/);assert.match(resumed,/<Start>/);assert.equal(s.pushes.length,1);
+});
+test('failed offline dial waits for fresh readiness without restarting transcription',async()=>{
+ const s=setup();enablePush(s);s.rows.outreach_inbound_devices.push({user_id:'agent',ready:true,updated_at:new Date().toISOString()});
+ assert.match(await (await s.request()).text(),/<Start>/);
+ const failed=await (await s.request('browser-ended',{DialCallStatus:'failed'})).text();assert.match(failed,/<Redirect/);assert.doesNotMatch(failed,/<Stop>|<Record/);
+ s.rows.outreach_inbound_devices[0].updated_at=new Date(Date.now()+10).toISOString();
+ const retry=await (await s.request('wait')).text();assert.match(retry,/<Client>/);assert.doesNotMatch(retry,/<Start>/);
+});
+test('expired push wait and explicitly alerted unanswered calls reach voicemail',async()=>{
+ for(const expired of [true,false]){
+  const s=setup();enablePush(s);await s.request();const call=s.rows.outreach_inbound_calls[0];
+  if(expired){call.push_wait_until=new Date(Date.now()-1000).toISOString();assert.match(await (await s.request('wait')).text(),/<Record /);}
+  else {call.browser_attempted_at=new Date(Date.now()-100).toISOString();call.browser_alerted_at=new Date().toISOString();assert.match(await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text(),/<Record /);}
+ }
+});
+test('expired push endpoints are pruned without failing call routing',async()=>{
+ const s=setup();enablePush(s);s.setPushError({statusCode:410});const response=await s.request();assert.equal(response.status,200);assert.equal(s.deleted.length,1);assert.equal(s.deleted[0],'https://web.push.apple.com/test');
 });

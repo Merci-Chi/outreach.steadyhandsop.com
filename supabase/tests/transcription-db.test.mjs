@@ -96,3 +96,23 @@ test('live interim revisions replace text without entering history and cannot re
  assert.equal((await db.query('select transcript from callcenter_transcripts where call_sid=$1',[out])).rows[0].transcript,'You: Hello');
  }finally{await db.close();}
 });
+
+const pushMigration=await readFile(new URL('../migrations/20261019040000_pwa_call_push.sql',import.meta.url),'utf8');
+test('PWA push/device storage is idempotent and inaccessible to direct browser database writes',async()=>{
+ const db=new PGlite(),user='11111111-2222-3333-4444-555555555555';
+ try{
+ await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role bypassrls;
+ create table auth.users(id uuid primary key);insert into auth.users values('${user}');
+ create table public.outreach_inbound_calls(call_sid text primary key,user_id uuid);
+ `);
+ await db.exec(pushMigration);await db.exec(pushMigration);
+ await db.exec(`grant usage on schema public to service_role,authenticated;set role service_role;
+ insert into outreach_inbound_push_subscriptions(user_id,endpoint,p256dh,auth) values('${user}','https://web.push.apple.com/test','key','auth');
+ insert into outreach_inbound_devices(user_id,device_id,ready) values('${user}','aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',true);`);
+ assert.equal((await db.query('select * from outreach_inbound_push_subscriptions')).rows.length,1);
+ await db.exec('reset role;set role authenticated;');
+ await assert.rejects(db.query('select * from outreach_inbound_push_subscriptions'),/permission denied/);
+ await assert.rejects(db.query('select * from outreach_inbound_devices'),/permission denied/);
+ await assert.rejects(db.query("update outreach_inbound_devices set ready=true"),/permission denied/);
+ }finally{await db.close();}
+});
