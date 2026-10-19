@@ -42,12 +42,16 @@
       script:'Happy to — so I send something worth reading instead of spam: what’s the one thing you’d want a website to actually do for you? … Got it. I’ll send exactly that, and I’ll follow up [agreed day/time] — does that work?',
       note:'Personalize the email to their answer and agree on the follow-up time.'}
   ];
+  let activeGuide=null;
   function mount({process,leadId}) {
+    if(!process)return null;
+    if(process.steadyHandsCallGuide){activeGuide=process.steadyHandsCallGuide;return activeGuide;}
     const make=(tag,text,className)=>{const el=document.createElement(tag);if(text)el.textContent=text;if(className)el.className=className;return el;};
     const header=process.querySelector('header'),fieldset=process.querySelector('#processSteps');
     const checklist=[...fieldset.querySelectorAll('ol > li')];
     const isCall=document.body.classList.contains('page-call');
     let guided=true,cursor=0,activeStage=0,opener=0,currentLead=leadId(),stageTrigger=null,responseTrigger=null;
+    let automaticallyShown=false,guideWait=null,voiceAttempt=null,voiceDialed=false,regularActive=false;
     const allLinks=[];
     const stageDialog=make('dialog',null,'call-guide-dialog');stageDialog.id='call-conversation-popup';
     stageDialog.setAttribute('aria-labelledby','call-conversation-title');
@@ -106,6 +110,7 @@
       pillButtons.forEach((button,i)=>{button.setAttribute('aria-pressed',String(selected===i));if(selected===i)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');});
     }
     function openStage(index,trigger=null){
+      if(currentLead)automaticallyShown=true;
       activeStage=index;stageTrigger=trigger||pillButtons[index];
       cards.forEach((card,i)=>card.hidden=i!==activeStage);
       stageStatus.textContent=`${activeStage+1} / ${stages.length} · ${stages[activeStage].label}`;
@@ -133,17 +138,54 @@
     }
     previous.addEventListener('click',()=>{cursor=Math.max(0,cursor-1);showStep(true);});
     next.addEventListener('click',()=>{cursor=Math.min(checklist.length-1,cursor+1);showStep(true);});
-    const resetLead=()=>{const id=leadId();if(id!==currentLead){closeResponse();currentLead=id;cursor=0;showStep();if(isCall)openStage(0);}};
-    window.addEventListener('steadyhands:call-lead-ready',resetLead);
+    function openAutomatically(){
+      if(!currentLead||automaticallyShown)return;
+      automaticallyShown=true;openStage(0);
+    }
+    function resetLead(automatic=true){
+      const id=leadId();
+      // CRM cards may disappear briefly while the same prospect re-renders.
+      if(!id||id===currentLead)return;
+      closeResponse();if(stageDialog.open)stageDialog.close();
+      currentLead=id;cursor=0;automaticallyShown=false;voiceAttempt=null;voiceDialed=false;regularActive=false;showStep();
+      if(automatic&&isCall)openAutomatically();
+    }
+    function prepare(id){
+      resetLead(false);
+      if(!id||id!==leadId())return Promise.resolve(false);
+      openAutomatically();
+      if(!stageDialog.open)return Promise.resolve(true);
+      if(guideWait)return guideWait;
+      guideWait=new Promise(resolve=>stageDialog.addEventListener('close',()=>{guideWait=null;resolve(leadId()===id);},{once:true}));
+      return guideWait;
+    }
+    window.addEventListener('steadyhands:call-lead-ready',()=>resetLead());
     window.addEventListener('steadyhands:call-guide-step',event=>{
       const step=Number(event.detail?.checklistStep);if(!Number.isInteger(step)||step<1||step>checklist.length)return;
       cursor=step-1;openProcess(true);
     });
-    const selected=document.querySelector('#selectedLeadTop');if(selected)new MutationObserver(resetLead).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
+    const selected=document.querySelector('#selectedLeadTop');if(selected)new MutationObserver(()=>resetLead()).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['data-crm-id']});
     window.addEventListener('steadyhands:process-mode',event=>{
-      guided=true;closeResponse();if(stageDialog.open)stageDialog.close();resetLead();showStep();if(event.detail?.guided)openStage(0);
+      guided=true;resetLead(false);showStep();
+      if(event.detail?.guided)openAutomatically();
+      else {closeResponse();if(stageDialog.open)stageDialog.close();}
     });
-    renderOpener();showStep();if(isCall)openStage(0);
+    window.addEventListener('steadyhands:voice-state',event=>{
+      const detail=event.detail||{};
+      if(detail.state==='calling'){voiceAttempt=detail.attemptId||'legacy';voiceDialed=false;}
+      if(detail.attemptId&&detail.attemptId!==voiceAttempt)return;
+      if(['dialed','ringing','connected'].includes(detail.state))voiceDialed=true;
+      if(detail.state==='ended'&&voiceAttempt){if(voiceDialed)automaticallyShown=false;voiceAttempt=null;voiceDialed=false;}
+    });
+    window.addEventListener('steadyhands:regular-call-state',event=>{
+      if(event.detail?.id&&event.detail.id!==currentLead)return;
+      const next=!!event.detail?.active;
+      if(regularActive&&!next)automaticallyShown=false;
+      regularActive=next;
+    });
+    const controller={prepare};process.steadyHandsCallGuide=controller;activeGuide=controller;
+    renderOpener();showStep();if(isCall)openAutomatically();
+    return controller;
   }
-  window.SteadyHandsCallGuide={mount};
+  window.SteadyHandsCallGuide={mount,prepare:id=>activeGuide?.prepare(id)??Promise.resolve(true)};
 })();

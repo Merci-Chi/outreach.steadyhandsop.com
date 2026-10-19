@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../call-guide.js',import.meta.url),'utf8');
-function setup({callPage=true}={}){
+function setup({callPage=true,initialLead='one'}={}){
  let document;
  class Node {
   constructor(tag){this.tag=tag;this.children=[];this.attributes={};this.dataset={};this.listeners={};this.hidden=false;this.text='';this.className='';this.disabled=false;this.open=false;}
@@ -20,7 +20,7 @@ function setup({callPage=true}={}){
   dispatch(type,event={}){for(const fn of this.listeners[type]||[])fn(event);}
   click(){if(!this.disabled)this.dispatch('click',{preventDefault(){}});}
   focus(){document.activeElement=this;}
-  showModal(){this.open=true;this.focus();}
+  showModal(){this.shows=(this.shows||0)+1;this.open=true;this.focus();}
   close(){if(!this.open)return;this.open=false;this.dispatch('close');}
   querySelectorAll(selector){
    const match=node=>selector.startsWith('#')?node.id===selector.slice(1):selector.startsWith('.')?node.className.split(' ').includes(selector.slice(1)):selector==='[data-opener]'?node.dataset.opener!==undefined:selector==='[aria-expanded="true"]'?node.getAttribute('aria-expanded')==='true':node.tag===selector;
@@ -39,10 +39,10 @@ function setup({callPage=true}={}){
  }
  root.classList={contains:name=>callPage&&name==='page-call'};
  document={createElement:tag=>new Node(tag),getElementById:id=>root.querySelector('#'+id),querySelector:selector=>selector==='#selectedLeadTop'?selected:selector==='.call-back-nav'?back:root.querySelector(selector),body:root};
- const listeners={},window={addEventListener(type,fn){(listeners[type]??=[]).push(fn);}};let lead='one',observer;
+ const listeners={},window={addEventListener(type,fn){(listeners[type]??=[]).push(fn);}};let lead=initialLead,observer;
  vm.runInNewContext(source,{window,document,MutationObserver:class{constructor(fn){observer=fn;}observe(){}}});window.SteadyHandsCallGuide.mount({process,leadId:()=>lead});
  const dispatch=(type,detail)=>{for(const fn of listeners[type]||[])fn({detail});};
- return {root,process,header,fieldset,ol,back,backButton,document,dispatch,changeLead(id){lead=id;observer();},pills:root.querySelectorAll('.call-stage-pill'),cards:root.querySelectorAll('.call-guide-card'),dialog:root.querySelector('#call-conversation-popup'),stageNext:root.querySelector('.call-popup-nav').children[2],stagePrevious:root.querySelector('.call-popup-nav').children[0],next:root.querySelector('.workflow-step-nav').children[1],previous:root.querySelector('.workflow-step-nav').children[0]};
+ return {prepare:id=>window.SteadyHandsCallGuide.prepare(id),mountAgain:()=>window.SteadyHandsCallGuide.mount({process,leadId:()=>lead}),root,process,header,fieldset,ol,back,backButton,document,dispatch,changeLead(id){lead=id;observer();},pills:root.querySelectorAll('.call-stage-pill'),cards:root.querySelectorAll('.call-guide-card'),dialog:root.querySelector('#call-conversation-popup'),stageNext:root.querySelector('.call-popup-nav').children[2],stagePrevious:root.querySelector('.call-popup-nav').children[0],next:root.querySelector('.workflow-step-nav').children[1],previous:root.querySelector('.workflow-step-nav').children[0]};
 }
 
 test('call opens in the opener popup; both location-neutral openers switch in place',()=>{
@@ -106,4 +106,45 @@ test('main Outreach exposes the same top pills, popup scripts, objections, and g
 });
 test('both workspaces load the guide before workflow initialization',async()=>{
  for(const name of ['call.html','index.html']){const html=await readFile(new URL('../'+name,import.meta.url),'utf8');assert(html.indexOf('call-guide.js?')<html.indexOf('outreach-workflow.js?'));assert.match(html,/class="call-back-nav"/);}
+});
+
+test('empty initialization waits for the real prospect and repeated hydration cannot reopen a dismissed guide',()=>{
+ const s=setup({initialLead:''});assert.equal(s.dialog.open,false);assert.equal(s.dialog.shows,undefined);
+ s.changeLead('ready');assert.equal(s.dialog.shows,1);s.dialog.close();
+ for(let i=0;i<3;i++){s.dispatch('steadyhands:call-lead-ready');s.changeLead('ready');s.dispatch('steadyhands:process-mode',{guided:true});}
+ assert.equal(s.dialog.open,false);assert.equal(s.dialog.shows,1);
+});
+test('duplicate mounting produces one guide, one set of pills and one set of listeners',()=>{
+ const s=setup();s.mountAgain();s.mountAgain();
+ assert.equal(s.root.querySelectorAll('#call-conversation-popup').length,1);assert.equal(s.root.querySelectorAll('.call-stage-pill').length,7);assert.equal(s.dialog.shows,1);
+ s.changeLead('two');assert.equal(s.dialog.shows,2);
+});
+test('repeated guided mode does not close, reopen, or rewind the current conversation',()=>{
+ const s=setup();s.stageNext.click();s.stageNext.click();
+ s.dispatch('steadyhands:process-mode',{guided:true});s.dispatch('steadyhands:process-mode',{guided:true});
+ assert.equal(s.dialog.shows,1);assert.equal(s.cards[2].hidden,false);
+ s.dialog.close();s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.open,false);
+ s.pills[4].click();assert.equal(s.dialog.open,true);assert.equal(s.cards[4].hidden,false);
+});
+test('call preparation waits for the existing guide instead of stacking another popup',async()=>{
+ const s=setup();let complete=false;const pending=s.prepare('one');pending.then(()=>complete=true);
+ assert.equal(s.prepare('one'),pending);await Promise.resolve();assert.equal(complete,false);assert.equal(s.dialog.shows,1);
+ s.dialog.close();assert.equal(await pending,true);assert.equal(await s.prepare('one'),true);assert.equal(s.dialog.shows,1);
+});
+test('a finished dialed attempt arms the next guide without opening it at hangup',async()=>{
+ const s=setup();s.dialog.close();s.dispatch('steadyhands:voice-state',{state:'calling',attemptId:'one'});s.dispatch('steadyhands:voice-state',{state:'dialed',attemptId:'one'});s.dispatch('steadyhands:voice-state',{state:'ended',attemptId:'one'});
+ assert.equal(s.dialog.open,false);s.dispatch('steadyhands:call-lead-ready');assert.equal(s.dialog.open,false);
+ const next=s.prepare('one');assert.equal(s.dialog.shows,2);s.dialog.close();assert.equal(await next,true);
+ s.dispatch('steadyhands:voice-state',{state:'ended',attemptId:'one'});s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.open,false);
+});
+test('changing prospect cancels a pending preparation and old end events cannot reset the new guide',async()=>{
+ const s=setup();const waiting=s.prepare('one');s.dispatch('steadyhands:voice-state',{state:'calling',attemptId:'old'});s.dispatch('steadyhands:voice-state',{state:'dialed',attemptId:'old'});
+ s.changeLead('two');assert.equal(await waiting,false);assert.equal(s.dialog.shows,2);s.dialog.close();
+ s.dispatch('steadyhands:voice-state',{state:'ended',attemptId:'old'});assert.equal(await s.prepare('two'),true);assert.equal(s.dialog.shows,2);
+});
+test('regular calls open the guide once despite repeated dialer and process events',()=>{
+ const s=setup({callPage:false});s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.shows,1);s.dialog.close();
+ s.dispatch('steadyhands:process-mode',{guided:false});s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.open,false);
+ s.dispatch('steadyhands:regular-call-state',{active:true,id:'one'});s.dispatch('steadyhands:regular-call-state',{active:false,id:'one'});assert.equal(s.dialog.open,false);
+ s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.shows,2);s.dialog.close();s.dispatch('steadyhands:process-mode',{guided:true});assert.equal(s.dialog.open,false);
 });

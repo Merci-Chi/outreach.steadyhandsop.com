@@ -9,7 +9,7 @@ function currentLead(){
  if(digits.length<10)return null;
  return {c,number,company:c.querySelector('.lead-title h2')?.textContent?.trim()||'',contact:c.querySelector('.lead-title .name')?.textContent?.trim()||'',role:c.querySelector('.lead-title .role')?.textContent?.trim()||'',preview:c.dataset.previewUrl||c.querySelector('.preview-link')?.href||'',timezone:c.dataset.timezone||'',id:c.dataset.crmId};
 }
-let checkingCaller = false;
+let checkingCaller = false, checkingRegular = false;
 async function linkCall(mode){
  const lead=currentLead();if(!lead){tell('Select a prospect with a phone number first.');return;}
  const {id,number,company,contact,role,preview,timezone}=lead;
@@ -28,11 +28,15 @@ async function linkCall(mode){
   finally{checkingCaller=false;if(button)button.disabled=false;}
   return;
  }
+ if(checkingRegular)return;
+ checkingRegular=true;
+ try{
  if(typeof window.SteadyHandsReviewBeforeCall!=='function'){tell('Prospect review is still loading. Please try again.');return;}
  if(!await window.SteadyHandsReviewBeforeCall(id))return;
  if(currentLead()?.id!==id){tell('The selected prospect changed. Review the new prospect first.');return;}
  try{await window.SteadyHandsLeadDisposition.ensureCallable(id,number);}catch(error){tell(error.message);return;}
  openRegularPhonePopup(number);
+ }finally{checkingRegular=false;}
 }
 
 function openOutreachSetupPopup(){
