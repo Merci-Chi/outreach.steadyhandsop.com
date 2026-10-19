@@ -1,15 +1,15 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../auth-guard.js',import.meta.url),'utf8');
 async function guard(page,status,{storage=new Map(),user='u'}={}){
- const events={},docEvents={},redirects=[];let interval,notify,reads=0;
+ const events={},docEvents={},redirects=[];let interval,notify,reads=0,errorDialog=null,reloads=0;
  const client={auth:{getSession:async()=>({data:{session:{user:{id:user,created_at:'2020-01-01'}}}})},rpc:async()=>{reads++;return status.error?{error:{message:'offline'}}:{data:status}},channel:()=>({on(_type,_filter,callback){notify=callback;return this},subscribe(){}})};
  const window={supabase:{createClient:()=>client},addEventListener:(k,fn)=>events[k]=fn,setInterval:fn=>interval=fn};
- const document={head:{appendChild(){}},createElement:()=>({}),documentElement:{classList:{add(){},remove(){}}},addEventListener:(k,fn)=>docEvents[k]=fn,visibilityState:'visible'};
+ const document={head:{appendChild(){}},body:{appendChild(node){errorDialog=node}},createElement:()=>({style:{},setAttribute(){},addEventListener(){},querySelector(){return {addEventListener:(_name,fn)=>this.retry=fn}},showModal(){this.open=true},close(){this.open=false},remove(){this.removed=true}}),documentElement:{classList:{add(){},remove(){}}},addEventListener:(k,fn)=>docEvents[k]=fn,visibilityState:'visible'};
  const store={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
  storage.set('callcenter-resume-checked','1');
  const url=new URL(page,'https://outreach.steadyhandsop.com/');
- vm.runInNewContext(source,{window,document,URL,URLSearchParams,Date,location:{pathname:url.pathname,search:url.search,hash:url.hash,href:url.href,origin:url.origin,replace:v=>redirects.push(v)},sessionStorage:store,localStorage:store,console:{error(){}}});
- await docEvents.DOMContentLoaded();return {window,redirects,events,interval,notify,storage,reads:()=>reads};
+ vm.runInNewContext(source,{window,document,URL,URLSearchParams,Date,location:{pathname:url.pathname,search:url.search,hash:url.hash,href:url.href,origin:url.origin,replace:v=>redirects.push(v),reload:()=>reloads++},sessionStorage:store,localStorage:store,console:{error(){}}});
+ await docEvents.DOMContentLoaded();return {window,redirects,events,interval,notify,storage,reads:()=>reads,get errorDialog(){return errorDialog},reloads:()=>reloads};
 }
 const portal=value=>{const u=new URL(value);assert.equal(u.origin,'https://onboard.steadyhandsop.com');assert.equal(u.searchParams.get('from'),'outreach');return u;};
 test('paused workspaces and a refreshed call page go directly to the onboarding portal',async()=>{
@@ -36,8 +36,11 @@ test('saved destinations from another account or an external site cannot be rest
  state.set('outreach-onboarding-return',JSON.stringify({userId:'u',href:'https://evil.example/call.html',savedAt:Date.now()}));
  const evil=await guard('index.html',{is_paused:false},{storage:state});assert.equal(evil.redirects.length,0);
 });
-test('open workspaces recheck broadcasts, focus and polling; failed verification hands off safely',async()=>{
+test('confirmed pauses redirect while failed verification stays on the current page',async()=>{
  const status={is_paused:false};const h=await guard('index.html',status);status.is_paused=true;await h.notify();portal(h.redirects.at(-1));
- status.error=true;await h.events.focus();portal(h.redirects.at(-1));assert.equal(typeof h.interval,'function');
- const invalid=await guard('call.html',{});portal(invalid.redirects[0]);
+ const active={is_paused:false};const open=await guard('call.html?crm_id=123',active);
+ active.error=true;await open.events.focus();assert.equal(open.redirects.length,0);assert.equal(open.errorDialog.open,true);assert.equal(typeof open.interval,'function');
+ active.error=false;await open.events.online();assert.equal(open.errorDialog.removed,true);
+ const invalid=await guard('call.html',{});assert.equal(invalid.redirects.length,0);assert.equal(invalid.errorDialog.open,true);
+ const offline=await guard('index.html',{error:true});assert.equal(offline.redirects.length,0);assert.equal(offline.errorDialog.open,true);assert(!offline.storage.has('outreach-onboarding-return'));offline.errorDialog.retry();assert.equal(offline.reloads(),1);
 });

@@ -196,6 +196,26 @@
       let accessNavigating=false;
       const handoff=()=>{accessNavigating=true;document.documentElement.classList.add('auth-checking');location.replace(portalURL(userId));};
       if(actionPage){handoff();return;}
+      let accessErrorDialog = null;
+      function showAccessError() {
+        // A failed request is not evidence of a pause or unfinished onboarding.
+        // Keep the workspace blocked and offer recovery on this page.
+        if (!accessErrorDialog) {
+          accessErrorDialog = document.createElement('dialog');
+          accessErrorDialog.setAttribute('aria-labelledby','outreachAccessErrorTitle');
+          accessErrorDialog.setAttribute('aria-describedby','outreachAccessErrorMessage');
+          accessErrorDialog.style.cssText = 'max-width:440px;width:calc(100% - 36px);box-sizing:border-box;border:1px solid #d6e0ee;border-radius:18px;padding:26px;color:#10284a;background:#fff;box-shadow:0 20px 80px #10284a55;font-family:system-ui,sans-serif';
+          accessErrorDialog.innerHTML = '<h2 id="outreachAccessErrorTitle">Unable to check account access</h2><p id="outreachAccessErrorMessage">The connection to Outreach could not be verified. Try again in a moment. Your current page has been kept.</p><button type="button" style="padding:12px 20px;border:0;border-radius:10px;background:#087cff;color:#fff;font:inherit;font-weight:700">Try again</button>';
+          accessErrorDialog.addEventListener('cancel', event => event.preventDefault());
+          accessErrorDialog.querySelector('button').addEventListener('click', () => location.reload());
+          document.body.appendChild(accessErrorDialog);
+          accessErrorDialog.showModal();
+        }
+        document.documentElement.classList.remove('auth-checking');
+      }
+      function clearAccessError() {
+        if (accessErrorDialog) { accessErrorDialog.close(); accessErrorDialog.remove(); accessErrorDialog = null; }
+      }
       let inFlight = null;
       async function checkAccess() {
         if (inFlight) return inFlight;
@@ -203,6 +223,7 @@
           const {data:status,error} = await client.rpc('outreach_access_status');
           if (error || typeof status?.is_paused !== 'boolean') throw new Error('Could not verify account access.');
           window.outreachAccessStatus = status;
+          clearAccessError();
           if (status.is_paused) {
             handoff();
           } else {
@@ -227,12 +248,12 @@
       let initialStatus;
       try { initialStatus = await checkAccess(); }
       catch {
-        handoff();return;
+        showAccessError();return;
       }
       if(accessNavigating)return;
       const recheck = () => refreshAccess().catch(() => {
-        // Never leave an already-open workspace usable when verification fails.
-        handoff();
+        // Failed verification blocks the workspace without claiming onboarding is required.
+        showAccessError();
       });
       window.addEventListener('focus', recheck);
       window.addEventListener('pageshow', recheck);
