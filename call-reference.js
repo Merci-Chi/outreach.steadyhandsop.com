@@ -18,36 +18,18 @@
     contact: params.get('contact') || snapshot?.contact || ''
   };
   const valid = !!lead.id && lead.number.replace(/\D/g,'').length >= 10;
-  const names = {
-    'america/phoenix':'America/Phoenix', 'arizona':'America/Phoenix',
-    'pacific':'America/Los_Angeles', 'pst':'America/Los_Angeles', 'pdt':'America/Los_Angeles',
-    'mountain':'America/Denver', 'mst':'America/Phoenix','mdt':'America/Denver',
-    'central':'America/Chicago', 'cst':'America/Chicago','cdt':'America/Chicago',
-    'eastern':'America/New_York','est':'America/New_York','edt':'America/New_York',
-    'alaska':'America/Anchorage','hawaii':'Pacific/Honolulu'
-  };
   function zone() {
-    const raw = lead.timezone.trim();
-    if (!raw) return '';
-    if (raw.includes('/')) return raw;
-    const key = raw.toLowerCase();
-    return names[key] || Object.entries(names).find(([k]) => key.includes(k))?.[1] || '';
+    return window.callcenterLeadZone(lead.number, lead.timezone).zone;
   }
   function clock() {
     const el = $('#refLocalTime'); if (!el) return;
-    let tz = zone();
-    if (!tz && lead.number && typeof callcenterLeadZone === 'function') {
-      try { tz = callcenterLeadZone(lead.number,lead.timezone).zone || ''; } catch (_) {}
-    }
+    const tz = zone();
     if (!tz) { el.textContent = 'Local time unavailable'; return; }
     try { el.textContent = new Intl.DateTimeFormat('en-US', { timeZone:tz, weekday:'long',hour:'numeric',minute:'2-digit',timeZoneName:'short' }).format(new Date()); }
     catch (_) { el.textContent = 'Local time unavailable'; }
   }
   function callingWindow() {
-    let tz = zone();
-    if (!tz && lead.number && typeof callcenterLeadZone === 'function') {
-      try { tz = callcenterLeadZone(lead.number,lead.timezone).zone || ''; } catch (_) {}
-    }
+    const tz = zone();
     if (!tz) return null;
     try {
       const parts = new Intl.DateTimeFormat('en-US', {

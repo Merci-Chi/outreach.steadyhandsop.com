@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('../lead-timezone.js', import.meta.url), 'utf8') + '\n' + await readFile(new URL('../app.js', import.meta.url), 'utf8');
 function setup({rows = [], selectedId = '', exact = null, error = null, historyPromise = null, previewPromise = null} = {}) {
   const queries = [], status = {textContent:'Connecting',style:{}}, message = {textContent:''};
   let skeleton = true, cards = [];
