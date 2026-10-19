@@ -2452,7 +2452,14 @@ function callcenterPhoneAreaCode(phone) {
 function callcenterNormalizedZone(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  if (raw.includes('/')) return raw;
+  if (raw.includes('/')) {
+    // CRM imports can contain obsolete or malformed zones. One bad row must
+    // never prevent every assigned prospect from rendering (including Safari).
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: raw }).format();
+      return raw;
+    } catch { return ''; }
+  }
   const key = raw.toLowerCase().replace(/\s+/g, '');
   if (/pacific|pst|pdt/.test(key)) return 'America/Los_Angeles';
   if (/mountain|mst|mdt/.test(key)) return 'America/Denver';
@@ -2694,7 +2701,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
 
   card.dataset.notInterested=String(isNotInterested);
 
-  card.dataset.timezone=crmText(lead.timezone||'');
+  card.dataset.timezone=callcenterNormalizedZone(lead.timezone);
   card.dataset.phone=phone;
   card.dataset.previewUrl=urls[0] || '';
 
@@ -3098,6 +3105,12 @@ function crmSetupGlobalSearchControls() {
 
 function finishInitialOutreachLoad() {
   q('main.content')?.classList.remove('outreach-loading');
+  q('#selectedLeadTop .skeleton-lead')?.remove();
+  const status = q('#crmStatus');
+  const message = q('#refMessage');
+  if (message && !q('#selectedLeadTop .lead-card')) {
+    message.textContent = status?.textContent || 'No assigned prospect selected. Open My Leads to choose a prospect.';
+  }
 }
 
 async function loadLiveCRMTotals(client) {
@@ -3128,9 +3141,9 @@ async function loadApprovedPreviewCRM(options = {}) {
   crmSetupGlobalSearchControls();
 
   if (!window.supabase) {
-    finishInitialOutreachLoad();
     status.style.display = '';
     status.textContent = 'Unable to connect. Please try again.';
+    finishInitialOutreachLoad();
     return;
   }
 
@@ -3203,9 +3216,9 @@ async function loadApprovedPreviewCRM(options = {}) {
     }
   } catch (error) {
     console.error('Authentication check failed:', error);
-    finishInitialOutreachLoad();
     status.style.display = '';
     status.textContent = 'Unable to verify Outreach access: ' + String(error?.message || 'Please sign in again.');
+    finishInitialOutreachLoad();
     return;
   }
 
@@ -3252,7 +3265,18 @@ async function loadApprovedPreviewCRM(options = {}) {
     const leads = (assigned || []).filter(callcenterIsFreshLead);
     const selectedId = new URLSearchParams(location.search).get('crm_id') ||
       (() => { try { return sessionStorage.getItem('steadyhands-selected-outreach-crm-id') || ''; } catch { return ''; } })();
-    const selectedLead = leads.find(lead => lead.id === selectedId);
+    let selectedLead = leads.find(lead => String(lead.id) === String(selectedId));
+    // A My Leads deep link may point beyond this initial queue batch. Recheck
+    // the exact record with the same authenticated assignment restriction.
+    if (selectedId && !selectedLead) {
+      const { data, error } = await client.from('crm')
+        .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
+        .eq('id', selectedId).eq('assigned_user_id', userId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('This prospect is no longer assigned to you. Choose a prospect from My Leads.');
+      selectedLead = data;
+      leads.push(data);
+    }
     const ordered = callcenterShuffle(leads);
     if (selectedLead) {
       const index = ordered.findIndex(lead => lead.id === selectedLead.id);
@@ -3274,10 +3298,10 @@ async function loadApprovedPreviewCRM(options = {}) {
     refreshIcons();
     finishInitialOutreachLoad();
   } catch (error) {
-    finishInitialOutreachLoad();
     status.style.display = '';
     const detail = String(error?.message || 'Unknown error');
     status.textContent = 'Unable to load leads: ' + detail;
+    finishInitialOutreachLoad();
 
     box.replaceChildren();
 
