@@ -1,4 +1,4 @@
-/* Manual regular-phone post-call questionnaire; time is not verified network call duration. */
+/* Shared post-call questionnaire. Browser timing is an estimate, never verified duration. */
 (()=>{'use strict';
 const q=(s,r=document)=>r.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storage='steadyhands:outreach-feedback-pending-v2';let pending=null,submitting=false;
@@ -19,7 +19,7 @@ function view(){
  const secs=Math.max(0,Math.min(86400,Number(pending.elapsed_seconds)||0));
  const duration=Math.floor(secs/60)+'m '+Math.floor(secs%60)+'s';
  const selected=pending.called===false?'did_not_call':'good';
- overlay.innerHTML=`<section class="sh-tool-sheet" role="dialog" aria-modal="true" aria-labelledby="shFeedbackTitle"><div class="sh-sheet-handle"></div><div class="sh-sheet-head"><h2 id="shFeedbackTitle">How did it go?</h2><button type="button" class="sh-sheet-x" id="shFeedbackLater" aria-label="Close">×</button></div><form class="sh-sheet-body" id="shFeedbackForm"><p class="sh-sheet-help">${esc(pending.company||'Prospect')} · Regular Phone</p><p class="sh-call-duration"><i data-lucide="timer" aria-hidden="true"></i> Call timer: <strong>${duration}</strong> (manually timed)</p><fieldset class="sh-feedback-interest"><legend>Call outcome</legend><div class="sh-outcomes">${choices.map(([value,icon,label])=>`<label class="sh-outcome"><input type="radio" name="outcome" value="${value}" ${value===selected?'checked':''} required><i data-lucide="${icon}" aria-hidden="true"></i><b>${label}</b></label>`).join('')}</div></fieldset><fieldset class="sh-feedback-interest"><legend>Follow-up details (optional)</legend>${['Interested','Skeptical','Needs More Info','Later','Money Problems'].map(v=>`<label><input type="checkbox" name="interest" value="${v}"> ${v}</label>`).join('')}</fieldset><div class="sh-feedback-flags">${[['portal_link_sent','Client portal link sent'],['registered','Client registered'],['site_reviewed','Client reviewed site'],['ready_to_buy','Ready to buy']].map(([n,label])=>`<label><input type="checkbox" name="${n}"> ${label}</label>`).join('')}</div><label class="sh-field-label">Notes<textarea class="sh-note-input" name="notes" placeholder="What happened during this call?"></textarea></label><button class="sh-sheet-primary" type="submit" id="shFeedbackSave">Save Call Result</button><p class="sh-sheet-status" id="shFeedbackStatus" role="status"></p></form></section>`;
+ overlay.innerHTML=`<section class="sh-tool-sheet" role="dialog" aria-modal="true" aria-labelledby="shFeedbackTitle"><div class="sh-sheet-handle"></div><div class="sh-sheet-head"><h2 id="shFeedbackTitle">How did it go?</h2><button type="button" class="sh-sheet-x" id="shFeedbackLater" aria-label="Close">×</button></div><form class="sh-sheet-body" id="shFeedbackForm"><p class="sh-sheet-help">${esc(pending.company||'Prospect')} · ${pending.call_method==='outreach'?'Outreach Call':'Regular Phone'}</p><p class="sh-call-duration"><i data-lucide="timer" aria-hidden="true"></i> Call timer: <strong>${duration}</strong> (${pending.call_method==='outreach'?'browser timer estimate':'manually timed'})</p><fieldset class="sh-feedback-interest"><legend>Call outcome</legend><div class="sh-outcomes">${choices.map(([value,icon,label])=>`<label class="sh-outcome"><input type="radio" name="outcome" value="${value}" ${value===selected?'checked':''} required><i data-lucide="${icon}" aria-hidden="true"></i><b>${label}</b></label>`).join('')}</div></fieldset><fieldset class="sh-feedback-interest"><legend>Follow-up details (optional)</legend>${['Interested','Skeptical','Needs More Info','Later','Money Problems'].map(v=>`<label><input type="checkbox" name="interest" value="${v}"> ${v}</label>`).join('')}</fieldset><div class="sh-feedback-flags">${[['portal_link_sent','Client portal link sent'],['registered','Client registered'],['site_reviewed','Client reviewed site'],['ready_to_buy','Ready to buy']].map(([n,label])=>`<label><input type="checkbox" name="${n}"> ${label}</label>`).join('')}</div><label class="sh-field-label">Notes<textarea class="sh-note-input" name="notes" placeholder="What happened during this call?"></textarea></label><button class="sh-sheet-primary" type="submit" id="shFeedbackSave">Save Call Result</button><p class="sh-sheet-status" id="shFeedbackStatus" role="status"></p></form></section>`;
  renderIcons(overlay);
  q('#shFeedbackLater',overlay).onclick=()=>{overlay.remove();};
  q('#shFeedbackForm',overlay).onsubmit=save;
@@ -30,7 +30,22 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const c
  const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call'};
  const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.'}[selected]||'';
  const args={p_crm_id:pending.crm_id,p_client_event_id:pending.event_id,p_outcome:mapped[selected],p_elapsed_seconds:Math.max(0,Math.min(86400,Number(pending.elapsed_seconds)||0)),p_interest_stages:d.getAll('interest'),p_notes:[prefix,String(d.get('notes')||'').trim()].filter(Boolean).join('\n'),p_portal_link_sent:d.has('portal_link_sent'),p_registered:d.has('registered'),p_site_reviewed:d.has('site_reviewed'),p_ready_to_buy:d.has('ready_to_buy')};const isVoicemail=selected==='left_voicemail';
- const {error}=await c.rpc('record_regular_outreach_call_v1',args);if(error)throw error;
+ if(pending.call_method==='outreach'){
+   const {data:auth,error:authError}=await c.auth.getUser();if(authError)throw authError;
+   if(!auth?.user)throw Error('Sign in before saving.');
+   if(!pending.call_sid)throw Error('The call has no call ID. Please contact your administrator.');
+   let {data:activity,error:activityError}=await c.from('callcenter_call_activity').select('id').eq('call_sid',pending.call_sid).eq('crm_id',pending.crm_id).eq('user_id',auth.user.id).maybeSingle();
+   if(activityError)throw activityError;
+   if(!activity){
+     if(typeof window.callcenterRecordCall!=='function')throw Error('Call logging is not ready. Keep this form open and try again.');
+     activity=await window.callcenterRecordCall({crmId:pending.crm_id,callSid:pending.call_sid,duration:0,outcome:args.p_outcome,endedAt:Date.now()});
+     if(!activity?.id)throw Error('The call record could not be saved. Try Save Call Result again.');
+   }
+   const {error}=await c.from('callcenter_post_call_questionnaires').upsert({call_activity_id:activity.id,user_id:auth.user.id,crm_id:pending.crm_id,outcome:args.p_outcome,interest_stages:args.p_interest_stages,notes:args.p_notes,portal_link_sent:args.p_portal_link_sent,registered:args.p_registered,site_reviewed:args.p_site_reviewed,ready_to_buy:args.p_ready_to_buy,client_event_id:pending.event_id,call_method:'outreach',elapsed_seconds_estimate:args.p_elapsed_seconds},{onConflict:'call_activity_id'});
+   if(error)throw error;
+ }else{
+   const {error}=await c.rpc('record_regular_outreach_call_v1',args);if(error)throw error;
+ }
  if(isVoicemail){
    const {data:lead,error:readError}=await c.from('crm').select('tags').eq('id',pending.crm_id).single();
    if(readError)throw new Error('Call recorded, but the voicemail tag could not be loaded: '+readError.message);
@@ -39,7 +54,7 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const c
    const {error:tagError}=await c.from('crm').update({tags,outcome:'Left Voicemail'}).eq('id',pending.crm_id);
    if(tagError)throw new Error('Call recorded, but the voicemail tag could not be saved: '+tagError.message);
  }
- sessionStorage.removeItem(storage);pending=null;message.textContent='Saved to Supabase.';setTimeout(()=>{q('#shFeedbackOverlay')?.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));},400);
+ try{sessionStorage.removeItem(storage)}catch{}pending=null;message.textContent='Saved to Supabase.';setTimeout(()=>{q('#shFeedbackOverlay')?.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));},400);
  }catch(ex){console.error('Questionnaire save failed:',ex);message.textContent=`Not saved: ${ex.message||'Try again'}. Your answers are still here.`;}
  finally{submitting=false;if(btn?.isConnected)btn.disabled=false;}
 }
@@ -50,10 +65,10 @@ window.steadyHandsOpenPostCallQuestionnaire = function(detail){
  try {
    const previous=pending;
    pending={...d,company:d.company||q('#refCompany')?.textContent||'Prospect',
-     event_id:previous?.crm_id===d.crm_id ? previous.event_id :
+     event_id:previous?.crm_id===d.crm_id && previous?.call_sid===d.call_sid ? previous.event_id :
        (typeof crypto!=='undefined' && typeof crypto.randomUUID==='function' ? crypto.randomUUID() :
         '00000000-0000-4000-8000-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12))};
-   sessionStorage.setItem(storage,JSON.stringify(pending));
+   try{sessionStorage.setItem(storage,JSON.stringify(pending))}catch(err){console.warn('Post-call recovery storage unavailable',err);}
    view();
    return true;
  } catch(err){console.error('Unable to open post-call questionnaire',err);return false;}
