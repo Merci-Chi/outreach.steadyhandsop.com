@@ -49,7 +49,33 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='preview'?'S
  const options=[...new Set(['Warm Lead','Cold Lead',...(catalog||[]).map(x=>x.name).filter(Boolean),...tags])];
  m=sheet('Tags',`<p class="sh-sheet-help">Tap tags to turn them on or off for this lead.</p><div class="sh-tag-options">${options.map(x=>`<button class="sh-tag-pill ${chosen.has(x)?'selected':''}" type="button" data-tag="${esc(x)}"><span class="sh-tag-check">✓</span>${esc(x)}</button>`).join('')}</div><button class="sh-sheet-primary" id="shSaveTags">Save Tags</button>`);
  m.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{const x=b.dataset.tag;if(chosen.has(x))chosen.delete(x);else chosen.add(x);b.classList.toggle('selected',chosen.has(x))});
- $('#shSaveTags',m).onclick=async()=>{const b=$('#shSaveTags',m);b.disabled=true;try{const {data:auth,error:authError}=await client().auth.getUser();if(authError)throw authError;if(!auth?.user)throw Error('Sign in to save tags.');const {error:e}=await client().from('crm').update({tags:[...chosen]}).eq('id',l.id).eq('assigned_user_id',auth.user.id).select('id').single();if(e)throw e;msg(m,'Tags saved.');setTimeout(close,500);}catch(e){error(m,e)}finally{b.disabled=false}};return;
+ $('#shSaveTags',m).onclick=async()=>{
+   const b=$('#shSaveTags',m);b.disabled=true;
+   try{
+     if(String(id())!==String(l.id))throw Error('The selected prospect changed. Reopen Tags before saving.');
+     const c=client();if(!c)throw Error('Sign in to save tags.');
+     const {data:auth,error:authError}=await c.auth.getUser();
+     if(authError||!auth?.user)throw Error('Sign in again to save tags.');
+     const selectedTags=[...chosen];
+     // The returned row is essential: an RLS-denied UPDATE may affect zero rows.
+     const {data:updated,error:saveError}=await c.from('crm').update({tags:selectedTags})
+       .eq('id',l.id).eq('assigned_user_id',auth.user.id).select('id,tags').single();
+     if(saveError||!updated)throw Error('Tags could not be saved: '+(saveError?.message||'No assigned prospect was updated.'));
+     const saved=typeof updated.tags==='string'?JSON.parse(updated.tags):updated.tags;
+     if(!Array.isArray(saved)||saved.length!==selectedTags.length||selectedTags.some(tag=>!saved.includes(tag)))
+       throw Error('Tags were not confirmed on the prospect. Refresh and retry.');
+     // Refresh from the server so an update that did not persist is not reported as saved.
+     const {data:verified,error:verifyError}=await c.from('crm').select('tags').eq('id',l.id)
+       .eq('assigned_user_id',auth.user.id).single();
+     if(verifyError||!verified)throw Error('Tags saved, but verification failed: '+(verifyError?.message||'Prospect unavailable.'));
+     const persisted=typeof verified.tags==='string'?JSON.parse(verified.tags):verified.tags;
+     if(!Array.isArray(persisted)||persisted.length!==selectedTags.length||selectedTags.some(tag=>!persisted.includes(tag)))
+       throw Error('Tags did not persist correctly. Refresh and retry.');
+     msg(m,'Tags saved successfully.');
+     window.dispatchEvent(new CustomEvent('steadyhands:tags-updated',{detail:{crmId:l.id,tags:persisted}}));
+   }catch(e){console.error('Tag save failed',e);msg(m,'Could not save tags: '+(e.message||'Unknown error. Try again.'))}
+   finally{b.disabled=false}
+ };return;
  }
  if(k==='preview'){
  let details;try{details=await window.SteadyHandsPreviews.resolveLeadDetails(l,{fresh:true})}catch(e){msg(m,e.message);return;}if(!document.body.contains(m))return;if(String(l.id)!==String(id())){msg(m,'The selected prospect changed. Reopen Site Preview to share the correct website.');return;}const link=details.previewUrl;const message=`Hi! Here is the website preview we made for ${l.company||f().name}: ${link}`;
