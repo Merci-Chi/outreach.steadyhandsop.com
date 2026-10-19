@@ -42,6 +42,8 @@
       if(error.code==='PGRST202'||error.code==='42883')throw new Error('Your answers could not be saved. Your administrator needs to finish setting up this questionnaire. Please contact them, then retry.');
       throw new Error(error.message || 'Could not confirm your submission. Return to Action Needed to check its status.');
     }
+    window.dispatchEvent(new Event('outreach:actions-completed'));
+    try { localStorage.setItem('outreach-access-changed', String(Date.now())); } catch {}
     return data;
   }
   async function extend(assignmentId,previous,next) {

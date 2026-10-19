@@ -6,6 +6,9 @@
   const RESUME_CHECKED_KEY = 'callcenter-resume-checked';
   const MAX_RESUME_AGE = 1000 * 60 * 60 * 24 * 30;
 
+  const accessStyle = document.createElement('style');
+  accessStyle.textContent = '.auth-checking body{visibility:hidden;pointer-events:none}';
+  document.head.appendChild(accessStyle);
   document.documentElement.classList.add('auth-checking');
 
   function currentPageName() {
@@ -155,29 +158,62 @@
         return;
       }
 
-      // Assigned questionnaires are available without entering the older pause agreement.
-      // This exception grants no calling or lead access; those pages retain their checks.
+      // Action pages remain available so a paused associate can resolve requirements.
       const actionPages = ['action-needed.html','alreadyoncommission.html','currentlyonhourlywage.html'];
-      if(actionPages.includes(currentPageName())){
+      const actionPage = actionPages.includes(currentPageName());
+      let inFlight = null;
+      let wasPaused = false;
+      async function checkAccess() {
+        if (inFlight) return inFlight;
+        inFlight = (async () => {
+          const {data:status,error} = await client.rpc('outreach_access_status');
+          if (error || typeof status?.is_paused !== 'boolean') throw new Error('Could not verify account access.');
+          window.outreachAccessStatus = status;
+          if (status.is_paused) {
+            wasPaused = true;
+            if (!actionPage && currentPageName() !== 'pause.html') {
+              document.documentElement.classList.add('auth-checking');
+              location.replace(status.action_required ? 'action-needed.html?open=1' : 'pause.html');
+            }
+          } else if (currentPageName() === 'pause.html' || (actionPage && wasPaused)) {
+            location.replace('index.html');
+          }
+          return status;
+        })();
+        try { return await inFlight; } finally { inFlight = null; }
+      }
+      async function refreshAccess() {
+        // A submission must read after any pre-submission check has finished.
+        if (inFlight) {try {await inFlight;} catch {}}
+        return checkAccess();
+      }
+      window.outreachRecheckAccess = refreshAccess;
+      let initialStatus;
+      try { initialStatus = await checkAccess(); }
+      catch {
+        if (!actionPage) {location.replace('pause.html');return;}
+        initialStatus = {is_paused:true};
+      }
+      const recheck = () => refreshAccess().catch(() => {
+        // Never leave an already-open workspace usable when verification fails.
+        if (!actionPage && currentPageName() !== 'pause.html') location.replace('pause.html');
+      });
+      window.addEventListener('focus', recheck);
+      window.addEventListener('pageshow', recheck);
+      window.addEventListener('online', recheck);
+      window.addEventListener('outreach:actions-completed', recheck);
+      window.addEventListener('storage', event => { if (event.key === 'outreach-access-changed') recheck(); });
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') recheck(); });
+      // Realtime triggers an immediate fresh read; polling covers missed events.
+      client.channel?.('outreach-access-' + data.session.user.id)
+        .on('broadcast', {event:'access-changed'}, recheck)
+        .subscribe();
+      window.setInterval(recheck, 5000);
+      if (actionPage || currentPageName() === 'pause.html') {
         document.documentElement.classList.remove('auth-checking');
         return;
       }
-
-      // Server-backed restriction is checked before onboarding/resume or displaying leads.
-      const {data:pauseData,error:pauseError}=await client.rpc('sh_get_my_access_pause');
-      if(pauseError) throw new Error('Could not verify account access: '+pauseError.message);
-      const pauseStatus=Array.isArray(pauseData)?pauseData[0]:pauseData;
-      if(pauseStatus?.is_paused===true){
-        if(currentPageName()!=='pause.html'){
-          const {data:assignedAction,error:assignmentError}=await client.from('outreach_action_assignments')
-            .select('id').eq('user_id',data.session.user.id).eq('status','assigned').limit(1).maybeSingle();
-          if(!assignmentError && assignedAction){location.replace('action-needed.html?open=1');return;}
-          location.replace('pause.html');return;
-        }
-        document.documentElement.classList.remove('auth-checking');
-        return;
-      }
-      if(currentPageName()==='pause.html'){location.replace('index.html');return;}
+      if (initialStatus.is_paused) return;
 
       // A persistent, account-level first-login check. Existing employees aren't forced
       // through a new password setup after this feature is deployed.

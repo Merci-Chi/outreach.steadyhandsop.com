@@ -27,6 +27,15 @@
    }
   }catch{const error=make('p','We couldn’t load your actions. Please try again or contact your administrator.');error.setAttribute('role','alert');main.appendChild(error);
    const retry=make('button','Try again');retry.addEventListener('click',init);main.appendChild(retry);}
+  const status=make('p','Outreach is paused until all required actions and agreements are complete.');status.setAttribute('role','status');main.appendChild(status);
+  const recheck=make('button','Recheck access');recheck.type='button';recheck.className='button';
+  recheck.addEventListener('click',async()=>{
+   recheck.disabled=true;
+   try{const access=await window.outreachRecheckAccess();
+    if(!access.is_paused)location.replace('index.html');
+    else status.textContent=access.action_required?'An action is still required. Complete every pending questionnaire.':'An agreement or other account action is still required.';
+   }catch{status.textContent='Could not verify access. Please recheck again.';}finally{recheck.disabled=false;}
+  });main.appendChild(recheck);
   const back=make('a','Back to Outreach');back.href='index.html';back.className='button';main.appendChild(back);
  }
  document.addEventListener('DOMContentLoaded',init);
