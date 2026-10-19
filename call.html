@@ -50,7 +50,7 @@
           <div class="ref-active-clock"><span>Prospect’s local time</span><strong id="refLocalTime">Local time unavailable</strong></div>
           <div class="ref-active-controls ref-five-controls" aria-label="Call controls">
             <button type="button" class="ref-call-control" id="refMute" aria-label="Mute"><span class="ref-control-circle"><i data-lucide="mic"></i></span><span>Mute</span></button>
-            <button type="button" class="ref-call-control" id="refKeypad" aria-label="Keypad"><span class="ref-control-circle"><i data-lucide="grid-3x3"></i></span><span>Keypad</span></button>
+            <button type="button" class="ref-call-control" id="refKeypad" aria-label="Keypad" aria-haspopup="dialog" aria-controls="callKeypad"><span class="ref-control-circle"><i data-lucide="grid-3x3"></i></span><span>Keypad</span></button>
             <div class="ref-phone-center">
               <button type="button" class="ref-round-phone is-idle" id="refEndCall" aria-label="Call" disabled>
                 <span class="ref-round-phone-inner"><i data-lucide="phone" class="ref-round-phone-icon"></i></span>
@@ -241,6 +241,31 @@
 
 </div>
 
+<dialog id="callKeypad" class="call-keypad-sheet" aria-labelledby="callKeypadTitle" aria-describedby="callKeypadStatus">
+  <div class="call-keypad-head">
+    <div><span class="call-keypad-kicker">CALL CONTROLS</span><h2 id="callKeypadTitle">Keypad</h2></div>
+    <button type="button" class="call-keypad-close" id="callKeypadClose" aria-label="Close keypad" autofocus>×</button>
+  </div>
+  <p id="callKeypadStatus" role="status">Connect a call to send keypad tones.</p>
+  <div id="callKeypadDisplay" class="call-keypad-display" aria-label="Sent digits"></div>
+  <div class="call-keypad-grid" aria-label="Phone keypad">
+    <button type="button" class="call-keypad-key" data-digit="1" disabled><strong>1</strong><span></span></button>
+    <button type="button" class="call-keypad-key" data-digit="2" disabled><strong>2</strong><span>ABC</span></button>
+    <button type="button" class="call-keypad-key" data-digit="3" disabled><strong>3</strong><span>DEF</span></button>
+    <button type="button" class="call-keypad-key" data-digit="4" disabled><strong>4</strong><span>GHI</span></button>
+    <button type="button" class="call-keypad-key" data-digit="5" disabled><strong>5</strong><span>JKL</span></button>
+    <button type="button" class="call-keypad-key" data-digit="6" disabled><strong>6</strong><span>MNO</span></button>
+    <button type="button" class="call-keypad-key" data-digit="7" disabled><strong>7</strong><span>PQRS</span></button>
+    <button type="button" class="call-keypad-key" data-digit="8" disabled><strong>8</strong><span>TUV</span></button>
+    <button type="button" class="call-keypad-key" data-digit="9" disabled><strong>9</strong><span>WXYZ</span></button>
+    <button type="button" class="call-keypad-key" data-digit="*" disabled><strong>*</strong><span></span></button>
+    <button type="button" class="call-keypad-key" data-digit="0" disabled><strong>0</strong><span>+</span></button>
+    <button type="button" class="call-keypad-key" data-digit="#" disabled><strong>#</strong><span></span></button>
+  </div>
+</dialog>
+<link rel="stylesheet" href="call-keypad.css?v=20261019" />
+<script src="call-keypad.js?v=20261019" defer></script>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="auth-guard.js?v=20261019-access-error-recovery"></script>
 <script src="user-data.js?v=20261001-1930"></script>
@@ -261,7 +286,7 @@ try {
 <script src="outreach-tools.js?v=20261019-tag-save" defer></script>
 <script src="call-lead-actions.js?v=action-tiles-20261017" defer></script>
 <script src="approved-caller.js?v=20261016" defer></script>
-<script type="module" src="twilio-voice.js?v=20261019-dnc"></script>
+<script type="module" src="twilio-voice.js?v=20261019-keypad"></script>
 <script src="outreach-postcall.js?v=20261019-all-calls" defer></script>
 <script src="call-voice-controller.js?v=20261019-postcall" defer></script>
 
