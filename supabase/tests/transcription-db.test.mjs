@@ -36,3 +36,33 @@ for(const idType of ['uuid','bigint'])test('transcript persistence and permissio
  await db.exec(`set test.uid='${user}';`);assert.equal((await db.query('select * from callcenter_transcripts')).rows.length,1);
  await db.close();
 });
+
+const inboundMigration=await readFile(new URL('../migrations/20261019020000_inbound_transcription.sql',import.meta.url),'utf8');
+test('inbound transcripts derive ownership from routing, reverse parent-leg speakers, and remain private',async()=>{
+ const db=new PGlite(),user='11111111-2222-3333-4444-555555555555',other='aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',sid='CA'+'2'.repeat(32);
+ try{
+ await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create table auth.users(id uuid primary key);insert into auth.users values('${user}'),('${other}');
+ create table public.crm(id bigint primary key,assigned_user_id uuid,company text);
+ create table public.callcenter_call_activity(id bigint primary key,user_id uuid,outcome text);
+ create table public.outreach_inbound_calls(call_sid text primary key,user_id uuid,route_destination text,from_number text);
+ insert into public.outreach_inbound_calls values('${sid}','${user}','app','+17025550101');`);
+ await db.exec(migration);await db.exec(migration);
+ await db.exec(inboundMigration);await db.exec(inboundMigration);
+ await db.query('select outreach_start_inbound_transcript($1)',[sid]);await db.query('select outreach_start_inbound_transcript($1)',[sid]);
+ let row=(await db.query('select * from callcenter_transcripts')).rows[0];assert.equal(row.user_id,user);assert.equal(row.crm_id,null);assert.equal(row.call_direction,'inbound');
+ for(const [sequence,speaker,text] of [[1,'agent','Caller speaking'],[2,'customer','Agent speaking'],[2,'customer','Agent speaking']]){
+  await db.query('select outreach_apply_transcription($1,$2,$3,$4)',[sid,'transcription-content',JSON.stringify({id:'GT:'+sequence,sequence,speaker,text}),null]);
+ }
+ row=(await db.query('select * from callcenter_transcripts')).rows[0];assert.equal(row.transcript,'Prospect: Caller speaking\nYou: Agent speaking');assert.equal(row.segments.length,2);
+ await db.exec(`update outreach_inbound_calls set user_id='${other}';`);
+ await assert.rejects(db.query('select outreach_start_inbound_transcript($1)',[sid]),/ownership mismatch/);
+ await db.exec(`update outreach_inbound_calls set user_id=null;`);
+ await assert.rejects(db.query('select outreach_start_inbound_transcript($1)',[sid]),/assigned app route/);
+ await db.exec(`grant usage on schema public,auth to authenticated;grant execute on function auth.uid() to authenticated;set role authenticated;set test.uid='${other}';`);
+ assert.equal((await db.query('select * from callcenter_transcripts')).rows.length,0);
+ await assert.rejects(db.query('select outreach_start_inbound_transcript($1)',[sid]),/permission denied/);
+ await db.exec(`set test.uid='${user}';`);assert.equal((await db.query('select * from callcenter_transcripts')).rows.length,1);
+ }finally{await db.close();}
+});

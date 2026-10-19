@@ -38,3 +38,11 @@ test('an old in-flight request cannot populate a newly selected prospect',async(
  const s=setup();let resolve;s.setRow(()=>new Promise(r=>resolve=r));await s.state(true,'CA-call');
  s.window.steadyHandsCallLead={id:'next'};s.handlers['steadyhands:call-lead-ready']();resolve({id:'t',segments:[s.segment('1',1,'Old prospect')]});await tick();assert.equal(s.get('transcriptHistory').value,'');
 });
+
+test('incoming transcript renders independently of a selected lead and ignores stale call updates',async()=>{
+ const s=setup(),show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
+ show({started:true,callSid:'CA-incoming'});show({callSid:'CA-incoming',transcript:{transcript:'You: Hello\nProspect: Hi'}});
+ assert.equal(s.get('transcriptHistory').value,'You: Hello\nProspect: Hi');assert.equal(s.queries.length,0);
+ await s.state(true,'CA-outgoing');show({callSid:'CA-incoming',transcript:{transcript:'Stale'}});
+ assert.doesNotMatch(s.get('transcriptHistory').value,/Stale/);
+});

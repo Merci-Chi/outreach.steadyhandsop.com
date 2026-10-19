@@ -8,7 +8,7 @@ const readPref=key=>{try{return localStorage.getItem(key)}catch{return null}};
 const writePref=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 
 const root=document.createElement('div');root.id='shInbound';
-root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Closed or suspended app windows cannot receive browser calls.</p><details><summary>Voicemail settings</summary><form id="inboundSettings"><label>Business voicemail greeting<textarea id="inboundGreeting" rows="4" maxlength="500" required>Thank you for calling Steady Hands. Please leave your name, number, and a message after the beep.</textarea></label><p>Incoming destinations are managed in Admin. For Outreach app reception, keep this app open. Unanswered calls go to this voicemail.</p><button type="submit">Save routing settings</button><p id="inboundSaveStatus" role="status"></p></form></details><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
+root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Closed or suspended app windows cannot receive browser calls.</p><details><summary>Voicemail settings</summary><form id="inboundSettings"><label>Business voicemail greeting<textarea id="inboundGreeting" rows="4" maxlength="500" required>Thank you for calling Steady Hands. Please leave your name, number, and a message after the beep.</textarea></label><p>Incoming destinations are managed in Admin. For Outreach app reception, keep this app open. Unanswered calls go to this voicemail.</p><button type="submit">Save routing settings</button><p id="inboundSaveStatus" role="status"></p></form></details><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><section id="inboundTranscriptPanel" hidden><h3>Incoming call transcript</h3><p id="inboundTranscriptStatus" role="status"></p><textarea id="inboundTranscriptText" rows="8" readonly aria-label="Incoming call transcript"></textarea></section><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
 const css=document.createElement('link');css.rel='stylesheet';css.href='inbound-calling.css?v=20261018-alerts';document.head.append(css);document.body.append(root);
 const $=id=>root.querySelector('#'+id);
 const status=text=>{$('inboundStatus').textContent=text;};
@@ -24,7 +24,7 @@ function closeNotice(){
  desktopNotice?.close();desktopNotice=null;
  navigator.serviceWorker?.controller?.postMessage({type:'steadyhands:close-incoming-alert'});
 }
-function resetCall(){call=null;pending=null;closeNotice();document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
+function resetCall(){if(call)drainTranscript();call=null;pending=null;closeNotice();document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
  if(!('Notification' in window)||Notification.permission!=='granted'||readPref(notificationsKey)!=='true')return;
  const title=missed?'Missed incoming call':'Incoming call';
@@ -43,12 +43,59 @@ async function notifyCall(incoming,missed=false){
 }
 function scheduleReconnect(){if(readPref(offKey())==='true')return;clearTimeout(retryTimer);retryTimer=setTimeout(()=>bootstrap(),30000);}
 
+// Poll the incoming PSTN parent, not the browser child CallSid. Never use the
+// currently selected CRM lead to establish ownership or choose a transcript.
+let transcriptTimer=null,transcriptSid='',transcriptEpoch=0,transcriptDrain=0;
+const transcriptEvent=detail=>window.dispatchEvent?.(new CustomEvent('steadyhands:inbound-transcript',{detail}));
+function stopTranscript(){
+ clearInterval(transcriptTimer);transcriptTimer=null;transcriptEpoch++;transcriptSid='';transcriptDrain=0;
+}
+function clearTranscript(){
+ stopTranscript();$('inboundTranscriptText').value='';$('inboundTranscriptPanel').hidden=true;
+ transcriptEvent({cleared:true});
+}
+function drainTranscript(){
+ if(!transcriptSid)return;transcriptDrain=Date.now()+30000;
+ transcriptEvent({callSid:transcriptSid,ended:true});
+}
+function startTranscript(incoming){
+ stopTranscript();
+ const sid=incoming.customParameters?.get('parentCallSid');
+ $('inboundTranscriptPanel').hidden=false;$('inboundTranscriptText').value='';
+ if(!/^CA[0-9a-fA-F]{32}$/.test(sid||'')){
+  $('inboundTranscriptStatus').textContent='Incoming transcription requires the updated inbound function.';return;
+ }
+ transcriptSid=sid;
+ transcriptEvent({callSid:sid,started:true});
+ const epoch=transcriptEpoch;let busy=false;
+ async function poll(){
+  if(busy||epoch!==transcriptEpoch)return;
+  if(transcriptDrain&&Date.now()>=transcriptDrain){stopTranscript();return;}
+  busy=true;
+  try{
+   const {transcript}=await invoke('transcript',{call_sid:sid});
+   if(epoch!==transcriptEpoch)return;
+   const message=!transcript?'Waiting for the incoming transcript. Check the transcription deployment if no text appears.':transcript.transcription_status==='error'?'Transcription error: '+(transcript.transcription_error||'Check Twilio logs.') : '';
+   $('inboundTranscriptStatus').textContent=message;
+   $('inboundTranscriptText').value=transcript?.transcript||'';
+   transcriptEvent({callSid:sid,transcript,message});
+  }catch(error){
+   if(epoch!==transcriptEpoch)return;
+   $('inboundTranscriptStatus').textContent=error.message;
+   transcriptEvent({callSid:sid,message:error.message});
+  }finally{busy=false;}
+ }
+ $('inboundTranscriptStatus').textContent='Waiting for the incoming transcript…';
+ transcriptTimer=setInterval(poll,3000);void poll();
+}
+window.addEventListener('pagehide',clearTranscript);
+
 function bind(incoming){
  const resetThis=()=>{if(call===incoming||pending===incoming)resetCall();};
  incoming.on('cancel',()=>{if(pending===incoming){resetThis();$('inboundToggle').textContent='Missed call';void notifyCall(incoming,true);refresh().catch(()=>{});}});incoming.on('reject',resetThis);
  incoming.on('disconnect',()=>{resetThis();refresh().catch(()=>{});});
  incoming.on('error',error=>{status(error.message||'Incoming call failed.');resetThis();});
- incoming.on('accept',()=>{closeNotice();root.classList.remove('is-ringing');document.title=originalTitle;call=incoming;pending=null;$('inboundCallStatus').textContent='Connected';$('inboundAnswer').hidden=true;$('inboundDecline').hidden=true;$('inboundMute').hidden=false;$('inboundEnd').hidden=false;});
+ incoming.on('accept',()=>{startTranscript(incoming);closeNotice();root.classList.remove('is-ringing');document.title=originalTitle;call=incoming;pending=null;$('inboundCallStatus').textContent='Connected';$('inboundAnswer').hidden=true;$('inboundDecline').hidden=true;$('inboundMute').hidden=false;$('inboundEnd').hidden=false;});
 }
 async function refresh(){
  const data=await invoke('settings');
@@ -133,7 +180,7 @@ async function bootstrap(attempt=0){
   client.auth.onAuthStateChange?.((_event,session)=>{
    const nextId=session?.user?.id||'';
    if(nextId===userId)return;
-   authVersion++;device?.destroy();device=null;resetCall();$('inboundInbox').replaceChildren();userId=nextId;
+   authVersion++;clearTranscript();device?.destroy();device=null;resetCall();$('inboundInbox').replaceChildren();userId=nextId;
    clearTimeout(retryTimer);
    if(nextId)retryTimer=setTimeout(()=>bootstrap(),0);else status('Sign in to receive incoming calls.');
   });

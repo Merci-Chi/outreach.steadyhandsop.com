@@ -60,3 +60,47 @@ signed webhook validation, failures, speaker mapping, start-call parameters,
 CallSid-scoped polling, stale requests, duplicate display and late final text.
 GitHub Actions runs both suites. These checks do not contact Twilio or deploy
 Supabase; a real call is required to confirm the production configuration.
+
+## Incoming calls answered in Outreach
+
+Incoming app calls now start transcription on the original incoming PSTN leg.
+Deploy in this order:
+
+1. Apply `20261019010000_live_transcription.sql` if needed. This migration now
+   recreates its policy and trigger safely when rerun.
+2. Apply `supabase/migrations/20261019020000_inbound_transcription.sql`.
+   The inbound routing tables and Admin destination migrations must already exist.
+3. Deploy these functions with gateway JWT verification disabled:
+
+   ```sh
+   supabase functions deploy twilio-transcription-webhook --no-verify-jwt
+   supabase functions deploy twilio-inbound --no-verify-jwt
+   supabase functions deploy twilio-inbound-session --no-verify-jwt
+   ```
+
+4. Publish the updated frontend and reload Outreach. The number's incoming URL
+   stays `/functions/v1/twilio-inbound`. Keep the outbound TwiML App unchanged.
+
+No additional secrets are required beyond the existing Account SID/Auth Token.
+The transcription callback defaults to this Supabase project's
+`/functions/v1/twilio-transcription-webhook`. If `TWILIO_TRANSCRIPTION_CALLBACK_URL`
+is configured, it must match that deployed callback's exact public URL.
+
+Answer a new incoming call, speak from both ends, and look in **Incoming calls →
+Incoming call transcript** or the main **Transcript** area. Final utterances poll
+about every three seconds, including up to 30 seconds after hangup. `You` is the
+receiving agent and `Prospect` is the caller. The database reverses the outbound
+callback's default speaker mapping using the saved call direction, not labels
+supplied by a client. Transcript ownership is derived from the signed router's
+saved call record; no browser-supplied owner or selected CRM lead is trusted.
+Incoming transcripts appear in Skills as **Incoming call**, with the caller's
+phone and no CRM association. Lead-specific suggestions are suppressed for this
+unlinked incoming transcript rather than acting on an unrelated selected lead.
+
+Capture starts when the app route is dialed and stops before voicemail. Phone
+forwarding and voicemail-only transcripts are outside this change. A failure to
+initialize transcription is logged as `Inbound transcription initialization
+failed` and does not stop the call from connecting or reaching voicemail. If
+text never appears, inspect that log and transcription callback invocations; valid
+callbacks return 204. Provider errors appear in the transcript status. Production
+Twilio speech delivery still needs a real two-way call after deployment.

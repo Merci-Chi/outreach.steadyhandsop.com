@@ -6,15 +6,16 @@ import * as routing from '../supabase/functions/twilio-inbound/routing.mjs';
 const source=(await readFile(new URL('../supabase/functions/twilio-inbound/index.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/:(?:string|any)\b/g,'');
 const account='AC'+'a'.repeat(32),parent='CA'+'1'.repeat(32),child='CA'+'2'.repeat(32),base='https://example.supabase.co/functions/v1/twilio-inbound';
 function setup(){
- const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],outreach_inbound_calls:[]};
- const db={from(table){let filters=[],patch=null,insert=null;const q={select(){return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
+ const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],callcenter_transcripts:[],outreach_inbound_calls:[]};
+ const writes=[];let failTranscript=false;
+ const db={async rpc(name,args){writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null;const q={select(){return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
   async function run(single){if(insert&&!rows[table].some(x=>x.call_sid===insert.call_sid))rows[table].push({status:'ringing',cellphone_accepted:false,...insert});const found=rows[table].filter(row=>filters.every(([k,v])=>row[k]===v));if(patch)found.forEach(x=>Object.assign(x,patch));return {data:structuredClone(single==='many'?found:found[0]||null),error:single===true&&!found.length?{message:'not found'}:null};}return q;
  }};
  let handler,dbAccess=0;
  const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test-server-key',TWILIO_ACCOUNT_SID:account,TWILIO_AUTH_TOKEN:'test-token',TWILIO_INBOUND_WEBHOOK_URL:base};
  vm.runInNewContext(source,{...routing,URL,URLSearchParams,Response,Date,console:{error(){}},createClient(){dbAccess++;return db},twilio:{validateRequest:(_token,signature)=>signature==='valid'},Deno:{env:{get:key=>env[key]},serve:fn=>{handler=fn}}});
  const request=(stage='incoming',form={},query='',signature='valid')=>handler(new Request(base+(stage==='incoming'?'':'?stage='+stage+query),{method:'POST',headers:{'X-Twilio-Signature':signature,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({AccountSid:account,CallSid:parent,To:'+17025550101',From:'+17025550103',...form})}));
- return {request,rows,access:()=>dbAccess};
+ return {request,rows,writes,failTranscript:()=>{failTranscript=true},access:()=>dbAccess};
 }
 test('signed calls ring Outreach without saved routing or a personal number',async()=>{
  const s=setup();s.rows.outreach_inbound_settings=[];assert.match(await (await s.request()).text(),/<Client>/);
@@ -112,3 +113,18 @@ test('cycles and unavailable or ineligible terminal owners never place a call',a
  }
 });
 
+
+test('inbound transcription uses the original parent and stops before voicemail',async()=>{
+ const s=setup();const xml=await (await s.request()).text();
+ assert(xml.indexOf('<Start>')<xml.indexOf('<Dial '));
+ assert.match(xml,/inboundTrackLabel="customer" outboundTrackLabel="agent"/);
+ assert.match(xml,new RegExp('name="parentCallSid" value="'+parent+'"'));
+ assert.equal(s.writes[0].name,'outreach_start_inbound_transcript');assert.equal(s.writes[0].args.p_call_sid,parent);
+ const ended=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
+ assert(ended.indexOf('<Stop>')<ended.indexOf('<Say>'));
+});
+test('transcription initialization failure never blocks app reception or voicemail',async()=>{
+ const s=setup();s.failTranscript();const response=await s.request();assert.equal(response.status,200);
+ const xml=await response.text();assert.match(xml,/<Client>/);assert.doesNotMatch(xml,/<Start>/);
+ const ended=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();assert.match(ended,/<Record /);assert.doesNotMatch(ended,/<Stop>/);
+});

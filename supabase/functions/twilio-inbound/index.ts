@@ -7,8 +7,8 @@ const hangup = () => response('<Hangup/>');
 function endpoint(base, stage, parent='') {
   const url=new URL(base);url.searchParams.set('stage',stage);if(parent)url.searchParams.set('parent',parent);return url.toString();
 }
-function browserDial(base, call, settings={}) {
-  return response(`<Dial answerOnBridge="true" timeout="${settings.outreach_ring_seconds||15}" action="${escapeXML(endpoint(base,'browser-ended'))}" method="POST"><Client><Identity>${escapeXML(identity(call.user_id))}</Identity><Parameter name="businessNumber" value="${escapeXML(call.to_number)}"/></Client></Dial>`);
+function browserDial(base, call, settings={}, transcription='') {
+  return response(transcription + `<Dial answerOnBridge="true" timeout="${settings.outreach_ring_seconds||15}" action="${escapeXML(endpoint(base,'browser-ended'))}" method="POST"><Client><Identity>${escapeXML(identity(call.user_id))}</Identity><Parameter name="businessNumber" value="${escapeXML(call.to_number)}"/><Parameter name="parentCallSid" value="${escapeXML(call.call_sid)}"/></Client></Dial>`);
 }
 function phoneDial(base,call,settings={}) {
  return response(`<Dial answerOnBridge="true" timeout="25" callerId="${escapeXML(call.to_number)}" action="${escapeXML(endpoint(base,'phone-ended'))}" method="POST"><Number url="${escapeXML(endpoint(base,'screen',call.call_sid))}" method="POST">${escapeXML(call.forward_number)}</Number></Dial>`);
@@ -81,11 +81,25 @@ Deno.serve(async req=>{
   const patch=async(p:any)=>checked(await db.from('outreach_inbound_calls').update({...p,updated_at:new Date().toISOString()}).eq('call_sid',callSid));
   if(stage==='incoming'){
    if(call.route_destination==='forward'){await patch({status:'forwarding'});return xml(phoneDial(base,call,settings));}
-   return settings?.enabled?xml(browserDial(base,call,settings)):mailbox();
+   // Transcription is best-effort: configuration errors must not block reception.
+   let transcription='';
+   try {
+    await checked(await db.rpc('outreach_start_inbound_transcript',{p_call_sid:callSid}));
+    const callback=Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL')||url.replace(/\/$/,'')+'/functions/v1/twilio-transcription-webhook';
+    transcription=`<Start><Transcription name="inbound" statusCallbackUrl="${escapeXML(callback)}" track="both_tracks" inboundTrackLabel="customer" outboundTrackLabel="agent" languageCode="en-US" partialResults="true" enableAutomaticPunctuation="true" transcriptionEngine="google"/></Start>`;
+   } catch(error) { console.error('Inbound transcription initialization failed:',error); }
+   return xml(browserDial(base,call,settings,transcription));
   }
   if(stage==='browser-ended'){
-   if(answered(form.DialCallStatus)){await patch({status:'completed',answered_via:'outreach'});return xml(hangup());}
-   return mailbox();
+   // End capture before any voicemail greeting or recording.
+   const stop='<Stop><Transcription name="inbound"/></Stop>';
+   let transcript=null;
+   try { ({data:transcript}=await db.from('callcenter_transcripts').select('id').eq('call_sid',callSid).maybeSingle()); }
+   catch(error) { console.error('Inbound transcription lookup failed:',error); }
+   const finish=inner=>xml(response((transcript?stop:'')+inner));
+   if(answered(form.DialCallStatus)){await patch({status:'completed',answered_via:'outreach'});return finish('<Hangup/>');}
+   const body=voicemail(base,settings?.voicemail_greeting).replace(/^.*?<Response>|<\/Response>$/g,'');
+   return finish(body);
   }
   if(stage==='screen'){
    if(call.route_destination!=='forward')return xml(hangup());

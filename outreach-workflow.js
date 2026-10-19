@@ -109,10 +109,11 @@
   const history=$('transcriptHistory'), feedback=$('transcriptFeedback'), actions=$('keywordActions');
   let current=leadId(), entries=[], callActive=$('refEndCall')?.dataset.callState==='active'||!!document.querySelector('#refRegularCallTracker:not([hidden])');
   const applied=new Set(), imported=new Set();
+  let inboundCallSid=null;
   let syncTimer=null, since=null, syncEpoch=0, syncBusy=false, drainUntil=0, activeCallSid=null;
   function resetLead() {
     const id=leadId();if(id===current)return;
-    stopSync();callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
+    stopSync();inboundCallSid=null;callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
     $('keywordFeedback').textContent='';
     $('refTranscriptStatus').textContent='';
   }
@@ -130,7 +131,7 @@
   function renderActions() {
     // Latest prospect utterances determine suggestions; a DNC request takes precedence.
     const recent=entries.filter(entry=>entry.speaker==='prospect').slice(-4).map(entry=>entry.text).join(' ');
-    const suggested=core.suggestions(recent).filter(action=>!applied.has(action.id));actions.replaceChildren();
+    const suggested=(inboundCallSid?[]:core.suggestions(recent)).filter(action=>!applied.has(action.id));actions.replaceChildren();
     for(const action of suggested) {
       const button=make('button',action.label,'sh-tag-pill');button.type='button';actions.append(button);
       const id=current;
@@ -149,6 +150,23 @@
     }
     if(!suggested.length){const empty=make('span',null,'suggested-action-empty');empty.setAttribute('aria-hidden','true');actions.append(empty);}
   }
+  window.addEventListener('steadyhands:inbound-transcript',event=>{
+    const detail=event.detail||{};
+    if(detail.cleared){
+      if(inboundCallSid){inboundCallSid=null;entries=[];history.value='';feedback.textContent='';$('refTranscriptStatus').textContent='';renderActions();}
+      return;
+    }
+    if(detail.started){
+      stopSync();callActive=false;inboundCallSid=detail.callSid;entries=[];applied.clear();history.value='';renderActions();
+      feedback.textContent='Waiting for the incoming transcript…';$('refTranscriptStatus').textContent='Incoming call';
+    }
+    if(!inboundCallSid||detail.callSid!==inboundCallSid)return;
+    if(detail.transcript){
+      history.value=detail.transcript.transcript||'';history.scrollTop=history.scrollHeight;
+    }
+    if(detail.message!==undefined)feedback.textContent=detail.message;
+    // Inbound calls are not implicitly attached to the selected prospect.
+  });
   window.addEventListener('steadyhands:transcript',event=>appendEntry(event.detail||{}));
   window.addEventListener('steadyhands:call-lead-ready',resetLead);
   async function refreshTranscript() {
@@ -173,6 +191,7 @@
   function stopSync() {if(syncTimer)clearInterval(syncTimer);syncTimer=null;since=null;syncEpoch++;imported.clear();activeCallSid=null;}
   function callState(event) {
     const nextActive=!!event.detail?.active;
+    if(nextActive)inboundCallSid=null;
     if(nextActive&&!callActive){stopSync();drainUntil=0;entries=[];history.value='';$('refTranscriptStatus').textContent='';renderActions();since=new Date(Date.now()-5000).toISOString();syncTimer=setInterval(refreshTranscript,5000);refreshTranscript();}
     if(!nextActive&&callActive){drainUntil=Date.now()+30000;refreshTranscript();}
     callActive=nextActive;
