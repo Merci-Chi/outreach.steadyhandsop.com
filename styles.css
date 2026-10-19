@@ -1793,14 +1793,8 @@ button:disabled {cursor:not-allowed}
 .lead-card.selected-lead .compact-lead-meta { display:none; }
 
 
-/* Prevent page text selection on mobile */
-html, body, .app, .card, .topbar, .bottom-nav, button, a, span, p, h1, h2, h3, h4, label, div {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-input, textarea, select, [contenteditable="true"] {
+/* Allow selecting and copying all page text, including mobile long-press. */
+* {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
