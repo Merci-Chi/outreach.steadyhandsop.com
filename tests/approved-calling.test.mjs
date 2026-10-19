@@ -36,7 +36,12 @@ function callPage(approved) {
   steadyHandsCallLead:{id:'lead',number:'+17025550102',company:'Prospect'},
   SteadyHandsApprovedCaller:async()=>approved,
   SteadyHandsReviewBeforeCall:async()=>true,
-  SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>calls.push(args),hangup(){calls.push('hangup')}}};
+  SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>{
+   calls.push(args);
+   handlers['steadyhands:voice-state']({detail:{state:'calling',attemptId:'test-call'}});
+   handlers['steadyhands:voice-state']({detail:{state:'dialed',attemptId:'test-call'}});
+   return {parameters:{}};
+  },hangup(){calls.push('hangup')}}};
  vm.runInNewContext(controller,{window,document:{getElementById:id=>nodes[id]},CustomEvent:class{constructor(type,args){this.type=type;this.detail=args.detail}}});
  return {handlers,events,calls,nodes,window};
 }

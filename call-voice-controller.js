@@ -2,6 +2,7 @@
   'use strict';
   let starting = false;
   let callResult = null;
+  let fallbackAttempt = 0;
   const message = text => { const el = document.getElementById('refMessage'); if (el) el.textContent = text; };
   const state = (active, callSid) => window.dispatchEvent(new CustomEvent('steadyhands:call-state', {detail:{active,callSid}}));
   const button = () => document.getElementById('refEndCall');
@@ -24,8 +25,8 @@
       // The authenticated Twilio backend remains responsible for resolving and
       // validating the assigned caller ID. Never accept a caller-supplied From.
       const call = await voice.start(lead.number, {crmId:lead.id,company:lead.company,transcribe:true});
-      if(callResult)callResult.call_sid = call?.parameters?.CallSid || callResult.call_sid;
-      state(true);
+      if(callResult)callResult.call_sid = call?.parameters?.CallSid || call?.parameters?.CallSID || callResult.call_sid;
+      if(callResult?.dialed)state(true,callResult.call_sid);
     } catch (error) {
       callResult = null;
       state(false);
@@ -40,10 +41,14 @@
     const detail = event.detail || {};
     if (detail.state === 'calling' && window.steadyHandsCallLead?.id) {
       const lead = window.steadyHandsCallLead;
-      callResult = {crm_id:lead.id,company:lead.company,call_method:'outreach',started_at:Date.now(),called:true};
+      if(callResult && detail.attemptId && callResult.attempt_id===detail.attemptId)return;
+      callResult = {crm_id:detail.crmId||lead.id,company:detail.company||lead.company,call_method:'outreach',attempt_id:detail.attemptId||('outreach:'+Date.now()+':'+(++fallbackAttempt)),started_at:Date.now(),called:false,dialed:false};
     }
+    // A late event from an earlier call cannot finish the new attempt.
+    if(detail.attemptId && (!callResult || detail.attemptId!==callResult.attempt_id))return;
+    if(callResult && ['dialed','ringing','connected'].includes(detail.state)){callResult.dialed=true;callResult.called=true;}
     if (callResult && detail.callSid) callResult.call_sid = detail.callSid;
-    if (['calling','ringing','connected'].includes(detail.state)) state(true,detail.callSid);
+    if (['calling','dialed','ringing','connected'].includes(detail.state)) state(true,detail.callSid);
     if (detail.state === 'connected') message('Call connected.');
     if (detail.state === 'preparing') message(detail.message || 'Preparing browser calling…');
     if (detail.state === 'ended') {
@@ -52,6 +57,8 @@
       if (callResult) {
         const result = callResult;
         callResult = null; // Twilio can emit more than one terminal event.
+        if(!result.dialed)return;
+        result.finished_at=Date.now();
         result.elapsed_seconds = Math.max(0,Math.floor((Date.now()-result.started_at)/1000));
         if (window.steadyHandsOpenPostCallQuestionnaire?.(result) === false) message('Unable to open the questionnaire. Refresh and try again.');
       }

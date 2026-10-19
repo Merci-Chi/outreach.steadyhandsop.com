@@ -3,6 +3,7 @@ import { Device } from './twilio-sdk.js?v=2.18.5-browser';
 let device = null;
 let activeCall = null;
 let starting = false;
+let attemptSequence = 0;
 let tokenRefreshPromise = null;
 let userMuted = false;
 let held = false;
@@ -180,19 +181,24 @@ async function ensureDevice() {
   return device;
 }
 
-function bindCall(call) {
+function bindCall(call, metadata = {}) {
+  let finished = false;
+  const signal = (state, extra = {}) => emit(state, {...metadata, ...extra});
   const finish = (reason = 'ended') => {
+    if (finished) return;
+    finished = true;
     if (activeCall === call) activeCall = null;
-    emit('ended', { reason, callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || '' });
+    signal('ended', { reason, callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || '' });
   };
 
-  call.on('ringing', () => emit('ringing'));
+  call.on('ringing', () => { if (!finished) signal('ringing'); });
   call.on('accept', () => {
+    if (finished) return;
     const callSid =
       call?.parameters?.CallSid ||
       call?.parameters?.CallSID ||
       '';
-    emit('connected', { callSid });
+    signal('connected', { callSid });
   });
 
   call.on('disconnect', () => finish('disconnect'));
@@ -200,9 +206,10 @@ function bindCall(call) {
   call.on('reject', () => finish('reject'));
 
   call.on('error', error => {
+    if (finished) return;
     console.error('Twilio Call error:', error);
     const detail = error?.twilioError || error;
-    emit('error', {
+    signal('error', {
       code: detail?.code || error?.code || '',
       message: detail?.message || error?.message || 'The call could not be completed.',
       description: detail?.description || '',
@@ -233,7 +240,9 @@ async function start(destination, metadata = {}) {
   emit('preparing', { message: 'Enabling microphone…' });
   await requestMicrophonePermission();
   const agentUserId = await fetchAuthenticatedUserId();
-  emit('calling');
+  const attemptId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-'+(++attemptSequence);
+  const attempt = {attemptId,crmId:metadata.crmId,company:metadata.company};
+  emit('calling', attempt);
 
   const params = {
     To: to,
@@ -245,7 +254,8 @@ async function start(destination, metadata = {}) {
 
   const call = await readyDevice.connect({ params });
   activeCall = call;
-  bindCall(call);
+  bindCall(call, attempt);
+  emit('dialed', {...attempt,callSid:call?.parameters?.CallSid || call?.parameters?.CallSID || ''});
   return call;
   } finally {
     starting = false;

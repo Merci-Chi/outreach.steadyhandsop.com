@@ -198,16 +198,16 @@ function finishRegularCall(wasCalled){
  // Preserve the prospect and elapsed time before removing the inline timer.
  const current=regularCall;
  const elapsed=Math.max(0,Math.floor((Date.now()-current.startedAt)/1000));
- const detail={crm_id:current.id,company:current.company||'',elapsed_seconds:elapsed,verified:false,called:!!wasCalled};
+ const detail={crm_id:current.id,company:current.company||'',elapsed_seconds:elapsed,verified:false,called:!!wasCalled,call_method:'regular',attempt_id:'regular:'+current.id+':'+current.startedAt,finished_at:Date.now()};
  // Open the questionnaire first; do not silently discard the call if the
  // questionnaire bundle is absent or blocked from loading.
  const opener=window.steadyHandsOpenPostCallQuestionnaire;
- if(typeof opener!=='function'){
+ if(wasCalled && typeof opener!=='function'){
   tell('Questionnaire is not ready. Refresh Outreach and try Finish Call again.');
   return;
  }
  try{
-  const opened=opener(detail);
+  const opened=wasCalled ? opener(detail) : true;
   if(opened===false){tell('Unable to open the questionnaire. Please try again.');return;}
   const popup=$('#refPhonePopup');if(popup){popup.hidden=true;const process=popup.querySelector('.outreach-process');if(process)window.SteadyHandsRestoreProcess?.(process);}
   window.dispatchEvent(new CustomEvent('steadyhands:process-mode',{detail:{guided:false}}));
