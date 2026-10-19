@@ -36,7 +36,7 @@ Deno.serve(async req=>{
    if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
    const call=await checked(await db.from('outreach_inbound_calls').select('call_sid').eq('call_sid',callSid).eq('user_id',userId).maybeSingle());
    if(!call)return json({error:'Incoming call not found.'},404);
-   const transcript=await checked(await db.from('callcenter_transcripts').select('id,segments,transcript,transcription_status,transcription_error').eq('call_sid',callSid).eq('user_id',userId).maybeSingle());
+   const transcript=await checked(await db.from('callcenter_transcripts').select('id,call_sid,segments,transcript,interim_segments,transcript_revision,transcription_status,transcription_error').eq('call_sid',callSid).eq('user_id',userId).maybeSingle());
    return json({transcript});
   }
   if(action==='settings'){

@@ -71,5 +71,5 @@
 })();
 
 // Keep the signed-in app registered for incoming calls; microphone access is requested on Answer.
-import('./inbound-calling.js?v=20261019-inbound-transcription').catch(error => console.warn('Incoming calling module unavailable:',error));
+import('./inbound-calling.js?v=20261019-transcript-live-updates').catch(error => console.warn('Incoming calling module unavailable:',error));
 

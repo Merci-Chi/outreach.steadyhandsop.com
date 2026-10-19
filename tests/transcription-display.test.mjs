@@ -3,17 +3,18 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../outreach-workflow.js',import.meta.url),'utf8');
+const coreWindow={};vm.runInNewContext(await readFile(new URL('../outreach-workflow-core.js',import.meta.url),'utf8'),{window:coreWindow});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function setup(){
  const handlers={},timers=new Map(),queries=[];let timerId=0,row=null,now=Date.now();
  class Clock extends Date{static now(){return now}}
- const node=()=>({children:[],dataset:{},value:'',textContent:'',append(){},before(){},after(){},remove(){},replaceChildren(){},setAttribute(){}});
+ const node=()=>({children:[],dataset:{},value:'',textContent:'',append(...items){this.children.push(...items)},before(){},after(){},remove(){},replaceChildren(){this.children=[]},setAttribute(){}});
  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
- const window={steadyHandsCallLead:{id:'lead'},addEventListener:(k,v)=>handlers[k]=v,SteadyHandsCallGuide:{mount(){}},SteadyHandsWorkflowCore:{suggestions:()=>[],transcriptSegments:r=>r.segments,fetchTranscript:async(...args)=>{queries.push(args);return typeof row==='function'?row():row}}};
+ const window={steadyHandsCallLead:{id:'lead'},addEventListener:(k,v)=>handlers[k]=v,SteadyHandsCallGuide:{mount(){}},confirm:()=>true,SteadyHandsWorkflowCore:{suggestions:coreWindow.SteadyHandsWorkflowCore.suggestions,transcriptSegments:coreWindow.SteadyHandsWorkflowCore.transcriptSegments,load:async()=>({row:{company:'Caller company',phone:'+17025550103'}}),fetchTranscript:async(...args)=>{queries.push(args);return typeof row==='function'?row():row}}};
  vm.runInNewContext(source,{window,Date:Clock,document:{getElementById:get,querySelector:()=>null,createComment:node,createElement:node},matchMedia:()=>({matches:false,addEventListener(){}}),MutationObserver:class{observe(){}},setInterval:fn=>{timers.set(++timerId,fn);return timerId},clearInterval:id=>timers.delete(id)});
  const state=async(active,callSid)=>{handlers['steadyhands:call-state']({detail:{active,callSid}});await tick()};
  const poll=async()=>{for(const fn of timers.values())fn();await tick()};
- const segment=(id,seconds,text)=>({segmentId:id,seconds,text,speaker:'prospect'});
+ const segment=(id,seconds,text)=>({id,start_seconds:seconds,text,speaker:'customer',final:true});
  return {get,handlers,window,queries,timers,state,poll,segment,setRow:r=>row=r,advance:n=>now+=n};
 }
 test('polling waits for CallSid, stays scoped to that call, deduplicates and orders late segments',async()=>{
@@ -45,4 +46,23 @@ test('incoming transcript renders independently of a selected lead and ignores s
  assert.equal(s.get('transcriptHistory').value,'You: Hello\nProspect: Hi');assert.equal(s.queries.length,0);
  await s.state(true,'CA-outgoing');show({callSid:'CA-incoming',transcript:{transcript:'Stale'}});
  assert.doesNotMatch(s.get('transcriptHistory').value,/Stale/);
+});
+
+test('incoming finalized caller keywords suggest DNC; agent and provisional speech cannot trigger it',async()=>{
+ const s=setup(),show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
+ show({started:true,callSid:'CA-incoming'});
+ show({callSid:'CA-incoming',transcript:{segments:[{speaker:'agent',text:'Do not call me',final:true},{speaker:'customer',text:'Do not call me',final:false}]}});
+ assert(!s.get('keywordActions').children.some(n=>n.textContent==='Mark Do Not Call'));
+ show({callSid:'CA-incoming',transcript:{segments:[{speaker:'customer',text:'Do not call me',final:true}]}});
+ const button=s.get('keywordActions').children.find(n=>n.textContent==='Mark Do Not Call');assert(button);
+ let confirms=0,clicks=0;s.window.confirm=()=>{confirms++;return false};s.get('refDoNotCall').click=()=>clicks++;
+ await button.onclick();assert.equal(confirms,1);assert.equal(clicks,0);
+ s.window.confirm=()=>true;await button.onclick();assert.equal(clicks,1);
+});
+test('incoming keyword actions remain visible without a selected prospect and explain what to select',async()=>{
+ const s=setup();s.window.steadyHandsCallLead=null;
+ const show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
+ show({started:true,callSid:'CA-incoming'});show({callSid:'CA-incoming',transcript:{segments:[{speaker:'customer',text:'Not really interested',final:true}]}});
+ const button=s.get('keywordActions').children.find(n=>n.textContent==='Add Not Interested tag');assert(button);
+ await button.onclick();assert.match(s.get('keywordFeedback').textContent,/Select the caller/);
 });

@@ -4,8 +4,8 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../inbound-calling.js',import.meta.url),'utf8')).replace(/^import .*;\n/,'');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function setup({forward=false,permission='granted',off=false,tokenResult=null,transcriptResult=null,microphone=async()=>({getTracks:()=>[{stop(){}}]})}={}){
- const nodes=new Map(),events={},posts=[],devices=[],notices=[],requests=[],prefs=new Map([['steadyhands-setting-device-notifications','true']]);let micCalls=0,permissionCalls=0;const intervals=new Map(),emitted=[];let intervalId=0;
+async function setup({forward=false,permission='granted',off=false,tokenResult=null,transcriptResult=null,realtime=false,microphone=async()=>({getTracks:()=>[{stop(){}}]})}={}){
+ const nodes=new Map(),events={},posts=[],devices=[],notices=[],requests=[],prefs=new Map([['steadyhands-setting-device-notifications','true']]);let micCalls=0,permissionCalls=0;const intervals=new Map(),emitted=[],channels=[],removed=[];let intervalId=0;
  if(off)prefs.set('steadyhands-incoming-off-agent','true');
  const node=()=>({hidden:false,disabled:false,textContent:'',value:'',dataset:{},checked:false,classList:{add(){},remove(){}},setAttribute(){},append(){},replaceChildren(){},scrollIntoView(){},focus(){this.focused=true},querySelector(selector){const id=selector.slice(1);if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)}});
  class Device{constructor(token){this.handlers={};devices.push(this)}on(name,fn){this.handlers[name]=fn}async register(){this.handlers.registered()}async unregister(){this.handlers.unregistered()}destroy(){this.destroyed=true}updateToken(){}}
@@ -23,11 +23,12 @@ async function setup({forward=false,permission='granted',off=false,tokenResult=n
    return {data};
   }}
  };
+ if(realtime){client.channel=()=>{const channel={on(_event,filter,fn){this.filter=filter;this.receive=fn;return this},subscribe(fn){this.status=fn;return this}};channels.push(channel);return channel};client.removeChannel=channel=>{removed.push(channel)};}
  const window={dispatchEvent:event=>emitted.push(event),Notification:Notice,focus(){this.focused=true},addEventListener:(name,fn)=>events[name]=fn,steadyHandsCRMClient:client};
  const serviceWorker={controller:{postMessage:message=>posts.push(message)},addEventListener:(name,fn)=>events['worker-'+name]=fn};
  vm.runInNewContext(source,{CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}},setInterval:fn=>{intervals.set(++intervalId,fn);return intervalId},clearInterval:id=>intervals.delete(id),window,document,Device,Notification:Notice,navigator:{serviceWorker,mediaDevices:{getUserMedia:async()=>{micCalls++;return microphone()}}},localStorage:{getItem:k=>prefs.get(k)||null,setItem:(k,v)=>prefs.set(k,v)},setTimeout:()=>1,clearTimeout(){},console:{warn(){}}});await tick();
  const incoming=()=>{const handlers={};const call={handlers,parameters:{From:'+17025550103',CallSid:'CA'+'2'.repeat(32)},customParameters:new Map([['parentCallSid','CA'+'1'.repeat(32)]]),on:(name,fn)=>handlers[name]=fn,async accept(){call.accepted=true;handlers.accept()},reject(){call.rejected=true;handlers.reject?.()},disconnect(){handlers.disconnect()}};devices[0].handlers.incoming(call);return call};
- return {intervals,emitted,nodes,events,posts,devices,notices,requests,window,document,prefs,incoming,micCalls:()=>micCalls,permissionCalls:()=>permissionCalls};
+ return {channels,removed,intervals,emitted,nodes,events,posts,devices,notices,requests,window,document,prefs,incoming,micCalls:()=>micCalls,permissionCalls:()=>permissionCalls};
 }
 test('signed-in app registers automatically without microphone or notification permission prompts',async()=>{
  const s=await setup();assert.equal(s.devices.length,1);assert.equal(s.micCalls(),0);assert.equal(s.permissionCalls(),0);assert.match(s.nodes.get('inboundStatus').textContent,/Ready for incoming/);
@@ -78,4 +79,16 @@ test('late transcript responses cannot restore private text after sign-out',asyn
  let resolve;const s=await setup({transcriptResult:()=>new Promise(r=>resolve=r)});s.incoming();
  await s.nodes.get('inboundAnswer').onclick();s.events.auth('SIGNED_OUT',null);
  resolve({transcript:'Old private text'});await tick();assert.equal(s.nodes.get('inboundTranscriptText').value,'');
+});
+
+test('Realtime shows provisional text immediately, rejects stale snapshots, and unsubscribes at sign-out',async()=>{
+ const s=await setup({realtime:true,transcriptResult:{transcript:'',transcript_revision:0}});s.incoming();await s.nodes.get('inboundAnswer').onclick();await tick();
+ const channel=s.channels[0],sid='CA'+'1'.repeat(32);assert.equal(channel.filter.filter,'call_sid=eq.'+sid);
+ channel.receive({new:{call_sid:sid,transcript_revision:2,interim_segments:{customer:{speaker:'customer',text:'Not really interested',final:false}}}});
+ assert.match(s.nodes.get('inboundTranscriptText').value,/Prospect \(speaking…\): Not really interested/);
+ assert.equal(s.emitted.at(-1).detail.transcript.transcript,undefined);
+ channel.receive({new:{call_sid:sid,transcript_revision:1,transcript:'Stale'}});assert.doesNotMatch(s.nodes.get('inboundTranscriptText').value,/Stale/);
+ channel.receive({new:{call_sid:sid,transcript_revision:3,transcript:'Prospect: Not interested',interim_segments:{}}});assert.equal(s.nodes.get('inboundTranscriptText').value,'Prospect: Not interested');
+ s.events.auth('SIGNED_OUT',null);assert.equal(s.removed[0],channel);
+ channel.receive({new:{call_sid:sid,transcript_revision:4,transcript:'Private'}});assert.equal(s.nodes.get('inboundTranscriptText').value,'');
 });

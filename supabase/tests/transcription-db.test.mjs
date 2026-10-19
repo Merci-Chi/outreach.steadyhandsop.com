@@ -66,3 +66,33 @@ test('inbound transcripts derive ownership from routing, reverse parent-leg spea
  await db.exec(`set test.uid='${user}';`);assert.equal((await db.query('select * from callcenter_transcripts')).rows.length,1);
  }finally{await db.close();}
 });
+
+const liveMigration=await readFile(new URL('../migrations/20261019030000_transcript_live_updates.sql',import.meta.url),'utf8');
+test('live interim revisions replace text without entering history and cannot regress finalized speech',async()=>{
+ const db=new PGlite(),user='11111111-2222-3333-4444-555555555555',sid='CA'+'3'.repeat(32);
+ try{
+ await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create table auth.users(id uuid primary key);insert into auth.users values('${user}');
+ create table public.crm(id bigint primary key,assigned_user_id uuid,company text);
+ create table public.callcenter_call_activity(id bigint primary key,user_id uuid,outcome text);
+ create table public.outreach_inbound_calls(call_sid text primary key,user_id uuid,route_destination text,from_number text);
+ insert into public.outreach_inbound_calls values('${sid}','${user}','app','+17025550101');`);
+ await db.exec(migration);await db.exec(inboundMigration);await db.exec(liveMigration);await db.exec(liveMigration);
+ await db.query('select outreach_start_inbound_transcript($1)',[sid]);
+ const apply=async(sequence,text,final=false,speaker='agent')=>db.query('select outreach_apply_transcription($1,$2,$3,$4)',[sid,'transcription-content',JSON.stringify({id:'GT:'+sequence,sequence,speaker,text,final}),null]);
+ const row=async()=>(await db.query('select * from callcenter_transcripts where call_sid=$1',[sid])).rows[0];
+ await apply(1,'Not');await apply(3,'Not interested');await apply(2,'Old partial');
+ let r=await row();assert.equal(r.transcript,'');assert.equal(r.segments.length,0);assert.equal(r.interim_segments.customer.text,'Not interested');
+ await apply(4,'Not interested.',true);r=await row();assert.equal(r.transcript,'Prospect: Not interested.');assert.deepEqual(r.interim_segments,{});
+ await apply(3,'Stale partial');assert.deepEqual((await row()).interim_segments,{});
+ await apply(6,'Next phrase');await apply(5,'Late earlier final.',true);r=await row();assert.equal(r.interim_segments.customer.text,'Next phrase');assert.equal(r.segments.length,2);
+ await db.query('select outreach_apply_transcription($1,$2,$3,$4)',[sid,'transcription-stopped',null,null]);
+ await apply(8,'After stop');assert.deepEqual((await row()).interim_segments,{});
+ await apply(9,'Late final.',true);r=await row();assert.equal(r.transcription_status,'stopped');assert.equal(r.segments.length,3);assert(r.transcript_revision>0);
+ // The same callback function keeps outbound speaker mapping unchanged.
+ const out='CA'+'4'.repeat(32);await db.query('insert into callcenter_transcripts(user_id,call_sid) values($1,$2)',[user,out]);
+ await db.query('select outreach_apply_transcription($1,$2,$3,$4)',[out,'transcription-content',JSON.stringify({id:'GT:out',sequence:1,speaker:'agent',text:'Hello',final:true}),null]);
+ assert.equal((await db.query('select transcript from callcenter_transcripts where call_sid=$1',[out])).rows[0].transcript,'You: Hello');
+ }finally{await db.close();}
+});

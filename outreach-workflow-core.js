@@ -5,7 +5,7 @@
     const t = String(text || '').toLowerCase().replace(/[’‘]/g, "'");
     if (/\b(do not call|don't call|stop calling|stop contacting|do not want you to call|don't want you to call|remove (me|us) from|take (me|us) off)\b/.test(t)) return [{id:'dnc', label:'Mark Do Not Call'}];
     const actions = [];
-    if (/\b(not interested|no interest|not looking|don't need|do not need)\b/.test(t)) actions.push({id:'tag:Not Interested',label:'Add Not Interested tag'});
+    if (/\b(not (?:(?:really|very|particularly|at all) )?interested|no interest|not looking|don't need|do not need)\b/.test(t)) actions.push({id:'tag:Not Interested',label:'Add Not Interested tag'});
     else if (/\b(interested|sounds good|let'?s (do it|proceed)|want to proceed)\b/.test(t)) actions.push({id:'tag:Interested',label:'Add Interested tag'});
     if (/\b(bookings?|appointments?|scheduling)\b/.test(t)) actions.push({id:'tag:Booking Needed',label:'Add Booking Needed tag'});
     if (/\b(call (me |us )?back|follow[ -]?up|tomorrow|next week)\b/.test(t)) actions.push({id:'calendar',label:'Schedule follow-up'});
@@ -43,7 +43,7 @@
   }
   async function fetchTranscript(client,id,since=null,callSid=null) {
     const {user}=await load(client,id);
-    let query=client.from('callcenter_transcripts').select('id,crm_id,segments,transcript,started_at,created_at,transcription_status,transcription_error').eq('user_id',user.id).eq('crm_id',id);
+    let query=client.from('callcenter_transcripts').select('id,crm_id,segments,transcript,started_at,created_at,transcription_status,transcription_error,interim_segments,transcript_revision').eq('user_id',user.id).eq('crm_id',id);
     if(callSid)query=query.eq('call_sid',callSid);
     else if(since)query=query.gte('started_at',since);
     const {data,error}=await query.order('created_at',{ascending:false}).limit(1).maybeSingle();

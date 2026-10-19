@@ -38,3 +38,10 @@ test('transcript segments remain ordered; unknown roles never become prospect sp
  assert.deepEqual([...entries.map(e=>e.speaker)],['agent','unknown','prospect']);
  assert.deepEqual([...api.transcriptSegments({transcript:'Plain unlabelled text'}).map(e=>e.speaker)],['unknown']);
 });
+
+test('qualified negative interest is not mistaken for interest',()=>{
+ const {api}=setup();for(const text of ['not really interested','not very interested','not particularly interested']){
+  assert(api.suggestions(text).some(x=>x.id==='tag:Not Interested'));
+  assert(!api.suggestions(text).some(x=>x.id==='tag:Interested'));
+ }
+});

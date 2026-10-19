@@ -32,12 +32,12 @@ function configured in [MULTIPLE-CALLER-IDS.md](MULTIPLE-CALLER-IDS.md).
 
 Make a short app call to a test recipient. Speak a distinct phrase on each end.
 Confirm that your microphone appears as **You**, the recipient as **Prospect**,
-and suggestions respond only to the prospect. The TwiML starts transcription on
+and suggestions respond only to finalized prospect speech. The TwiML starts transcription on
 the browser parent leg, so its inbound audio is the agent microphone.
 
 Confirm signed `transcription-started`, `transcription-content` and
 `transcription-stopped` callbacks return 204 in Supabase logs. Both tracks are
-transcribed using Google's telephony model. Interim hypotheses are ignored;
+transcribed using Google's telephony model. Interim hypotheses are kept separately for provisional live display;
 final utterances are saved atomically by CallSid and deduplicated by Twilio
 TranscriptionSid + SequenceId. Callback failures return 500 instead of silently
 losing text. Twilio provider errors appear in the live transcript feedback.
@@ -94,8 +94,9 @@ callback's default speaker mapping using the saved call direction, not labels
 supplied by a client. Transcript ownership is derived from the signed router's
 saved call record; no browser-supplied owner or selected CRM lead is trusted.
 Incoming transcripts appear in Skills as **Incoming call**, with the caller's
-phone and no CRM association. Lead-specific suggestions are suppressed for this
-unlinked incoming transcript rather than acting on an unrelated selected lead.
+phone and no CRM association. Finalized caller speech produces suggestions. To
+apply a suggestion, select the caller's prospect and confirm its company/phone;
+no action automatically writes to an unrelated selected lead.
 
 Capture starts when the app route is dialed and stops before voicemail. Phone
 forwarding and voicemail-only transcripts are outside this change. A failure to
@@ -104,3 +105,37 @@ failed` and does not stop the call from connecting or reaching voicemail. If
 text never appears, inspect that log and transcription callback invocations; valid
 callbacks return 204. Provider errors appear in the transcript status. Production
 Twilio speech delivery still needs a real two-way call after deployment.
+
+## Faster display and incoming suggested actions
+
+After the inbound migration above, run
+`supabase/migrations/20261019030000_transcript_live_updates.sql`, then redeploy
+`twilio-transcription-webhook` and `twilio-inbound-session` with gateway JWT checks
+off and publish/reload the updated frontend. No additional secret is needed.
+Do not rerun older transcript migrations after this one: they replace the same
+callback SQL function with its older implementation.
+
+The migration adds provisional per-speaker snapshots, monotonic row revisions,
+and finalized sequence watermarks. It adds `callcenter_transcripts` to the existing
+`supabase_realtime` publication if needed, preserving owner-only SELECT RLS.
+If a self-hosted project has no such publication, enable Realtime replication for
+this table to use push delivery; polling still works without it.
+
+Incoming calls subscribe to their exact parent CallSid through Supabase Realtime
+and retain a 1.5-second fallback poll. Outbound fallback polling is also reduced
+to 1.5 seconds. Provider-generated partial speech appears as **(speaking…)** and
+may change; only finalized utterances enter the saved transcript and produce
+suggestions. Speech recognition and webhook/network delivery still take time;
+this is not a guarantee of zero latency. Incoming suggestions now include DNC,
+interest tags, booking, follow-up, textable number, and preview actions. “Not
+really interested” is treated as negative interest. Applying an incoming
+suggestion requires selecting and confirming the caller's prospect.
+
+Verify with a new incoming call: say “do not call me” from the caller phone, pause
+briefly, and verify **Mark Do Not Call** appears. Saying it only on the agent side
+must not create that suggestion. Verify provisional text updates before the final
+utterance, an updated final replaces it rather than duplicating it, cancelling
+prospect confirmation writes nothing, and sign-out removes the Realtime channel
+and private transcript text. A production call is required to measure actual
+provider latency; automated tests use mocked delivery and a local PostgreSQL
+runtime.
