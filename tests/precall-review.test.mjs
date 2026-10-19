@@ -56,9 +56,17 @@ function outreachPage(reviewResult=true){
 }
 test('app handoff opens the call screen without a duplicate review',async()=>{
  const s=outreachPage();await s.open('app');assert.equal(s.routes.length,1);
- assert.match(s.routes[0],/^call.html\?/);assert.deepEqual(s.calls,['disposition']);
+ assert.match(s.routes[0],/^call.html\?/);assert.deepEqual(s.calls,[]);
 });
 test('regular phone calls retain review before showing the dialer',async()=>{
  const s=outreachPage();await s.open('regular');assert.deepEqual(s.calls,['review','disposition','regular-dialer']);
  const canceled=outreachPage(false);await canceled.open('regular');assert.deepEqual(canceled.calls,['review']);
+});
+
+test('opening the app dialer never waits on slow preflight requests', {timeout:1000}, async()=>{
+ const calls=[],routes=[];const waiting=new Promise(()=>{});
+ const window={location:{assign:url=>routes.push(url)},SteadyHandsLeadDisposition:{ensureCallable:()=>{calls.push('dnc');return waiting}},SteadyHandsApprovedCaller:()=>{calls.push('caller');return waiting}};
+ const context=vm.createContext({window,currentLead:()=>({id:'chosen',number:'+17025550102',company:'Chosen business'}),tell(){},sessionStorage:{setItem(){}},URLSearchParams,$:()=>null});
+ vm.runInContext(handoff,context);await vm.runInContext("linkCall('app')",context);
+ assert.equal(routes.length,1);assert.match(routes[0],/crm_id=chosen/);assert.deepEqual(calls,[]);
 });
