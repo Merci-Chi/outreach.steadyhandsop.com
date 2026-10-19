@@ -16,7 +16,7 @@ function harness(basis='commission',submit=async()=>({})){let dialog;const liste
  }
  const document={activeElement:new Node(),body:{appendChild(n){dialog=n},classList:{add(){},remove(){}}},createElement:tag=>new Node(tag),addEventListener(k,fn){listeners[k]=fn;}};
  const calls=[];const window={OutreachActions:{load:async()=>({assignment:{id:'assigned-1',status:'assigned'},associate:{current_basis:basis,start_date:'2026-11-02'}}),submit:async(...args)=>{calls.push(args);return submit(...args)},extend:async(_,__,next)=>next}};
- const c=vm.createContext({window,document,Intl,Date,location:{pathname:'/action-needed.html'},console});vm.runInContext(read('actions/start-dates.js'),c);vm.runInContext(read('actions/timezone-picker.js'),c);
+ const c=vm.createContext({window,document,Intl,Date,location:{pathname:'/action-needed.html'},console});vm.runInContext(read('actions/start-dates.js'),c);vm.runInContext(read('actions/timezone-areas.js'),c);vm.runInContext(read('actions/timezone-picker.js'),c);
  // Mock menu DOM while retaining the actual country/area mappings for integration checks.
  const picker=window.SteadyHandsTimezonePicker;
  picker.mount=(host,selected,onChange,reference,saved)=>{

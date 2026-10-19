@@ -52,3 +52,9 @@ Verification: `npm test` and `npm run test:db`. The access tests include live
 PostgreSQL execution via PGlite, multiple pending actions, independent agreement
 requirements, cancellation, owner-only access, RLS, fresh unpause reads, direct
 workspace routes, Realtime invalidation, network failure, and calling revocation.
+
+## Updated completion routing
+
+Required actions now run on the onboarding portal. Deploy the automatic completion
+SQL and frontend handoff changes described in ONBOARDING-AUTO-RETURN.md. The older
+Outreach questionnaire/manual-recheck routing above is superseded.

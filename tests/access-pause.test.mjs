@@ -1,41 +1,43 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import {readFileSync} from 'node:fs';
-const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8');
-async function guard(page,status){
+import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../auth-guard.js',import.meta.url),'utf8');
+async function guard(page,status,{storage=new Map(),user='u'}={}){
  const events={},docEvents={},redirects=[];let interval,notify,reads=0;
- const client={auth:{getSession:async()=>({data:{session:{user:{id:'u',created_at:'2020-01-01'}}}})},
-  rpc:async()=>{reads++;if(status.error)return {error:{message:'offline'}};return {data:status};},
-  channel:()=>({on(_type,_filter,callback){notify=callback;return this;},subscribe(){}})};
- const window={supabase:{createClient:()=>client},addEventListener(k,fn){events[k]=fn;},setInterval(fn){interval=fn;}};
- const document={head:{appendChild(){}},createElement:()=>({}),documentElement:{classList:{add(){},remove(){}}},addEventListener(k,fn){docEvents[k]=fn;},visibilityState:'visible'};
- const storage={getItem:()=> '1',setItem(){}};
- vm.runInNewContext(read('auth-guard.js'),{window,document,location:{pathname:'/'+page,search:'',hash:'',replace:v=>redirects.push(v)},sessionStorage:storage,localStorage:storage,URLSearchParams,console:{error(){}}});
- await docEvents.DOMContentLoaded();
- return {window,redirects,events,interval,notify,reads:()=>reads};
+ const client={auth:{getSession:async()=>({data:{session:{user:{id:user,created_at:'2020-01-01'}}}})},rpc:async()=>{reads++;return status.error?{error:{message:'offline'}}:{data:status}},channel:()=>({on(_type,_filter,callback){notify=callback;return this},subscribe(){}})};
+ const window={supabase:{createClient:()=>client},addEventListener:(k,fn)=>events[k]=fn,setInterval:fn=>interval=fn};
+ const document={head:{appendChild(){}},createElement:()=>({}),documentElement:{classList:{add(){},remove(){}}},addEventListener:(k,fn)=>docEvents[k]=fn,visibilityState:'visible'};
+ const store={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
+ storage.set('callcenter-resume-checked','1');
+ const url=new URL(page,'https://outreach.steadyhandsop.com/');
+ vm.runInNewContext(source,{window,document,URL,URLSearchParams,Date,location:{pathname:url.pathname,search:url.search,hash:url.hash,href:url.href,origin:url.origin,replace:v=>redirects.push(v)},sessionStorage:store,localStorage:store,console:{error(){}}});
+ await docEvents.DOMContentLoaded();return {window,redirects,events,interval,notify,storage,reads:()=>reads};
 }
-test('pending actions block all workspace routes even when the legacy pause is clear',async()=>{
- for(const page of ['index.html','leads.html','call.html','queue.html','admin.html']){
-  const h=await guard(page,{is_paused:true,action_required:true,agreement_action_required:false});
-  assert.deepEqual(h.redirects,['action-needed.html?open=1']);
+const portal=value=>{const u=new URL(value);assert.equal(u.origin,'https://onboard.steadyhandsop.com');assert.equal(u.searchParams.get('from'),'outreach');return u;};
+test('paused workspaces and a refreshed call page go directly to the onboarding portal',async()=>{
+ for(const page of ['index.html','leads.html','call.html?crm_id=123&number=private','queue.html','admin.html']){
+  const h=await guard(page,{is_paused:true,action_required:true});const target=portal(h.redirects[0]);
+  assert(!target.href.includes('private'));assert(!target.href.includes('questionnaire'));
+  if(page.startsWith('call'))assert.equal(target.searchParams.get('return_to'),'https://outreach.steadyhandsop.com/call.html?crm_id=123');
  }
- const agreement=await guard('index.html',{is_paused:true,action_required:false});assert.deepEqual(agreement.redirects,['pause.html']);
+ const h=await guard('index.html',{is_paused:true,action_required:false,agreement_action_required:true});portal(h.redirects[0]);
 });
-test('action pages remain available and final completion immediately restores access',async()=>{
- const status={is_paused:true,action_required:true};
- const h=await guard('action-needed.html',status);assert.deepEqual(h.redirects,[]);
- await h.window.outreachRecheckAccess();assert.deepEqual(h.redirects,[]);
- status.action_required=false; // An agreement still blocks access.
- await h.window.outreachRecheckAccess();assert.deepEqual(h.redirects,[]);
- status.is_paused=false;await h.window.outreachRecheckAccess();assert.deepEqual(h.redirects,['index.html']);
+test('legacy questionnaire routes hand off without reading or opening a local questionnaire',async()=>{
+ for(const page of ['action-needed.html','alreadyoncommission.html','currentlyonhourlywage.html']){
+  const h=await guard(page,{is_paused:true,action_required:true});portal(h.redirects[0]);assert.equal(h.reads(),0);
+ }
 });
-test('open workspaces recheck broadcasts, focus and polling; failures close access',async()=>{
- const status={is_paused:false,action_required:false};const h=await guard('index.html',status);
- status.is_paused=true;status.action_required=true;await h.notify();assert.equal(h.redirects.at(-1),'action-needed.html?open=1');
- status.error=true;await h.events.focus();assert.equal(h.redirects.at(-1),'pause.html');
- assert.equal(typeof h.interval,'function');
+test('completion restores the full saved call workspace and removes its one-time return state',async()=>{
+ const paused=await guard('call.html?crm_id=123&number=business',{is_paused:true});
+ const resumed=await guard('call.html?crm_id=123',{is_paused:false},{storage:paused.storage});
+ assert.equal(resumed.redirects[0],'call.html?crm_id=123&number=business');assert(!resumed.storage.has('outreach-onboarding-return'));
 });
-test('unverified initial access never opens the workspace',async()=>{
- const h=await guard('index.html',{});assert.deepEqual(h.redirects,['pause.html']);
+test('saved destinations from another account or an external site cannot be restored',async()=>{
+ const state=new Map([['outreach-onboarding-return',JSON.stringify({userId:'other',href:'call.html',savedAt:Date.now()})]]);
+ const h=await guard('index.html',{is_paused:false},{storage:state});assert.equal(h.redirects.length,0);
+ state.set('outreach-onboarding-return',JSON.stringify({userId:'u',href:'https://evil.example/call.html',savedAt:Date.now()}));
+ const evil=await guard('index.html',{is_paused:false},{storage:state});assert.equal(evil.redirects.length,0);
+});
+test('open workspaces recheck broadcasts, focus and polling; failed verification hands off safely',async()=>{
+ const status={is_paused:false};const h=await guard('index.html',status);status.is_paused=true;await h.notify();portal(h.redirects.at(-1));
+ status.error=true;await h.events.focus();portal(h.redirects.at(-1));assert.equal(typeof h.interval,'function');
+ const invalid=await guard('call.html',{});portal(invalid.redirects[0]);
 });

@@ -5,6 +5,37 @@
   const RESUME_KEY = 'callcenter-last-location';
   const RESUME_CHECKED_KEY = 'callcenter-resume-checked';
   const MAX_RESUME_AGE = 1000 * 60 * 60 * 24 * 30;
+  const HANDOFF_KEY = 'outreach-onboarding-return';
+  const OUTREACH_ORIGIN = 'https://outreach.steadyhandsop.com';
+  const PORTAL_ORIGIN = 'https://onboard.steadyhandsop.com';
+  const workspacePages = new Set(['index.html','call.html','leads.html','queue.html','activity.html','sales.html','earnings.html','account.html','skills.html','admin.html']);
+  function safeWorkspace(value) {
+    try {
+      const url = new URL(value, OUTREACH_ORIGIN);
+      if (url.origin !== OUTREACH_ORIGIN || !workspacePages.has(url.pathname.slice(1))) return null;
+      return url.pathname.slice(1) + url.search + url.hash;
+    } catch { return null; }
+  }
+  function returnLocation(userId) {
+    try {
+      const saved=JSON.parse(sessionStorage.getItem(HANDOFF_KEY)||'null');
+      if(saved?.userId===userId && Date.now()-saved.savedAt<86400000)return safeWorkspace(saved.href);
+    } catch {}
+    return null;
+  }
+  function portalURL(userId) {
+    const current=safeWorkspace(location.pathname + (location.search||'') + (location.hash||''));
+    const resume=current||returnLocation(userId)||'index.html';
+    try {sessionStorage.setItem(HANDOFF_KEY,JSON.stringify({userId,href:resume,savedAt:Date.now()}));sessionStorage.setItem(RESUME_CHECKED_KEY,'1');}catch{}
+    // Send only the page and selected record ID; keep business/contact details local.
+    const destination=new URL(resume,OUTREACH_ORIGIN);
+    const record=destination.searchParams.get('crm_id');destination.search='';destination.hash='';
+    if(record)destination.searchParams.set('crm_id',record);
+    const portal=new URL('/',PORTAL_ORIGIN);
+    portal.searchParams.set('from','outreach');portal.searchParams.set('return_to',destination.href);
+    return portal.href;
+  }
+
 
   const accessStyle = document.createElement('style');
   accessStyle.textContent = '.auth-checking body{visibility:hidden;pointer-events:none}';
@@ -161,8 +192,11 @@
       // Action pages remain available so a paused associate can resolve requirements.
       const actionPages = ['action-needed.html','alreadyoncommission.html','currentlyonhourlywage.html'];
       const actionPage = actionPages.includes(currentPageName());
+      const userId=data.session.user.id;
+      let accessNavigating=false;
+      const handoff=()=>{accessNavigating=true;document.documentElement.classList.add('auth-checking');location.replace(portalURL(userId));};
+      if(actionPage){handoff();return;}
       let inFlight = null;
-      let wasPaused = false;
       async function checkAccess() {
         if (inFlight) return inFlight;
         inFlight = (async () => {
@@ -170,13 +204,15 @@
           if (error || typeof status?.is_paused !== 'boolean') throw new Error('Could not verify account access.');
           window.outreachAccessStatus = status;
           if (status.is_paused) {
-            wasPaused = true;
-            if (!actionPage && currentPageName() !== 'pause.html') {
-              document.documentElement.classList.add('auth-checking');
-              location.replace(status.action_required ? 'action-needed.html?open=1' : 'pause.html');
+            handoff();
+          } else {
+            const resume=returnLocation(userId);
+            if(resume){
+              try{sessionStorage.removeItem(HANDOFF_KEY);}catch{}
+              const current=currentPageName()+(location.search||'')+(location.hash||'');
+              if(resume!==current){accessNavigating=true;location.replace(resume);return status;}
             }
-          } else if (currentPageName() === 'pause.html' || (actionPage && wasPaused)) {
-            location.replace('index.html');
+            if(currentPageName()==='pause.html'||actionPage)handoff();
           }
           return status;
         })();
@@ -191,12 +227,12 @@
       let initialStatus;
       try { initialStatus = await checkAccess(); }
       catch {
-        if (!actionPage) {location.replace('pause.html');return;}
-        initialStatus = {is_paused:true};
+        handoff();return;
       }
+      if(accessNavigating)return;
       const recheck = () => refreshAccess().catch(() => {
         // Never leave an already-open workspace usable when verification fails.
-        if (!actionPage && currentPageName() !== 'pause.html') location.replace('pause.html');
+        handoff();
       });
       window.addEventListener('focus', recheck);
       window.addEventListener('pageshow', recheck);

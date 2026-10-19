@@ -1,42 +1,8 @@
+/* Required actions are completed on the team onboarding portal. */
 (() => {
- 'use strict';
- const make=(tag,text)=>{const el=document.createElement(tag);if(text)el.textContent=text;return el;};
- async function init(){
-  const main=document.getElementById('action-list');
-  main.replaceChildren(make('h1','Action Needed'));
-  try{
-   const rows=await window.OutreachActions.list();
-   if(!rows.length)main.appendChild(make('p','You have no actions assigned right now.'));
-   for(const row of rows){
-    const card=make('section');card.className='notice';
-    card.appendChild(make('h2','Associate Questionnaire'));
-    card.appendChild(make('p',row.status==='completed'?'Completed':'Action needed'));
-    for(const [label,value] of [['Assigned',row.assigned_at],['Completed',row.completed_at]]){
-     if(!value)continue;const date=new Date(value);if(!Number.isFinite(date.getTime()))continue;
-     const line=make('p',label+' '),time=make('time',new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeStyle:'short'}).format(date));
-     time.dateTime=value;line.appendChild(time);card.appendChild(line);
-    }
-    if(row.status==='assigned'){
-     const button=make('button','Open questionnaire');button.type='button';button.className='button';
-     const open=async()=>{button.disabled=true;try{await window.OutreachQuestionnaire.open({assignmentId:row.id,onComplete:init});}
-      catch(error){card.appendChild(make('p',error.message));}finally{button.disabled=false;}};
-     button.addEventListener('click',open);card.appendChild(button);
-     if(new URLSearchParams(location.search).get('open')==='1'&&row===rows.find(x=>x.status==='assigned'))await open();
-    }
-    main.appendChild(card);
-   }
-  }catch{const error=make('p','We couldn’t load your actions. Please try again or contact your administrator.');error.setAttribute('role','alert');main.appendChild(error);
-   const retry=make('button','Try again');retry.addEventListener('click',init);main.appendChild(retry);}
-  const status=make('p','Outreach is paused until all required actions and agreements are complete.');status.setAttribute('role','status');main.appendChild(status);
-  const recheck=make('button','Recheck access');recheck.type='button';recheck.className='button';
-  recheck.addEventListener('click',async()=>{
-   recheck.disabled=true;
-   try{const access=await window.outreachRecheckAccess();
-    if(!access.is_paused)location.replace('index.html');
-    else status.textContent=access.action_required?'An action is still required. Complete every pending questionnaire.':'An agreement or other account action is still required.';
-   }catch{status.textContent='Could not verify access. Please recheck again.';}finally{recheck.disabled=false;}
-  });main.appendChild(recheck);
-  const back=make('a','Back to Outreach');back.href='index.html';back.className='button';main.appendChild(back);
- }
- document.addEventListener('DOMContentLoaded',init);
+  document.addEventListener('DOMContentLoaded',()=>{
+    const main=document.getElementById('action-list')||document.getElementById('app');
+    if(main)main.innerHTML='<h1>Continue on onboarding</h1><p>Your required actions are available on the team onboarding portal. You will return to Outreach automatically after they are complete.</p><a class="button" href="https://onboard.steadyhandsop.com/">Open onboarding →</a>';
+    // auth-guard preserves the current workspace and performs the authenticated redirect.
+  });
 })();
