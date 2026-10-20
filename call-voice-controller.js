@@ -25,7 +25,7 @@
       if (!lead?.id || !lead.number) throw new Error('Select a prospect with a phone number first.');
       message('Checking your approved calling number…');
       const caller = await window.SteadyHandsApprovedCaller();
-      if (!caller) throw new Error('No approved calling number is assigned. Ask your administrator to assign an enabled Twilio Ready number.');
+      if (!caller) throw new Error('No approved calling number is assigned. Ask your administrator to assign an enabled verified calling number.');
       if(window.SteadyHandsCallGuide?.prepare && !await window.SteadyHandsCallGuide.prepare(lead.id)){message('Call canceled.');return;}
       if(typeof window.SteadyHandsReviewBeforeCall!=='function')throw Error('Prospect review is still loading. Please try again.');
       if(!await window.SteadyHandsReviewBeforeCall(lead.id)){message('Call canceled.');return;}
