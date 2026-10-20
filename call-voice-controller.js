@@ -6,6 +6,16 @@
   const message = text => { const el = document.getElementById('refMessage'); if (el) el.textContent = text; };
   const state = (active, callSid) => window.dispatchEvent(new CustomEvent('steadyhands:call-state', {detail:{active,callSid}}));
   const button = () => document.getElementById('refEndCall');
+  // Warm the Twilio SDK/token once the signed-in prospect is ready.
+  // This never places a call or requests microphone access.
+  const warmPhone = () => {
+    if (!window.steadyHandsCallLead?.id) return;
+    window.SteadyHandsTwilioVoice?.prepare?.().catch(error => {
+      console.warn('Browser calling will initialize when Call is pressed:', error);
+    });
+  };
+  window.addEventListener('steadyhands:call-lead-ready', warmPhone);
+  if (window.steadyHandsCallLead?.id) warmPhone();
   window.addEventListener('steadyhands:start-call-request', async () => {
     if (starting || window.SteadyHandsTwilioVoice?.isActive()) return;
     starting = true;

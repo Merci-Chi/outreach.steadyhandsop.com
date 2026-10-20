@@ -160,7 +160,7 @@ async function refreshToken() {
   }
 }
 
-async function ensureDevice() {
+async function createOrReuseDevice() {
   const userId=await fetchAuthenticatedUserId();
   if(device&&deviceUserId!==userId){device.destroy();device=null;deviceUserId='';tokenExpiresAt=0;}
   if(device){
@@ -202,6 +202,17 @@ async function ensureDevice() {
 
   return device;
 }
+
+let deviceReadyPromise = null;
+function ensureDevice() {
+  if (!deviceReadyPromise) {
+    deviceReadyPromise = createOrReuseDevice().finally(() => { deviceReadyPromise = null; });
+  }
+  return deviceReadyPromise;
+}
+// Preload the Twilio device/token, not the microphone and not an outbound call.
+// Permissions, lead disposition and caller approval remain checked at dial time.
+function prepare() { return ensureDevice(); }
 
 function bindCall(call, metadata = {}) {
   let finished = false;
@@ -469,6 +480,7 @@ function isActive() {
 }
 
 window.SteadyHandsTwilioVoice = {
+  prepare,
   start,
   hangup,
   setMuted,
