@@ -721,7 +721,7 @@
       <section class="settings-section">
         <div class="settings-section-title">App</div>
         <button class="settings-row" type="button" data-account-action="appearance">
-          <span class="settings-icon"><i data-lucide="circle-half"></i></span>
+          <span class="settings-icon"><i data-lucide="${(window.SteadyHandsTheme?.current?.() || profile.theme_preference) === 'dark' ? 'moon' : 'sun'}"></i></span>
           <span class="settings-copy"><strong>Appearance</strong><small>${profile.theme_preference === 'dark' ? 'Dark mode' : 'Light mode'}</small></span>
           <i class="settings-chevron" data-lucide="chevron-right"></i>
         </button>
@@ -916,6 +916,8 @@
 
               const appearanceRow = main.querySelector('[data-account-action="appearance"] .settings-copy small');
               if (appearanceRow) appearanceRow.textContent = nextTheme === 'dark' ? 'Dark mode' : 'Light mode';
+              const appearanceIcon = main.querySelector('[data-account-action="appearance"] .settings-icon i');
+              if (appearanceIcon) appearanceIcon.setAttribute('data-lucide',nextTheme === 'dark' ? 'moon' : 'sun');
               message.textContent = nextTheme === 'dark' ? 'Dark mode saved to your account.' : 'Light mode saved to your account.';
               window.lucide?.createIcons();
             });
