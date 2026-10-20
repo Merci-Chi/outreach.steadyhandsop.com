@@ -61,9 +61,10 @@ Deno.serve(async (req) => {
       return xml('<Say>Call preparation has not finished.</Say><Hangup/>');
     if(policy?.mode==='delayed'){
       // Consume the preparation window; the next outbound call needs a new delay.
-      const {error:consumeError}=await db.from('associate_calling_policies')
-        .update({ready_after:null}).eq('user_id',userId).eq('ready_after',policy.ready_after);
-      if(consumeError) throw Error('Unable to verify call preparation.');
+      const {data:consumed, error:consumeError}=await db.from('associate_calling_policies')
+        .update({ready_after:null}).eq('user_id',userId).eq('ready_after',policy.ready_after)
+        .select('user_id');
+      if(consumeError || consumed?.length!==1) throw Error('Call preparation has already been used.');
     }
     const destination = normalizeE164(params.To || params.to || '');
     if (!/^\+[1-9]\d{7,14}$/.test(destination)) return xml('<Say>The destination number is invalid.</Say><Hangup/>');
