@@ -1,0 +1,43 @@
+/* Dark loading and empty-state surfaces across authenticated Outreach pages.
+   This stylesheet is intentionally loaded LAST; light mode remains unchanged. */
+html[data-theme="dark"] body {
+ --sh-skeleton-base:#152a43;
+ --sh-skeleton-highlight:#243d59;
+ --sh-empty-surface:#12243b;
+ --sh-empty-border:#304861;
+ --sh-empty-text:#b4c8e0;
+}
+html[data-theme="dark"] body :is(
+ .skeleton-lead,.skeleton-compact,.selected-lead-skeleton,.lead-skeleton-overlay,
+ .outreach-controls-skeleton,.settings-skeleton,.settings-skeleton-card,
+ .skill-library-skeleton,.skill-library-loading,.sh-tools-empty,
+ .pipeline-empty,.table-empty-row,.table-loading-row,.workspace-empty-copy
+){
+ background:var(--sh-empty-surface)!important;
+ color:var(--sh-empty-text)!important;
+ border-color:var(--sh-empty-border)!important;
+}
+html[data-theme="dark"] body :is(
+ .sk-shape,[class^="sk-"],[class*=" sk-"],
+ [class^="settings-skeleton-"],[class*=" settings-skeleton-"],
+ .outreach-controls-skeleton .sk-search-bar,.outreach-controls-skeleton .sk-refresh-button
+){
+ background-image:linear-gradient(100deg,var(--sh-skeleton-base) 10%,var(--sh-skeleton-highlight) 35%,var(--sh-skeleton-base) 60%)!important;
+ background-color:var(--sh-skeleton-base)!important;
+ border-color:var(--sh-empty-border)!important;
+}
+html[data-theme="dark"] body :is(
+ .sh-tools-empty strong,.pipeline-empty strong,.workspace-empty-copy,
+ .table-empty-row,.table-loading-row,.sh-tools-empty p,.pipeline-empty p
+){color:var(--sh-empty-text)!important;}
+html[data-theme="dark"] body :is(
+ .settings-skeleton-profile,.settings-skeleton-grid,.settings-skeleton-row,
+ .settings-skeleton-circle,.settings-skeleton-pill,.settings-skeleton-line
+){background-color:var(--sh-skeleton-base)!important;border-color:var(--sh-empty-border)!important;}
+/* Override legacy high-specificity desktop loading rules that force white. */
+@media(min-width:900px){
+ html[data-theme="dark"] body.page-outreach main.content.outreach-loading #selectedLeadTop > .selected-lead-skeleton,
+ html[data-theme="dark"] body.page-outreach #selectedLeadTop .selected-lead-skeleton{
+  background:var(--sh-empty-surface)!important;border-color:var(--sh-empty-border)!important;
+ }
+}

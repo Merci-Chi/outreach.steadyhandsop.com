@@ -1457,13 +1457,13 @@ function setupOutreach() {
         <div class="calendar-progress"><span></span></div>
 
         <p class="calendar-lead">Choose which lead to follow up with.</p>
-        <label class="calendar-label" for="shCalendarLeadSearch">Find a lead by name or phone</label>
-        <input type="search" id="shCalendarLeadSearch" class="calendar-note" placeholder="Business name or phone number" autocomplete="off" style="width:100%;min-height:44px;margin-bottom:8px">
+        <label class="calendar-label" for="shCalendarLeadSearch">Search your assigned leads</label>
+        <input type="search" id="shCalendarLeadSearch" class="calendar-note" placeholder="Type a business name or phone number" autocomplete="off" style="width:100%;min-height:44px;margin-bottom:8px">
         <label class="calendar-label" for="shCalendarRecentLead">Select lead</label>
         <select id="shCalendarRecentLead" class="calendar-note" style="width:100%;min-height:44px;margin-bottom:8px">
           <option value="${crmEscape(card.dataset.crmId || '')}">${crmEscape(companyName(card))} (current lead)</option>
         </select>
-        <p class="calendar-lead" id="shCalendarRecentStatus">Your current lead is selected. Loading recent calls…</p>
+        <p class="calendar-lead" id="shCalendarRecentStatus">Loading leads assigned to you… Type a business name or phone number to search.</p>
 
         <label class="calendar-label">Date</label>
 
@@ -1537,7 +1537,7 @@ function setupOutreach() {
     const lookupLeads = async term => {
       if(!clientForLookup||!userForLookup){status.textContent='CRM unavailable; current lead remains selected.';return;}
       const sequence=++lookupSequence;
-      status.textContent=term?'Searching leads…':'Loading previously called leads…';
+      status.textContent=term?'Searching your assigned leads…':'Loading your assigned leads…';
       try {
         let rows=[];
         if(!term){
@@ -1566,7 +1566,7 @@ function setupOutreach() {
         }
         if(seen.has(previouslySelected))leadSelect.value=previouslySelected;
         updateOpenLeadButton();
-        status.textContent=rows.length?'Choose a lead above to link it to this calendar event.':term?'No matching lead found. Try another name or phone.':'No assigned leads returned. Check CRM access or refresh.';
+        status.textContent=rows.length?(term?'Select a matching assigned lead.':'Your assigned leads are listed above. Type a name or phone to filter.'):(term?'No matching assigned leads. Try another name or phone.':'No assigned leads found. Refresh or check My Leads.');
       }catch(error){
         if(sequence===lookupSequence&&status.isConnected)status.textContent='Could not search CRM leads: '+(error.message||'Unknown error');
       }
