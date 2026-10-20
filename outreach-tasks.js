@@ -44,31 +44,51 @@ if(touched)localStorage.setItem(seenKey,JSON.stringify(seen));}
 function taskHTML(t){const isDone=t.status==='done';return `<article class="sh-tools-item ${overdue(t)?'is-overdue':''}"><input type="checkbox" data-task-toggle="${safe(t.id)}" ${isDone?'checked':''} aria-label="Complete ${safe(t.title)}" style="margin-top:4px"><div><strong>${safe(t.title)}</strong><p>${safe(dateLabel(t.due_at))} · ${safe(t.priority||'normal')} priority${t.notes?' · '+safe(t.notes):''}</p><div class="sh-tools-actions">${t.lead_id?`<button type="button" data-task-lead="${safe(t.lead_id)}">Open lead</button>`:''}<button type="button" data-task-delete="${safe(t.id)}">Delete</button></div></div></article>`;}
 function callbackHTML(c){return `<article class="sh-tools-item"><div><strong>Callback: ${safe(c.company||'Customer')}</strong><p>${safe(c.callbackat||c.callbackdate||'Scheduled callback')} · From CRM</p><div class="sh-tools-actions"><button type="button" data-task-lead="${safe(c.id)}">Open lead</button></div></div></article>`;}
 function taskList(){const items=tasks.filter(t=>filter==='completed'?t.status==='done':filter==='upcoming'?t.status!=='done'&&!today(t)&&!overdue(t):t.status!=='done'&&(today(t)||overdue(t)));const addCallbacks=filter==='today'?callbacks:[];return `<div class="sh-list-top"><div><span class="sh-section-kicker">YOUR WORKSPACE</span><p class="sh-list-subtitle">Keep your day organized and stay on top of every follow-up.</p></div><button class="sh-add-task" id="shCreateTask" type="button" aria-label="Add task" title="Add task"><i data-lucide="plus"></i></button></div><div class="sh-tools-filters">${['today','upcoming','completed'].map(k=>`<button type="button" data-task-filter="${k}" aria-pressed="${k===filter}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>${items.map(taskHTML).join('')}${addCallbacks.map(callbackHTML).join('')||'<div class="sh-tools-empty"><div class="sh-empty-icon"><i data-lucide="check-check"></i></div><strong>All caught up</strong><p>Nothing to show here right now. Tap + to add a task.</p></div>'}<p class="sh-tools-muted">Scheduled callbacks sync from your CRM. Record the call outcome to complete a follow-up.</p>`;}
-function formHTML(){return `<form id="shTaskForm" class="sh-tools-form"><label>Task name <span class="sh-required">*</span><input name="title" maxlength="160" required autofocus placeholder="e.g. Send website preview"></label><div class="sh-form-grid"><label>Due date & time<input name="due" type="datetime-local"></label><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label></div><label>Link to a recent call <span class="sh-optional">Optional</span><select name="lead" id="shRecentCalledLead"><option value="">Loading recently called leads…</option></select></label><p id="shRecentCalledLeadStatus" class="sh-tools-muted" role="status">Choose a business you recently called. No CRM ID needed.</p><label>Notes <span class="sh-optional">Optional</span><textarea name="notes" maxlength="1500" rows="3" placeholder="Add any details or instructions..."></textarea></label><div class="sh-task-modal-actions"><button type="button" class="sh-task-cancel" id="shCancelTask">Cancel</button><button class="sh-tools-primary sh-task-save" type="submit"><i data-lucide="check"></i> Create task</button></div><p class="sh-tools-muted">This task is saved to your account. Admin-assigned tasks appear here too.</p></form>`;}
+function formHTML(){return `<form id="shTaskForm" class="sh-tools-form"><label>Task name <span class="sh-required">*</span><input name="title" maxlength="160" required autofocus placeholder="e.g. Send website preview"></label><div class="sh-form-grid"><label>Due date & time<input name="due" type="datetime-local"></label><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label></div><label>Link a lead <span class="sh-optional">Optional</span><input type="search" id="shLeadLookup" autocomplete="off" placeholder="Search business name or phone number"><select name="lead" id="shRecentCalledLead"><option value="">Loading recently called leads…</option></select></label><p id="shRecentCalledLeadStatus" class="sh-tools-muted" role="status">Choose a business you recently called. No CRM ID needed.</p><label>Notes <span class="sh-optional">Optional</span><textarea name="notes" maxlength="1500" rows="3" placeholder="Add any details or instructions..."></textarea></label><div class="sh-task-modal-actions"><button type="button" class="sh-task-cancel" id="shCancelTask">Cancel</button><button class="sh-tools-primary sh-task-save" type="submit"><i data-lucide="check"></i> Create task</button></div><p class="sh-tools-muted">This task is saved to your account. Admin-assigned tasks appear here too.</p></form>`;}
 function notificationHTML(){const unread=notices.filter(n=>!n.read_at).length;return `<div class="sh-notice-intro"><div><span class="sh-section-kicker">UPDATES & REMINDERS</span><p>${unread?`${unread} unread ${unread===1?'notification':'notifications'}`:'You’re all caught up'}</p></div>${unread?'<button class="sh-read-all" type="button" id="shReadAll"><i data-lucide="check-check"></i> Mark all read</button>':''}</div>${notices.map(n=>`<article class="sh-notice-card ${n.read_at?'':'is-unread'}"><span class="sh-notice-icon"><i data-lucide="${n.read_at?'bell':'bell-ring'}"></i></span><div class="sh-notice-content"><div class="sh-notice-title-row"><strong>${safe(n.title||'Notification')}</strong>${!n.read_at?'<span class="sh-unread-dot" aria-label="Unread"></span>':''}</div><p>${safe(n.body||'')}</p><small>${safe(dateLabel(n.created_at))}</small><div class="sh-tools-actions">${n.lead_id?`<button type="button" data-task-lead="${safe(n.lead_id)}">View lead</button>`:''}${!n.read_at?`<button type="button" data-notice-read="${safe(n.id)}">Mark read</button>`:''}</div></div></article>`).join('')||'<div class="sh-tools-empty"><div class="sh-empty-icon"><i data-lucide="bell-off"></i></div><strong>No notifications yet</strong><p>New reminders and updates will appear here.</p></div>'}`;}
 let modalLastFocus=null;
 function showTaskModal(){if($('shTaskModal'))return;modalLastFocus=document.activeElement;const wrapper=document.createElement('div');wrapper.id='shTaskModal';wrapper.className='sh-task-modal-shell';wrapper.innerHTML=`<div class="sh-task-modal-backdrop" data-task-modal-close></div><section class="sh-task-modal" role="dialog" aria-modal="true" aria-labelledby="shTaskModalTitle" tabindex="-1"><div class="sh-task-modal-head"><div class="sh-task-modal-badge"><i data-lucide="list-plus"></i></div><div><span class="sh-section-kicker">NEW TASK</span><h2 id="shTaskModalTitle">Create a task</h2><p>Plan your next action in seconds.</p></div><button class="sh-task-modal-x" type="button" data-task-modal-close aria-label="Close task form">&times;</button></div><div class="sh-task-modal-content">${formHTML()}</div></section>`;document.body.appendChild(wrapper);iconRefresh();wrapper.querySelector('input[name="title"]').focus();void populateRecentCalledLeads();}
 async function populateRecentCalledLeads(){
- const select=$('shRecentCalledLead'),status=$('shRecentCalledLeadStatus');
+ const select=$('shRecentCalledLead'),status=$('shRecentCalledLeadStatus'),search=$('shLeadLookup');
  if(!select||!client||!userId)return;
- const setMessage=(message)=>{if(status)status.textContent=message};
- select.disabled=true;
- try{
-  const data=await (window.steadyHandsRecentCalledLeads || window.steadyHandsLoadRecentCalls)(client,userId,50);
-  if(!select.isConnected)return;
+ let requestId=0;
+ const render=(rows,msg)=>{
   select.replaceChildren(new Option('No linked lead (optional)',''));
-  for(const lead of data||[]){
-   const name=lead.company||lead.name||lead.phone||'Unnamed lead';
-   const date=lead.lastcalled?new Date(lead.lastcalled):null;
-   const when=date&&!Number.isNaN(date.getTime())?date.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
-   select.add(new Option(name+(lead.phone?' · '+lead.phone:'')+(when?' · '+when:''),String(lead.id)));
+  const seen=new Set();
+  for(const lead of rows||[]){
+   const id=String(lead.id);if(seen.has(id))continue;seen.add(id);
+   const label=window.steadyHandsFormatLeadOption?.(lead)||[lead.company||lead.name||'Customer',lead.phone].filter(Boolean).join(' · ');
+   select.add(new Option(label,id));
   }
-  setMessage(data?.length?'Most recently called first · showing up to 50 of your leads.':'No recently called leads found. You can create this task without linking a lead.');
- }catch(error){
-  if(!select.isConnected)return;
-  select.replaceChildren(new Option('Recent calls unavailable — no lead linked',''));
-  setMessage('Could not load recently called leads: '+(error?.message||'Please try again later.'));
- }finally{if(select.isConnected)select.disabled=false;}
+  status.textContent=msg;
+ };
+ const lookup=async term=>{
+  const current=++requestId;select.disabled=true;
+  status.textContent=term?'Searching leads…':'Loading previously called leads…';
+  try{
+   let rows=[];
+   if(!term){
+    try{rows=await (window.steadyHandsRecentCalledLeads||window.steadyHandsLoadRecentCalls)(client,userId,50)}catch(e){console.warn('Call activity lookup unavailable',e);}
+    if(!rows.length){
+     const {data,error}=await client.from('crm').select('id,company,name,phone,lastcalled').not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
+     if(error)throw error;rows=data||[];
+    }
+   }else{
+    const q=term.replace(/[,%()\\]/g,' ').trim();
+    const number=term.replace(/\D/g,'');
+    const like=(number.length>=3&&/^[\d\s()+.\-]+$/.test(term))?number:q;
+    const {data,error}=await client.from('crm').select('id,company,name,phone,altphone,lastcalled')
+      .or('company.ilike.%'+like+'%,name.ilike.%'+like+'%,phone.ilike.%'+like+'%,altphone.ilike.%'+like+'%').limit(50);
+    if(error)throw error;rows=data||[];
+   }
+   if(current!==requestId||!select.isConnected)return;
+   render(rows,rows.length?(term?'Select a matching lead to link automatically.':'Previously called leads; search any business name or phone number above.'):(term?'No matches. Try part of the business name or phone number.':'No recent calls found. Search for any CRM lead by name or phone above.'));
+  }catch(err){
+   if(current===requestId&&select.isConnected)render([],'Could not search leads: '+(err.message||'Unknown error'));
+  }finally{if(current===requestId&&select.isConnected)select.disabled=false;}
+ };
+ let debounce;search.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(()=>lookup(search.value.trim()),300)});
+ await lookup('');
 }
 function hideTaskModal(){const modal=$('shTaskModal');if(!modal)return;modal.remove();if(modalLastFocus?.isConnected)modalLastFocus.focus();modalLastFocus=null;}
 function render(){if(!panel)return;$('shToolsTitle').textContent=panel==='notices'?'Notifications':'My Tasks';$('shToolsBody').innerHTML=panel==='notices'?notificationHTML():taskList();iconRefresh();}
