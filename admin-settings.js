@@ -136,14 +136,14 @@
           <div class="admin-section-head">
             <div>
               <h2>Outbound Phone Numbers</h2>
-              <p>Add Twilio-owned numbers and assign one default caller ID to each account.</p>
+              <p>Add verified calling numbers and assign one default caller ID to each account.</p>
             </div>
             <span class="admin-count admin-phone-count">${phoneNumbers.length}</span>
           </div>
 
           <form class="admin-add-phone" id="adminAddPhoneForm">
             <label>
-              <span>Twilio number</span>
+              <span>Calling number</span>
               <input id="adminPhoneNumber" type="tel" inputmode="tel" placeholder="+17025550101" required />
             </label>
             <label>
@@ -177,7 +177,7 @@
                       <span>${esc(row.label || 'Outbound caller ID')}</span>
                       ${requestedProfile ? '<small>Requested by ' + esc(requestedProfile.display_name || requestedProfile.email || 'Account') + '</small>' : ''}
                     </div>
-                    <span class="admin-phone-active">${row.twilio_status === 'ready' ? 'Twilio Ready' : 'Pending Twilio'}</span>
+                    <span class="admin-phone-active">${row.twilio_status === 'ready' ? 'Ready' : 'Pending verification'}</span>
                   </div>
 
                   <label class="admin-phone-assign">
@@ -191,7 +191,7 @@
                   <div class="admin-phone-actions">
                     <button type="button" class="admin-phone-ready" data-phone-ready>
                       <i data-lucide="${row.twilio_status === 'ready' ? 'shield-check' : 'shield-alert'}"></i>
-                      ${row.twilio_status === 'ready' ? 'Mark Pending' : 'Mark Twilio Ready'}
+                      ${row.twilio_status === 'ready' ? 'Mark Pending' : 'Mark Ready'}
                     </button>
                     <button type="button" class="admin-phone-toggle" data-phone-toggle>
                       <i data-lucide="${row.active ? 'pause' : 'play'}"></i>
@@ -206,7 +206,7 @@
               <div class="admin-empty">
                 <i data-lucide="phone-call"></i>
                 <strong>No outbound numbers yet</strong>
-                <span>Add a Twilio-owned phone number above.</span>
+                <span>Add a verified calling number above.</span>
               </div>`}
           </div>
         </section>`;
@@ -459,7 +459,7 @@
           location.reload();
         } catch (error) {
           button.disabled = false;
-          alert(error?.message || 'Unable to update Twilio verification status.');
+          alert(error?.message || 'Unable to update calling number verification status.');
         }
       });
     });
