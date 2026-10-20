@@ -375,3 +375,33 @@ body.page-outreach .ref-review-column .ref-transcript-card{min-height:300px;flex
 .lead-action-dialog .primary{background:#087efa;color:white;border-color:#087efa;}
 #leadActionStatus{color:#a32230;min-height:20px;}
 @media(max-width:720px){body.page-outreach .ref-lead-actions .ref-tools{grid-template-columns:repeat(3,minmax(0,1fr));}.lead-action-dialog{padding:22px;}.lead-action-dialog footer{flex-direction:column-reverse;}.lead-action-dialog footer button{width:100%;}}
+
+/* Call page: match the true-navy Outreach dialer without altering light mode. */
+html[data-theme="dark"] body.page-call :is(.ref-lead-card,.ref-side-card,.ref-tools button){
+ background:#12243b!important;color:#edf5ff!important;border-color:#304861!important;
+}
+html[data-theme="dark"] body.page-call .ref-lead-card :is(h2,h3,.ref-phone,.ref-active-clock strong,.ref-time){
+ color:#f3f8ff!important;
+}
+html[data-theme="dark"] body.page-call :is(.ref-status,.ref-muted,.ref-message,.ref-call-label,.ref-active-clock>span,.ref-phone-action-label,.ref-call-control){
+ color:#b2c5df!important;
+}
+html[data-theme="dark"] body.page-call .ref-line{background:#324a65!important}
+html[data-theme="dark"] body.page-call .ref-five-controls .ref-control-circle{
+ background:#1c3552!important;border-color:#4381c6!important;box-shadow:none!important;
+}
+html[data-theme="dark"] body.page-call .ref-five-controls .ref-control-circle svg{
+ color:#a8d6ff!important;stroke:#a8d6ff!important;
+}
+html[data-theme="dark"] body.page-call .ref-five-controls .ref-call-control[aria-pressed="true"] .ref-control-circle{
+ background:#235b89!important;border-color:#71bdff!important;
+}
+html[data-theme="dark"] body.page-call .ref-tools button svg{
+ color:#7bc0ff!important;stroke:#7bc0ff!important;
+}
+html[data-theme="dark"] body.page-call :is(.ref-call-methods button:not(.ref-primary),.ref-next-buttons button:not(.ref-primary)){
+ background:#1c3552!important;color:#edf5ff!important;border-color:#4381c6!important;
+}
+html[data-theme="dark"] body.page-call :is(.ref-call-methods button.ref-primary,.ref-next-buttons button.ref-primary){
+ background:#1179ed!important;color:#fff!important;border-color:#268dff!important;
+}
