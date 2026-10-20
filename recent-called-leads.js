@@ -19,7 +19,7 @@ window.steadyHandsRecentCalledLeads = async function(client, userId, limit = 50)
   const ids = Array.from(recent.keys());
   const {data: leads, error: leadError} = await client.from('crm')
     .select('id,company,name,phone')
-    .in('id',ids);
+    .eq('assigned_user_id',userId).in('id',ids);
   if (leadError) throw leadError;
   const byId = new Map((leads||[]).map(row => [String(row.id),row]));
   return ids.filter(id => byId.has(id)).map(id => ({
@@ -34,7 +34,7 @@ window.steadyHandsSearchCalledLeads = async function(client,userId,term='',limit
  const safeTerm=cleaned.replace(/[,%()\\]/g,' ').trim();
  const digits=cleaned.replace(/\D/g,'');
  const isPhone=digits.length>=3 && /^[\d\s()+.\-]+$/.test(cleaned);
- let query=client.from('crm').select('id,company,name,phone,altphone,lastcalled,assigned_user_id');
+ let query=client.from('crm').select('id,company,name,phone,altphone,lastcalled,assigned_user_id').eq('assigned_user_id',userId);
  if(safeTerm){
    // PostgREST OR search is intentionally escaped to prevent filter injection.
    const q=safeTerm.replace(/[^\p{L}\p{N}\s+\-]/gu,' ').trim();
