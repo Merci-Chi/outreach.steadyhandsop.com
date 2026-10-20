@@ -1,0 +1,53 @@
+/* Unified dark overlay surfaces across Admin and Outreach.
+   Loaded after page styles by theme.js; does not affect light mode. */
+html[data-theme="dark"] body :is(
+ dialog,.lead-action-dialog,.sh-tool-sheet,.app-modal,.settings-sheet,.calendar-sheet,
+ .call-tool-modal,.call-tool-sheet,.post-call-modal,.post-call-sheet,
+ [role="dialog"],[aria-modal="true"],[class*="-modal"],[class*="-popup"],
+ [class*="-drawer"],[class*="-sheet"]:not(.sh-sheet-help):not(.sh-sheet-status)
+):not(.modal-action):not(.modal-label):not(.modal-help):not(.modal-close):not(.modal-input):not(.modal-textarea):not(.modal-note):not(.call-popup-close):not(.sh-sheet-x):not(.sh-sheet-input):not(.sh-sheet-primary):not(.sh-sheet-secondary):not(.sh-sheet-head):not(.sh-sheet-body):not(.sh-sheet-handle){
+ background-color:#12243b!important;
+ color:#edf5ff!important;
+ border-color:#35506c!important;
+}
+html[data-theme="dark"] body :is(
+ dialog,[role="dialog"],[aria-modal="true"],.app-modal,.sh-tool-sheet,
+ .settings-sheet,.calendar-sheet,[class*="-drawer"],[class*="-popup"]
+) :is(
+ .sh-alert-row,.sh-template-row,.sh-price,.sh-preview-url,.sh-tag-pill,
+ .cc-check,.app-modal-body,.modal-note,.request-detail-card,
+ .admin-summary-card,.admin-approval-card,.settings-status-card,.settings-about,
+ .admin-phone-card,.admin-phone-route,.call-transcript-card,
+ [class*="-card"],[class*="-panel"],[class*="-row"]:not(.topbar-row):not(.picker-row),
+ [class*="-body"]:not(.app-modal-body)
+){
+ background-color:#1b324e!important;
+ color:#edf5ff!important;
+ border-color:#3a5572!important;
+}
+html[data-theme="dark"] body :is(
+ dialog,[role="dialog"],[aria-modal="true"],.app-modal,.sh-tool-sheet,
+ .settings-sheet,.calendar-sheet,[class*="-drawer"],[class*="-popup"]
+) :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select,[contenteditable="true"]){
+ background-color:#10243c!important;color:#eef6ff!important;border-color:#486582!important;
+}
+html[data-theme="dark"] body :is(
+ dialog,[role="dialog"],[aria-modal="true"],.app-modal,.sh-tool-sheet,
+ .settings-sheet,.calendar-sheet,[class*="-drawer"],[class*="-popup"]
+) :is(h1,h2,h3,h4,h5,th,strong,b,label,p,small,span):not(.badge):not(.admin-user-state){
+ color:inherit;
+}
+html[data-theme="dark"] body :is(
+ dialog,[role="dialog"],[aria-modal="true"],.app-modal,.sh-tool-sheet,
+ .settings-sheet,.calendar-sheet,[class*="-drawer"],[class*="-popup"]
+) :is(button:not(.primary):not(.danger):not(.modal-action.primary),.modal-action:not(.primary),.sh-sheet-x,.sh-template-copy){
+ background-color:#243e5a!important;color:#eaf4ff!important;border-color:#496684!important;
+}
+html[data-theme="dark"] body :is(dialog,[role="dialog"],[aria-modal="true"],.app-modal,.sh-tool-sheet) :is(.primary,.modal-action.primary,.sh-sheet-primary){
+ background-color:#1677e8!important;color:#fff!important;border-color:#1677e8!important;
+}
+html[data-theme="dark"] body :is(.admin-user-card,.admin-request-card,.request-list-card,.request-detail-card,.admin-approval-card,.admin-summary-card,.settings-status-card,.settings-about,.call-transcript-card,.settings-skeleton-card){
+ background-color:#182e49!important;color:#edf5ff!important;border-color:#36516f!important;
+}
+html[data-theme="dark"] body :is(.modal-note,.sh-sheet-help,.sh-sheet-status,.sh-template-row small){color:#b7cce4!important}
+html[data-theme="dark"] body :is(dialog,[role="dialog"],.app-modal,.sh-tool-sheet) ::placeholder{color:#a6bbd2!important}
