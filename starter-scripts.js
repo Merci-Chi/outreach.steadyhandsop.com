@@ -4,7 +4,7 @@ const scripts={
  'no-site':g=>`${g} I was looking into your business earlier and I couldn’t find a website. I help businesses get set up with a professional site. Is that something you’re considering?`,
  broken:g=>`${g} I noticed parts of your website weren’t working properly. I can help get it fixed or rebuilt. Would you be interested?`,
  old:g=>`${g} I was looking at your website earlier and noticed it seems dated. I help businesses redesign and upgrade older sites. Would you be open to talking about it?`,
- spanish:g=>`${g} No hay problema. Un miembro de mi equipo habla español. ¿Puedo pedirle que le llame?`
+ spanish:g=>`No hay problema. Un miembro de mi equipo habla español. ¿Puedo pedirle que le llame?`
 };
 let salesperson='';
 function getClient(){return window.steadyHandsCRMClient||window.supabaseClient||window.callcenterSupabase||null;}
