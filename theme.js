@@ -67,6 +67,18 @@
     sync: syncAccountTheme
   };
 
+  // Install after page CSS so late-loaded modal/card styles cannot force white.
+  const addDarkSurfaces=()=>{
+    if(document.getElementById('shUnifiedDarkSurfaces'))return;
+    const link=document.createElement('link');
+    link.id='shUnifiedDarkSurfaces';
+    link.rel='stylesheet';
+    link.href='unified-dark-surfaces.css?v=20261020-unified-v1';
+    document.head.appendChild(link);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addDarkSurfaces);
+  else addDarkSurfaces();
+
   document.addEventListener('DOMContentLoaded', () => {
     document.body?.setAttribute('data-theme', document.documentElement.dataset.theme || cachedTheme());
 
