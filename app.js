@@ -912,10 +912,10 @@ function setupOutreach() {
   };
 
   const saveScheduledCall = async (card, details) => {
-    const key = starKey(card);
+    const key = card ? starKey(card) : `crm:${details.crmId}`;
     scheduledCalls[key] = details;
     localStorage.setItem(SCHEDULE_KEY, JSON.stringify(scheduledCalls));
-    card.dataset.scheduled = 'true';
+    if (card) card.dataset.scheduled = 'true';
 
     const client = window.steadyHandsCRMClient;
     const userId = window.steadyHandsOutreachUserId;
@@ -1441,7 +1441,12 @@ function setupOutreach() {
 
         <div class="calendar-progress"><span></span></div>
 
-        <p class="calendar-lead">Choose when to follow up with <strong>${crmEscape(companyName(card))}</strong>.</p>
+        <p class="calendar-lead">Choose which lead to follow up with.</p>
+        <label class="calendar-label" for="shCalendarRecentLead">Recently called lead</label>
+        <select id="shCalendarRecentLead" class="calendar-note" style="width:100%;min-height:44px;margin-bottom:8px">
+          <option value="${crmEscape(card.dataset.crmId || '')}">${crmEscape(companyName(card))} (current lead)</option>
+        </select>
+        <p class="calendar-lead" id="shCalendarRecentStatus">Your current lead is selected. Loading recent calls…</p>
 
         <label class="calendar-label">Date</label>
 
@@ -1488,6 +1493,57 @@ function setupOutreach() {
     document.body.appendChild(overlay);
 
     const sheet = q('.calendar-sheet', overlay);
+    const leadSelect = q('#shCalendarRecentLead', sheet);
+    let recentLeads = [];
+    const defaultCrmId = card.dataset.crmId || '';
+    const selectedLeadDetails = () => {
+      const id = leadSelect.value;
+      const chosen = recentLeads.find(row => String(row.id) === id);
+      if (chosen) return {
+        crmId: String(chosen.id),
+        company: chosen.company || chosen.name || chosen.phone || 'Customer',
+        contact: chosen.name || '',
+        number: chosen.phone || ''
+      };
+      return {
+        crmId: defaultCrmId,
+        company: companyName(card),
+        contact: q('.lead-title .name', card)?.textContent?.trim() || '',
+        number: q('.contact-line span', card)?.textContent?.trim() || ''
+      };
+    };
+    (async () => {
+      const client = window.steadyHandsCRMClient;
+      const userId = window.steadyHandsOutreachUserId;
+      const status = q('#shCalendarRecentStatus', sheet);
+      if (!client || !userId) {
+        status.textContent = 'Current lead selected; recent calls unavailable.';
+        return;
+      }
+      try {
+        const {data,error} = await client.from('crm')
+          .select('id,company,name,phone,lastcalled')
+          .eq('assigned_user_id',userId).not('lastcalled','is',null)
+          .order('lastcalled',{ascending:false}).limit(50);
+        if (error) throw error;
+        if (!leadSelect.isConnected) return;
+        recentLeads = data || [];
+        const seen = new Set([defaultCrmId]);
+        for (const lead of recentLeads) {
+          const id = String(lead.id);
+          if (seen.has(id)) continue;
+          seen.add(id);
+          const called = new Date(lead.lastcalled);
+          const when = !Number.isNaN(called.getTime()) ? called.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+          leadSelect.add(new Option(
+            (lead.company || lead.name || lead.phone || 'Customer') +
+            (lead.phone ? ' · '+lead.phone : '') + (when ? ' · '+when : ''), id));
+        }
+        status.textContent = 'Choose from your 50 most recently called leads, newest first.';
+      } catch (error) {
+        if (status.isConnected) status.textContent = 'Recent calls could not load; current lead still works.';
+      }
+    })();
 
     const pickerFields = qa('.picker-field', sheet);
 
@@ -1621,18 +1677,17 @@ function setupOutreach() {
 
       const note = q('.calendar-note', sheet).value.trim();
 
-      const name = companyName(card);
-
-      const contact = q('.lead-title .name', card)?.textContent?.trim() || '';
-
-      const number = q('.contact-line span', card)?.textContent?.trim() || '';
+      const chosenLead = selectedLeadDetails();
+      const name = chosenLead.company;
+      const contact = chosenLead.contact;
+      const number = chosenLead.number;
 
       const fmt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
 
       const esc = v => String(v).replace(/**\\\\\\**/g,'\\\\\\\\\\\\\\\\').replace(/\n/g,'\\\\\n').replace(/,/g,'\\\\\\\\,').replace(/;/g,'\\\\\\\\;');
 
       const scheduleDetails = {
-        crmId: card.dataset.crmId || '',
+        crmId: chosenLead.crmId,
         company: name,
         contact,
         number,
@@ -1642,7 +1697,9 @@ function setupOutreach() {
         note
       };
 
-      await saveScheduledCall(card, scheduleDetails);
+      const targetCard = chosenLead.crmId === defaultCrmId
+        ? card : originalOrder.find(item => item.dataset.crmId === chosenLead.crmId) || null;
+      await saveScheduledCall(targetCard, scheduleDetails);
 
       if ('Notification' in window && Notification.permission === 'default') {
         callcenterRequestNotifications();
@@ -1653,7 +1710,7 @@ function setupOutreach() {
       callcenterOpenDeviceCalendar(scheduleDetails);
 
       if (activeFilter === 'Scheduled') {
-        selectedCard = card;
+        if (targetCard) selectedCard = targetCard;
         renderQueue(false);
       }
 
