@@ -51,3 +51,9 @@ html[data-theme="dark"] body :is(.admin-user-card,.admin-request-card,.request-l
 }
 html[data-theme="dark"] body :is(.modal-note,.sh-sheet-help,.sh-sheet-status,.sh-template-row small){color:#b7cce4!important}
 html[data-theme="dark"] body :is(dialog,[role="dialog"],.app-modal,.sh-tool-sheet) ::placeholder{color:#a6bbd2!important}
+
+/* Overlays remain translucent, never an opaque white or navy blocking layer. */
+html[data-theme="dark"] body :is([class*="-overlay"],.sh-tool-mask,.app-modal-overlay,.admin-user-drawer-overlay):not([role="dialog"]){
+ background-color:rgba(4,13,26,.8)!important;
+}
+html[data-theme="dark"] body :is(.admin-phone-card,.lead-action-dialog,.sh-tool-sheet,.settings-sheet,.calendar-sheet,.admin-user-drawer,.admin-request-drawer) :is(a:not(.primary),label,p,small){color:#cfdef0}
