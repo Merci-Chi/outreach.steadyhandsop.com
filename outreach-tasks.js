@@ -39,11 +39,7 @@ async function populateRecentCalledLeads(){
  const setMessage=(message)=>{if(status)status.textContent=message};
  select.disabled=true;
  try{
-  const {data,error}=await client.from('crm')
-   .select('id,company,name,phone,lastcalled')
-   .eq('assigned_user_id',userId).not('lastcalled','is',null)
-   .order('lastcalled',{ascending:false}).limit(50);
-  if(error)throw error;
+  const data=await window.steadyHandsRecentCalledLeads(client,userId,50);
   if(!select.isConnected)return;
   select.replaceChildren(new Option('No linked lead (optional)',''));
   for(const lead of data||[]){
