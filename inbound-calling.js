@@ -155,7 +155,7 @@ function startTranscript(incoming){
   if(transcript)lastRevision=revision;
   const provisional=Object.values(transcript?.interim_segments||{}).filter(part=>part?.text).map(part=>(part.speaker==='agent'?'You':part.speaker==='customer'?'Prospect':'Transcript')+' (speaking…): '+part.text);
   const displayText=[transcript?.transcript||'',...provisional].filter(Boolean).join('\n');
-  const message=!transcript?'Waiting for the incoming transcript. Check the transcription deployment if no text appears.':transcript.transcription_status==='error'?'Transcription error: '+(transcript.transcription_error||'Check Twilio logs.'):provisional.length?'Listening… provisional text may change.':'';
+  const message=!transcript?'Waiting for the incoming transcript. Check the transcription deployment if no text appears.':transcript.transcription_status==='error'?'Transcription error: '+(transcript.transcription_error||'Contact your administrator.'):provisional.length?'Listening… provisional text may change.':'';
   $('inboundTranscriptStatus').textContent=message;$('inboundTranscriptText').value=displayText;
   transcriptEvent({callSid:sid,transcript,displayText,message});
  }
