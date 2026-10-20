@@ -1447,6 +1447,7 @@ function setupOutreach() {
           <option value="${crmEscape(card.dataset.crmId || '')}">${crmEscape(companyName(card))} (current lead)</option>
         </select>
         <p class="calendar-lead" id="shCalendarRecentStatus">Your current lead is selected. Loading recent calls…</p>
+        <button type="button" id="shCalendarOpenLead" class="calendar-action" style="margin:0 0 16px;min-height:40px" ${card.dataset.crmId ? '' : 'disabled'}><i data-lucide="external-link"></i> Open Lead</button>
 
         <label class="calendar-label">Date</label>
 
@@ -1494,6 +1495,14 @@ function setupOutreach() {
 
     const sheet = q('.calendar-sheet', overlay);
     const leadSelect = q('#shCalendarRecentLead', sheet);
+    const openLeadButton = q('#shCalendarOpenLead', sheet);
+    const updateOpenLeadButton = () => { openLeadButton.disabled = !leadSelect.value; };
+    leadSelect.addEventListener('change', updateOpenLeadButton);
+    openLeadButton.addEventListener('click', () => {
+      const crmId = leadSelect.value;
+      if (crmId) window.location.assign('index.html?crm_id=' + encodeURIComponent(crmId));
+    });
+    updateOpenLeadButton();
     let recentLeads = [];
     const defaultCrmId = card.dataset.crmId || '';
     const selectedLeadDetails = () => {
