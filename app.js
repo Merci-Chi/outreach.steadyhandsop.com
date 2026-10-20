@@ -1541,13 +1541,10 @@ function setupOutreach() {
       try {
         let rows=[];
         if(!term){
-          try { rows=await (window.steadyHandsRecentCalledLeads||window.steadyHandsLoadRecentCalls)(clientForLookup,userForLookup,50); }
-          catch(error){console.warn('Call activity lookup unavailable',error);}
-          if(!rows.length){
-            const {data,error}=await clientForLookup.from('crm').select('id,company,name,phone,lastcalled')
-             .eq('assigned_user_id',userForLookup).not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
-            if(error)throw error; rows=data||[];
-          }
+          const {data,error}=await clientForLookup.from('crm').select('id,company,name,phone,lastcalled')
+            .eq('assigned_user_id',userForLookup).order('lastcalled',{ascending:false,nullsFirst:false}).limit(500);
+          if(error)throw error;
+          rows=data||[];
         }else {
           const q=term.replace(/[,%()\\]/g,' ').trim();
           const digits=term.replace(/\D/g,'');
@@ -1569,7 +1566,7 @@ function setupOutreach() {
         }
         if(seen.has(previouslySelected))leadSelect.value=previouslySelected;
         updateOpenLeadButton();
-        status.textContent=rows.length?'Choose a lead above to link it to this calendar event.':term?'No matching lead found. Try another name or phone.':'No call history found. Search any CRM lead above.';
+        status.textContent=rows.length?'Choose a lead above to link it to this calendar event.':term?'No matching lead found. Try another name or phone.':'No assigned leads returned. Check CRM access or refresh.';
       }catch(error){
         if(sequence===lookupSequence&&status.isConnected)status.textContent='Could not search CRM leads: '+(error.message||'Unknown error');
       }
