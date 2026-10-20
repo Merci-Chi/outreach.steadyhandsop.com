@@ -48,3 +48,30 @@
 .sh-template-copy.is-copied .sh-template-icon-check{display:block;}
 @keyframes sh-copy-pop{0%{transform:scale(.89)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.sh-template-copy.is-copied{animation:none}}
+
+/* Pre-call review: true dark surfaces on every nested panel and control. */
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet{
+  background:#101f34!important;color:#eef5ff!important;border:1px solid #38516b!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(.sh-sheet-head,.sh-sheet-body){
+  background:#101f34!important;color:#eef5ff!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(.sh-alert-row,.sh-template-row,.sh-price,.sh-preview-url,.cc-check){
+  background:#192d46!important;color:#eef5ff!important;border-color:#38516b!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(h2,h3,b,strong,label,.modal-label,.sh-template-row b){
+  color:#eef5ff!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(p,small,.sh-sheet-help,.sh-sheet-status,.sh-template-row small){
+  color:#b8cce2!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(textarea,input:not([type="checkbox"]),.sh-sheet-input){
+  background:#10243c!important;color:#eef5ff!important;border-color:#46627f!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(.sh-tag-pill,.sh-template-copy,.sh-sheet-x,.modal-action:not(.primary)){
+  background:#223b58!important;color:#eef5ff!important;border-color:#4a6886!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet .modal-action.primary{
+  background:#1677e8!important;color:#fff!important;border-color:#1677e8!important;
+}
+html[data-theme="dark"] body.page-outreach dialog.lead-action-dialog.sh-tool-sheet :is(button:disabled,textarea:disabled){opacity:.65;}
