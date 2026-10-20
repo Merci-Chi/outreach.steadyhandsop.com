@@ -1521,11 +1521,7 @@ function setupOutreach() {
         return;
       }
       try {
-        const {data,error} = await client.from('crm')
-          .select('id,company,name,phone,lastcalled')
-          .eq('assigned_user_id',userId).not('lastcalled','is',null)
-          .order('lastcalled',{ascending:false}).limit(50);
-        if (error) throw error;
+        const data = await window.steadyHandsRecentCalledLeads(client,userId,50);
         if (!leadSelect.isConnected) return;
         recentLeads = data || [];
         const seen = new Set([defaultCrmId]);
