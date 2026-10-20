@@ -30,6 +30,41 @@
       if(typeof window.SteadyHandsReviewBeforeCall!=='function')throw Error('Prospect review is still loading. Please try again.');
       if(!await window.SteadyHandsReviewBeforeCall(lead.id)){message('Call canceled.');return;}
       if(window.steadyHandsCallLead?.id!==lead.id)throw Error('The prospect changed. Review the new prospect first.');
+      // Database policy is sampled for EACH call; the Twilio webhook also enforces it.
+      const db=window.steadyHandsCRMClient;
+      if(!db)throw Error('Calling policy service is unavailable.');
+      const {data:policy,error:policyError}=await db.rpc('outreach_prepare_call');
+      if(policyError)throw Error(policyError.message || 'Cannot verify calling access.');
+      if(policy?.mode==='delayed'){
+        const waitMs=Number(policy.delay_seconds)*1000;
+        if(!Number.isFinite(waitMs)||waitMs<7000||waitMs>45000)throw Error('Invalid preparation delay.');
+        const box=document.createElement('section');
+        box.className='sh-call-preparation';
+        box.setAttribute('role','status');
+        box.innerHTML='<strong>While you wait</strong><p>Call preparation is in progress. Review the prospect, your opening script, and questions before the call begins.</p><p class="sh-call-lead-name"></p><small class="sh-call-countdown"></small><button type="button" class="sh-cancel-prep">Cancel call</button>';
+        box.querySelector('.sh-call-lead-name').textContent=lead.company||'Selected prospect';
+        const script=document.querySelector('#call-conversation-popup .call-guide-card blockquote')?.textContent?.trim();
+        if(script){
+          const homework=document.createElement('blockquote');
+          homework.className='sh-call-homework';
+          homework.textContent=script;
+          box.insertBefore(homework,box.querySelector('.sh-call-countdown'));
+        }
+        const target=document.querySelector('.ref-active-panel')||document.querySelector('.ref-lead-card');
+        if(target)target.appendChild(box);
+        message('Preparing your call…');
+        let cancelled=false;
+        const cancel=box.querySelector('.sh-cancel-prep');
+        cancel.addEventListener('click',()=>{cancelled=true;box.remove();});
+        try{
+          const end=Date.now()+waitMs;
+          while(Date.now()<end && !cancelled){
+            box.querySelector('.sh-call-countdown').textContent=Math.max(0,Math.ceil((end-Date.now())/1000))+' seconds until dialing';
+            await new Promise(resolve=>setTimeout(resolve,Math.min(250,end-Date.now())));
+          }
+          if(cancelled){message('Call canceled.');return;}
+        }finally{box.remove();}
+      }
       const voice = window.SteadyHandsTwilioVoice;
       if (!voice) throw new Error('The browser phone is still loading. Please try again.');
       message('Calling from ' + caller.phone_number + '…');

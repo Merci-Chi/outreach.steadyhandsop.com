@@ -22,6 +22,7 @@ function reviewPage(){
  const window={addEventListener:(k,fn)=>events[k]=fn,dispatchEvent(){},
   steadyHandsCallLead:{id:'lead',number:'+17025550102',company:'Business'},
   SteadyHandsApprovedCaller:async()=>({phone_number:'+17025550101'}),
+  steadyHandsCRMClient:{rpc:async()=>({data:{mode:'normal',delay_seconds:0},error:null})},
   SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>calls.push(args)}};
  const context=vm.createContext({window,document:{body:{append(node){dialog=node;dialogCount++}},getElementById:id=>nodes[id]},
   make:(tag,text)=>new Node(tag,text),leadId:()=>selected,core:{load:async()=>({row:{company:'Business',phone:'+17025550102'}})},URL,
