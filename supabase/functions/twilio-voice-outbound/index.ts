@@ -22,9 +22,9 @@ async function assignedCaller(db: any, userId: string) {
   const access = read(await db.rpc('outreach_access_status', {p_user_id: userId}));
   if (typeof access?.is_paused !== 'boolean') throw Error('Could not verify account access.');
   if (access.is_paused) deny('Outreach is paused. Complete required actions and agreements, then recheck access.');
-  const permission = read(await db.from('team_permissions').select('role,active,listed').eq('user_id', userId).maybeSingle());
+  const permission = read(await db.from('team_permissions').select('role,active,listed,sales_enabled').eq('user_id', userId).maybeSingle());
   const profile = read(await db.from('callcenter_profiles').select('disabled_at').eq('user_id', userId).maybeSingle());
-  if (!permission?.active || permission.listed === false || !['ADMIN','SALES'].includes(permission.role) || !profile || profile.disabled_at) deny('Active sales or admin access is required.');
+  if (!permission?.active || permission.listed === false || !(['ADMIN','SALES'].includes(permission.role) || permission.sales_enabled === true) || !profile || profile.disabled_at) deny('Active sales or admin access is required.');
   const assignment = read(await db.from('callcenter_phone_assignments').select('phone_number_id').eq('user_id', userId).maybeSingle());
   if (!assignment?.phone_number_id) deny('No calling number is assigned to your account.');
   const number = read(await db.from('callcenter_phone_numbers').select('phone_number,active,twilio_status').eq('id', assignment.phone_number_id).maybeSingle());
