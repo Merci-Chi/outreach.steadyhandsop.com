@@ -68,11 +68,10 @@ async function populateRecentCalledLeads(){
   try{
    let rows=[];
    if(!term){
-    try{rows=await (window.steadyHandsRecentCalledLeads||window.steadyHandsLoadRecentCalls)(client,userId,50)}catch(e){console.warn('Call activity lookup unavailable',e);}
-    if(!rows.length){
-     const {data,error}=await client.from('crm').select('id,company,name,phone,lastcalled').eq('assigned_user_id',userId).not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
-     if(error)throw error;rows=data||[];
-    }
+    const {data,error}=await client.from('crm').select('id,company,name,phone,lastcalled')
+      .eq('assigned_user_id',userId).order('lastcalled',{ascending:false,nullsFirst:false}).limit(500);
+    if(error)throw error;
+    rows=data||[];
    }else{
     const q=term.replace(/[,%()\\]/g,' ').trim();
     const number=term.replace(/\D/g,'');
@@ -82,7 +81,7 @@ async function populateRecentCalledLeads(){
     if(error)throw error;rows=data||[];
    }
    if(current!==requestId||!select.isConnected)return;
-   render(rows,rows.length?(term?'Select a matching lead to link automatically.':'Previously called leads; search any business name or phone number above.'):(term?'No matches. Try part of the business name or phone number.':'No recent calls found. Search for any CRM lead by name or phone above.'));
+   render(rows,rows.length?(term?'Select a matching lead to link automatically.':'Your assigned leads — search by business name or phone number above.'):(term?'No matches. Try part of the business name or phone number.':'No assigned leads returned. Check CRM access or refresh.'));
   }catch(err){
    if(current===requestId&&select.isConnected)render([],'Could not search leads: '+(err.message||'Unknown error'));
   }finally{if(current===requestId&&select.isConnected)select.disabled=false;}
