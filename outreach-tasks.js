@@ -8,7 +8,7 @@ window.steadyHandsLoadRecentCalls ||= async function(client,userId,limit=50){
  const ids=new Map();
  for(const call of calls||[]){const id=String(call.crm_id||'');if(id&&!ids.has(id))ids.set(id,call.created_at);if(ids.size>=limit)break;}
  if(!ids.size)return [];
- const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').in('id',[...ids.keys()]);
+ const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').eq('assigned_user_id',userId).in('id',[...ids.keys()]);
  if(lookupError)throw lookupError;
  const byId=new Map((leads||[]).map(row=>[String(row.id),row]));
  return [...ids].filter(([id])=>byId.has(id)).map(([id,time])=>({...byId.get(id),lastcalled:time}));
@@ -70,7 +70,7 @@ async function populateRecentCalledLeads(){
    if(!term){
     try{rows=await (window.steadyHandsRecentCalledLeads||window.steadyHandsLoadRecentCalls)(client,userId,50)}catch(e){console.warn('Call activity lookup unavailable',e);}
     if(!rows.length){
-     const {data,error}=await client.from('crm').select('id,company,name,phone,lastcalled').not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
+     const {data,error}=await client.from('crm').select('id,company,name,phone,lastcalled').eq('assigned_user_id',userId).not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
      if(error)throw error;rows=data||[];
     }
    }else{
@@ -78,7 +78,7 @@ async function populateRecentCalledLeads(){
     const number=term.replace(/\D/g,'');
     const like=(number.length>=3&&/^[\d\s()+.\-]+$/.test(term))?number:q;
     const {data,error}=await client.from('crm').select('id,company,name,phone,altphone,lastcalled')
-      .or('company.ilike.%'+like+'%,name.ilike.%'+like+'%,phone.ilike.%'+like+'%,altphone.ilike.%'+like+'%').limit(50);
+      .eq('assigned_user_id',userId).or('company.ilike.%'+like+'%,name.ilike.%'+like+'%,phone.ilike.%'+like+'%,altphone.ilike.%'+like+'%').limit(50);
     if(error)throw error;rows=data||[];
    }
    if(current!==requestId||!select.isConnected)return;
