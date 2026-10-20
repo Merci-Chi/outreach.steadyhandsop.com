@@ -75,3 +75,21 @@ html[data-theme="dark"] .page-sales .sales-main{color:#071347!important}
 @media(max-width:420px){.page-sales .pipeline-stat{min-height:135px;padding:12px!important}.page-sales .pipeline-stat>svg{width:53px!important;height:53px!important;padding:11px}.page-sales .pipeline-stat span{font-size:12px!important}.page-sales .pipeline-stage-copy b{font-size:15px!important}.page-sales .pipeline-stage{gap:11px!important}.page-sales .pipeline-followups{padding-left:75px}}
 /* Postgres-tracked category filters and editor */
 .sh-followup-filter{display:flex;width:100%;align-items:center;justify-content:space-between;border:0;background:transparent;border-radius:10px;padding:10px 14px;color:#14294e;cursor:pointer;font:inherit;text-align:left}.sh-followup-filter.selected,.sh-followup-filter:hover{background:#e8f3ff}.sh-followup-filter strong{background:#eef3fa;padding:4px 11px;border-radius:30px}.pipeline-detail label{display:grid;gap:7px;margin:12px 0;color:#162d50;font-weight:600}.pipeline-detail :is(select,input,textarea){box-sizing:border-box;width:100%;padding:11px;border:1px solid #cbd8e8;border-radius:10px;font:inherit;background:white;color:#162d50}.pipeline-detail [data-save]{background:#167ef1;color:white;border:0;padding:12px 22px;border-radius:10px;font-weight:700;cursor:pointer}.pipeline-detail [hidden]{display:none!important}.sh-save-status{color:#be3b38}
+
+/* Reference layout keeps white sales cards in both themes; text must stay dark. */
+html[data-theme="dark"] .page-sales :is(.target-board,.target-card,.pipeline-stat,.pipeline-stage-section,.pipeline-customers,.pipeline-stage,.pipeline-stage-group,.pipeline-client,.pipeline-search,.pipeline-detail){
+ color:#0d2042!important;
+}
+html[data-theme="dark"] .page-sales :is(.target-board,.target-card,.pipeline-stat,.pipeline-stage-section,.pipeline-customers,.pipeline-stage,.pipeline-stage-group,.pipeline-client,.pipeline-search){
+ background:#fff!important;
+}
+html[data-theme="dark"] .page-sales :is(.pipeline-section-title h3,.target-title h3,.target-card-head strong,.pipeline-stat strong,.pipeline-stage-copy b,.pipeline-client strong,.pipeline-client b,.pipeline-detail h3,.pipeline-detail label){
+ color:#102148!important;
+}
+html[data-theme="dark"] .page-sales :is(.pipeline-search input,.pipeline-detail input,.pipeline-detail select,.pipeline-detail textarea){
+ color:#102148!important;background:#fff!important;
+}
+html[data-theme="dark"] .page-sales .pipeline-search input::placeholder{color:#71839f!important}
+html[data-theme="dark"] .page-sales .pipeline-stage.selected{background:#e7f5ff!important;color:#102148!important}
+html[data-theme="dark"] .page-sales .pipeline-stage strong{background:#eef3f9!important;color:#587096!important}
+html[data-theme="dark"] .page-sales .pipeline-followups>div{color:#617496!important}
