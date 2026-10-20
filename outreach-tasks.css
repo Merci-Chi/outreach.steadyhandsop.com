@@ -46,3 +46,14 @@
 .sh-task-modal-actions button{padding:12px 16px;border-radius:12px;font:inherit;font-size:13px;font-weight:750;cursor:pointer}.sh-task-cancel{border:1px solid var(--line,#dce4ed);background:transparent;color:inherit}.sh-task-save{display:inline-flex;align-items:center;gap:7px}.sh-task-save svg{width:15px;height:15px}
 .sh-task-modal :is(button,input,textarea,select):focus-visible{outline:3px solid #6cb9ff;outline-offset:2px}
 @media(max-width:600px){.sh-task-modal-shell{padding:12px}.sh-task-modal{border-radius:19px;max-height:92dvh}.sh-task-modal-head{padding:17px}.sh-task-modal-content{padding:6px 17px 16px}.sh-form-grid{grid-template-columns:1fr}.sh-tools-body{padding:18px 15px 35px}.sh-notice-card{padding:13px}}
+
+/* Dark-mode task filters: never render pale text on the pale inactive tab. */
+html[data-theme="dark"] .sh-tools-panel .sh-tools-filters{
+ background:#e8f0fa!important;
+}
+html[data-theme="dark"] .sh-tools-panel .sh-tools-filters button{
+ color:#29466a!important;background:transparent!important;
+}
+html[data-theme="dark"] .sh-tools-panel .sh-tools-filters button[aria-pressed="true"]{
+ background:#247ddc!important;color:#fff!important;
+}
