@@ -134,10 +134,10 @@ async function fetchToken(expectedUserId = deviceUserId) {
     } catch {}
     const status = error.context?.status;
     if (!message && status === 401) message = 'Your calling session has expired. Sign out and sign in again.';
-    if (!message && status === 404) message = 'The outbound calling service is unavailable. Ask your administrator to check the twilio-voice-token deployment.';
+    if (!message && status === 404) message = 'The outbound calling service is unavailable. Contact your administrator.';
     throw new Error(message || 'Unable to authorize browser calling. ' + (error.message || 'Please try again.'));
   }
-  if (!data?.token) throw new Error(data?.error || 'Twilio token was not returned.');
+  if (!data?.token) throw new Error(data?.error || 'The calling service could not authorize this session.');
   if(window.steadyHandsCRMClient!==client||await fetchAuthenticatedUserId()!==userId)throw new Error('The signed-in account changed. Retry the call from the current account.');
   tokenExpiresAt=Date.now()+(Number(data.expires_in)>0?Number(data.expires_in):3600)*1000;
   return data.token;
