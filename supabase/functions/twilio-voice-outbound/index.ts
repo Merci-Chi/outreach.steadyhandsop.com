@@ -52,6 +52,19 @@ Deno.serve(async (req) => {
     const userId = [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
     const db = createClient(url, serviceKey, {auth:{persistSession:false}});
     const callerId = await assignedCaller(db, userId); // Re-read on every call.
+    // Enforce calling policies independently of the browser (fail closed).
+    const {data: policy, error: policyError} = await db.from('associate_calling_policies')
+      .select('mode,ready_after').eq('user_id',userId).maybeSingle();
+    if(policyError) throw Error('Could not verify calling policy.');
+    if(policy?.mode==='restricted') return xml('<Say>Outbound calling is restricted by your administrator.</Say><Hangup/>');
+    if(policy?.mode==='delayed' && (!policy.ready_after || Date.now()<new Date(policy.ready_after).getTime()))
+      return xml('<Say>Call preparation has not finished.</Say><Hangup/>');
+    if(policy?.mode==='delayed'){
+      // Consume the preparation window; the next outbound call needs a new delay.
+      const {error:consumeError}=await db.from('associate_calling_policies')
+        .update({ready_after:null}).eq('user_id',userId).eq('ready_after',policy.ready_after);
+      if(consumeError) throw Error('Unable to verify call preparation.');
+    }
     const destination = normalizeE164(params.To || params.to || '');
     if (!/^\+[1-9]\d{7,14}$/.test(destination)) return xml('<Say>The destination number is invalid.</Say><Hangup/>');
     const transcribe = /^(1|true|yes)$/i.test(params.transcribe || '');
