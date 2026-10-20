@@ -314,3 +314,29 @@ body.page-outreach #refCopyCallStart.is-active{opacity:1;background:#116c32}
 body.page-outreach #refCopyCallEnd.is-ready{opacity:1}
 body.page-outreach .ref-copy-call-button:focus-visible{outline:3px solid #fbbf24;outline-offset:3px}
 body.page-outreach #refCopyCallElapsed{font-variant-numeric:tabular-nums;font-size:23px;font-weight:850;letter-spacing:.04em;min-width:75px;text-align:center;color:inherit}
+
+/* The selected lead card remains light in dark mode. Keep all its text legible. */
+html[data-theme="dark"] body.page-outreach .ref-lead-card {
+  background:#fff !important;
+  color:#101d3f !important;
+  border:1px solid #d8e3f2;
+}
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-lead-identity h2,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-phone,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-time {
+  color:#101d3f !important;
+}
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-status,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-muted,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-call-label,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-attempts,
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-time-block p {
+  color:#586d91 !important;
+}
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-line {
+  background:#d7e2f1 !important;
+}
+html[data-theme="dark"] body.page-outreach .ref-lead-card .ref-call-methods button:not(.ref-primary) {
+  background:#fff !important;
+  color:#101d3f !important;
+}
