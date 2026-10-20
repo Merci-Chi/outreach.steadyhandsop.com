@@ -1457,7 +1457,9 @@ function setupOutreach() {
         <div class="calendar-progress"><span></span></div>
 
         <p class="calendar-lead">Choose which lead to follow up with.</p>
-        <label class="calendar-label" for="shCalendarRecentLead">Recently called lead</label>
+        <label class="calendar-label" for="shCalendarLeadSearch">Find a lead by name or phone</label>
+        <input type="search" id="shCalendarLeadSearch" class="calendar-note" placeholder="Business name or phone number" autocomplete="off" style="width:100%;min-height:44px;margin-bottom:8px">
+        <label class="calendar-label" for="shCalendarRecentLead">Select lead</label>
         <select id="shCalendarRecentLead" class="calendar-note" style="width:100%;min-height:44px;margin-bottom:8px">
           <option value="${crmEscape(card.dataset.crmId || '')}">${crmEscape(companyName(card))} (current lead)</option>
         </select>
@@ -1527,34 +1529,57 @@ function setupOutreach() {
         number: q('.contact-line span', card)?.textContent?.trim() || ''
       };
     };
-    (async () => {
-      const client = window.steadyHandsCRMClient;
-      const userId = window.steadyHandsOutreachUserId;
-      const status = q('#shCalendarRecentStatus', sheet);
-      if (!client || !userId) {
-        status.textContent = 'Current lead selected; recent calls unavailable.';
-        return;
-      }
+    const searchInput = q('#shCalendarLeadSearch',sheet);
+    const clientForLookup = window.steadyHandsCRMClient;
+    const userForLookup = window.steadyHandsOutreachUserId;
+    const status = q('#shCalendarRecentStatus',sheet);
+    let lookupSequence=0;
+    const lookupLeads = async term => {
+      if(!clientForLookup||!userForLookup){status.textContent='CRM unavailable; current lead remains selected.';return;}
+      const sequence=++lookupSequence;
+      status.textContent=term?'Searching leads…':'Loading previously called leads…';
       try {
-        const data = await (window.steadyHandsRecentCalledLeads || window.steadyHandsLoadRecentCalls)(client,userId,50);
-        if (!leadSelect.isConnected) return;
-        recentLeads = data || [];
-        const seen = new Set([defaultCrmId]);
-        for (const lead of recentLeads) {
-          const id = String(lead.id);
-          if (seen.has(id)) continue;
-          seen.add(id);
-          const called = new Date(lead.lastcalled);
-          const when = !Number.isNaN(called.getTime()) ? called.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
-          leadSelect.add(new Option(
-            (lead.company || lead.name || lead.phone || 'Customer') +
-            (lead.phone ? ' · '+lead.phone : '') + (when ? ' · '+when : ''), id));
+        let rows=[];
+        if(!term){
+          try { rows=await (window.steadyHandsRecentCalledLeads||window.steadyHandsLoadRecentCalls)(clientForLookup,userForLookup,50); }
+          catch(error){console.warn('Call activity lookup unavailable',error);}
+          if(!rows.length){
+            const {data,error}=await clientForLookup.from('crm').select('id,company,name,phone,lastcalled')
+             .not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
+            if(error)throw error; rows=data||[];
+          }
+        }else {
+          const q=term.replace(/[,%()\\]/g,' ').trim();
+          const digits=term.replace(/\D/g,'');
+          const value=(digits.length>=3&&/^[\d\s()+.\-]+$/.test(term))?digits:q;
+          const {data,error}=await clientForLookup.from('crm')
+            .select('id,company,name,phone,altphone,lastcalled')
+            .or('company.ilike.%'+value+'%,name.ilike.%'+value+'%,phone.ilike.%'+value+'%,altphone.ilike.%'+value+'%').limit(50);
+          if(error)throw error;rows=data||[];
         }
-        status.textContent = 'Choose from your 50 most recently called leads, newest first.';
-      } catch (error) {
-        if (status.isConnected) status.textContent = 'Recent calls could not load; current lead still works.';
+        if(sequence!==lookupSequence||!leadSelect.isConnected)return;
+        recentLeads=rows;
+        const previouslySelected=leadSelect.value;
+        leadSelect.replaceChildren(new Option(companyName(card)+' (current lead)',defaultCrmId));
+        const seen=new Set([defaultCrmId]);
+        for(const lead of rows){
+          const id=String(lead.id);if(seen.has(id))continue;seen.add(id);
+          const title=window.steadyHandsFormatLeadOption?.(lead)||(lead.company||lead.name||lead.phone||'Customer');
+          leadSelect.add(new Option(title,id));
+        }
+        if(seen.has(previouslySelected))leadSelect.value=previouslySelected;
+        updateOpenLeadButton();
+        status.textContent=rows.length?'Choose a lead above to link it to this calendar event.':term?'No matching lead found. Try another name or phone.':'No call history found. Search any CRM lead above.';
+      }catch(error){
+        if(sequence===lookupSequence&&status.isConnected)status.textContent='Could not search CRM leads: '+(error.message||'Unknown error');
       }
-    })();
+    };
+    let lookupDelay;
+    searchInput.addEventListener('input',()=>{
+      clearTimeout(lookupDelay);
+      lookupDelay=setTimeout(()=>lookupLeads(searchInput.value.trim()),300);
+    });
+    void lookupLeads('');
 
     const pickerFields = qa('.picker-field', sheet);
 

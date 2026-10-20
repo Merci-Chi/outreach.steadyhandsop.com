@@ -26,3 +26,36 @@ window.steadyHandsRecentCalledLeads = async function(client, userId, limit = 50)
     ...byId.get(id), lastcalled: recent.get(id)
   }));
 };
+
+/* Independent CRM lookup: handles missed call activity records and arbitrary phone/name search. */
+window.steadyHandsSearchCalledLeads = async function(client,userId,term='',limit=50){
+ if(!client||!userId)return [];
+ const cleaned=String(term||'').trim();
+ const safeTerm=cleaned.replace(/[,%()\\]/g,' ').trim();
+ const digits=cleaned.replace(/\D/g,'');
+ const isPhone=digits.length>=3 && /^[\d\s()+.\-]+$/.test(cleaned);
+ let query=client.from('crm').select('id,company,name,phone,altphone,lastcalled,assigned_user_id');
+ if(safeTerm){
+   // PostgREST OR search is intentionally escaped to prevent filter injection.
+   const q=safeTerm.replace(/[^\p{L}\p{N}\s+\-]/gu,' ').trim();
+   if(isPhone){
+     const p=digits.slice(0,15);
+     query=query.or('phone.ilike.%'+p+'%,altphone.ilike.%'+p+'%');
+   } else if(q){
+     query=query.or('company.ilike.%'+q+'%,name.ilike.%'+q+'%,phone.ilike.%'+q+'%');
+   }
+ }else{
+   // An explicit lastcalled timestamp is useful even when activity history is empty.
+   query=query.not('lastcalled','is',null).order('lastcalled',{ascending:false});
+ }
+ const {data,error}=await query.limit(Math.max(50,limit));
+ if(error)throw error;
+ const results=data||[];
+ // Search can find any accessible CRM record; avoid incorrectly assuming every record was called.
+ return results.slice(0,limit);
+};
+window.steadyHandsFormatLeadOption = function(lead){
+ const date=lead.lastcalled?new Date(lead.lastcalled):null;
+ const when=date&&!Number.isNaN(date.getTime())?date.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+ return (lead.company||lead.name||lead.phone||'Unnamed lead')+(lead.phone?' · '+lead.phone:'')+(when?' · '+when:'');
+};
