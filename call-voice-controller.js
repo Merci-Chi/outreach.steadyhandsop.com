@@ -43,6 +43,13 @@
         box.setAttribute('role','status');
         box.innerHTML='<strong>While you wait</strong><p>Call preparation is in progress. Review the prospect, your opening script, and questions before the call begins.</p><p class="sh-call-lead-name"></p><small class="sh-call-countdown"></small><button type="button" class="sh-cancel-prep">Cancel call</button>';
         box.querySelector('.sh-call-lead-name').textContent=lead.company||'Selected prospect';
+        const script=document.querySelector('#call-conversation-popup .call-guide-card blockquote')?.textContent?.trim();
+        if(script){
+          const homework=document.createElement('blockquote');
+          homework.className='sh-call-homework';
+          homework.textContent=script;
+          box.insertBefore(homework,box.querySelector('.sh-call-countdown'));
+        }
         const target=document.querySelector('.ref-active-panel')||document.querySelector('.ref-lead-card');
         if(target)target.appendChild(box);
         message('Preparing your call…');
