@@ -101,7 +101,7 @@ window.steadyHandsLoadRecentCalls ||= async function(client,userId,limit=50){
  const ids=new Map();
  for(const call of calls||[]){const id=String(call.crm_id||'');if(id&&!ids.has(id))ids.set(id,call.created_at);if(ids.size>=limit)break;}
  if(!ids.size)return [];
- const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').in('id',[...ids.keys()]);
+ const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').eq('assigned_user_id',userId).in('id',[...ids.keys()]);
  if(lookupError)throw lookupError;
  const byId=new Map((leads||[]).map(row=>[String(row.id),row]));
  return [...ids].filter(([id])=>byId.has(id)).map(([id,time])=>({...byId.get(id),lastcalled:time}));
@@ -1545,7 +1545,7 @@ function setupOutreach() {
           catch(error){console.warn('Call activity lookup unavailable',error);}
           if(!rows.length){
             const {data,error}=await clientForLookup.from('crm').select('id,company,name,phone,lastcalled')
-             .not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
+             .eq('assigned_user_id',userForLookup).not('lastcalled','is',null).order('lastcalled',{ascending:false}).limit(50);
             if(error)throw error; rows=data||[];
           }
         }else {
@@ -1554,7 +1554,7 @@ function setupOutreach() {
           const value=(digits.length>=3&&/^[\d\s()+.\-]+$/.test(term))?digits:q;
           const {data,error}=await clientForLookup.from('crm')
             .select('id,company,name,phone,altphone,lastcalled')
-            .or('company.ilike.%'+value+'%,name.ilike.%'+value+'%,phone.ilike.%'+value+'%,altphone.ilike.%'+value+'%').limit(50);
+            .eq('assigned_user_id',userForLookup).or('company.ilike.%'+value+'%,name.ilike.%'+value+'%,phone.ilike.%'+value+'%,altphone.ilike.%'+value+'%').limit(50);
           if(error)throw error;rows=data||[];
         }
         if(sequence!==lookupSequence||!leadSelect.isConnected)return;
