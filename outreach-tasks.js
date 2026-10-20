@@ -1,4 +1,19 @@
 /* Steady Hands Outreach Tasks & Notifications. Database is source of truth. */
+// Self-contained fallback if a cached page fails to load recent-called-leads.js.
+window.steadyHandsLoadRecentCalls ||= async function(client,userId,limit=50){
+ const {data:calls,error}=await client.from('callcenter_call_activity')
+  .select('crm_id,created_at').eq('user_id',userId).not('crm_id','is',null)
+  .order('created_at',{ascending:false}).limit(1000);
+ if(error)throw error;
+ const ids=new Map();
+ for(const call of calls||[]){const id=String(call.crm_id||'');if(id&&!ids.has(id))ids.set(id,call.created_at);if(ids.size>=limit)break;}
+ if(!ids.size)return [];
+ const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').in('id',[...ids.keys()]);
+ if(lookupError)throw lookupError;
+ const byId=new Map((leads||[]).map(row=>[String(row.id),row]));
+ return [...ids].filter(([id])=>byId.has(id)).map(([id,time])=>({...byId.get(id),lastcalled:time}));
+};
+
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -39,7 +54,7 @@ async function populateRecentCalledLeads(){
  const setMessage=(message)=>{if(status)status.textContent=message};
  select.disabled=true;
  try{
-  const data=await window.steadyHandsRecentCalledLeads(client,userId,50);
+  const data=await (window.steadyHandsRecentCalledLeads || window.steadyHandsLoadRecentCalls)(client,userId,50);
   if(!select.isConnected)return;
   select.replaceChildren(new Option('No linked lead (optional)',''));
   for(const lead of data||[]){

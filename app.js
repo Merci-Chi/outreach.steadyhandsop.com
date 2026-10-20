@@ -92,6 +92,21 @@ async function callcenterSyncPushSubscription() {
   }
 }
 
+// Self-contained fallback if a cached page fails to load recent-called-leads.js.
+window.steadyHandsLoadRecentCalls ||= async function(client,userId,limit=50){
+ const {data:calls,error}=await client.from('callcenter_call_activity')
+  .select('crm_id,created_at').eq('user_id',userId).not('crm_id','is',null)
+  .order('created_at',{ascending:false}).limit(1000);
+ if(error)throw error;
+ const ids=new Map();
+ for(const call of calls||[]){const id=String(call.crm_id||'');if(id&&!ids.has(id))ids.set(id,call.created_at);if(ids.size>=limit)break;}
+ if(!ids.size)return [];
+ const {data:leads,error:lookupError}=await client.from('crm').select('id,company,name,phone').in('id',[...ids.keys()]);
+ if(lookupError)throw lookupError;
+ const byId=new Map((leads||[]).map(row=>[String(row.id),row]));
+ return [...ids].filter(([id])=>byId.has(id)).map(([id,time])=>({...byId.get(id),lastcalled:time}));
+};
+
 function callcenterPadCalendar(value) {
   return String(value).padStart(2, '0');
 }
@@ -1521,7 +1536,7 @@ function setupOutreach() {
         return;
       }
       try {
-        const data = await window.steadyHandsRecentCalledLeads(client,userId,50);
+        const data = await (window.steadyHandsRecentCalledLeads || window.steadyHandsLoadRecentCalls)(client,userId,50);
         if (!leadSelect.isConnected) return;
         recentLeads = data || [];
         const seen = new Set([defaultCrmId]);
