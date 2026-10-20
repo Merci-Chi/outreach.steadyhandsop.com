@@ -35,6 +35,7 @@ function callPage(approved) {
  const window={addEventListener(name,fn){handlers[name]=fn},dispatchEvent(event){events.push(event)},
   steadyHandsCallLead:{id:'lead',number:'+17025550102',company:'Prospect'},
   SteadyHandsApprovedCaller:async()=>approved,
+  steadyHandsCRMClient:{rpc:async()=>({data:{mode:'normal',delay_seconds:0},error:null})},
   SteadyHandsReviewBeforeCall:async()=>true,
   SteadyHandsTwilioVoice:{isActive:()=>false,start:async(...args)=>{
    calls.push(args);
