@@ -221,6 +221,8 @@ function bindCall(call, metadata = {}) {
     if (finished) return;
     finished = true;
     if (activeCall === call) activeCall = null;
+    // Never leave hold audio installed on the Twilio device after this call.
+    void resetHoldAudio().catch(error => console.warn('Hold audio cleanup failed:', error));
     signal('ended', { reason, callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || '' });
   };
 
@@ -256,8 +258,8 @@ function bindCall(call, metadata = {}) {
 
 async function start(destination, metadata = {}) {
   if (activeCall || starting || window.SteadyHandsInboundVoice?.isActive()) throw new Error('A call is already active or incoming.');
-  userMuted = false;
-  held = false;
+  // Restore normal microphone processing before beginning another call.
+  await resetHoldAudio();
 
   const to = cleanNumber(destination);
   if (!/^\+[1-9]\d{7,14}$/.test(to)) {
@@ -374,6 +376,19 @@ class HoldAudioProcessor {
   }
 }
 
+async function resetHoldAudio() {
+  const processor = holdAudioProcessor;
+  holdAudioProcessor = null;
+  held = false;
+  userMuted = false;
+  if (!processor) return;
+  try {
+    await device?.audio?.removeProcessor?.(processor, false);
+  } finally {
+    await processor.destroyProcessedStream();
+  }
+}
+
 function setMuted(muted) {
   userMuted = Boolean(muted);
   applyTransmitState();
@@ -407,6 +422,7 @@ async function setHeld(nextHeld) {
     }
   }
 
+  if (holdAudioProcessor) await holdAudioProcessor.destroyProcessedStream();
   holdAudioProcessor = null;
   held = false;
   applyTransmitState();
