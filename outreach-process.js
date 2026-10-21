@@ -118,6 +118,15 @@
     const id=leadId,rev=revision;++request;busy=true;render();feedback('Sending to development team…');
     try {
       await window.SteadyHandsLeadDisposition.save(id,'development',`Textable number: ${state.phone.trim()}. Business needs: ${state.notes.trim()}`);
+      const {data:leadData,error:leadError}=await client().from('crm').select('id,company_name').eq('id',id).single();
+      // Persist the inbox record even when a CRM display name is unavailable.
+      if(leadError && leadError.code!=='42703')console.warn('Development lead name unavailable:',leadError);
+      const {error:requestError}=await client().from('development_requests').insert({
+        crm_id:String(id),submitted_by:userId,
+        company_name:leadData?.company_name||document.querySelector('#refCompany')?.textContent||null,
+        phone:state.phone.trim(),business_needs:state.notes.trim()
+      });
+      if(requestError)throw new Error('CRM handoff saved, but development inbox delivery failed: '+requestError.message+'. Contact your administrator.');
       if(rev===revision){state.sent=true;state.status='Awaiting development team · CRM status: review';feedback('Sent to development team. Manually check step 5 to record completion.');}
     }catch(error){if(rev===revision)feedback('Not sent: '+error.message);}
     finally{if(rev===revision){busy=false;render();}}

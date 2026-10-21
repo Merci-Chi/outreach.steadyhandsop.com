@@ -85,7 +85,7 @@ test('terminal Twilio events forward a SID that only becomes available at discon
  const voice=await readFile(new URL('../twilio-voice.js',import.meta.url),'utf8');
  const bind=voice.slice(voice.indexOf('function bindCall('),voice.indexOf('async function start('));
  const listeners={},events=[],call={parameters:{},on(name,handler){listeners[name]=handler}};
- vm.runInNewContext('let activeCall=call;'+bind+';bindCall(call)',{call,emit:(state,detail)=>events.push({state,...detail}),console});
+ vm.runInNewContext('let activeCall=call;'+bind+';bindCall(call)',{call,emit:(state,detail)=>events.push({state,...detail}),resetHoldAudio:async()=>{},console});
  call.parameters.CallSid='CAlate';listeners.disconnect();
  assert.equal(events[0].state,'ended');assert.equal(events[0].callSid,'CAlate');
 });
@@ -139,7 +139,7 @@ test('recovery after reloading is explicit and never opens while a call is activ
 test('Twilio terminal events are deduplicated and carry their original attempt identity',async()=>{
  const voice=await readFile(new URL('../twilio-voice.js',import.meta.url),'utf8');const bind=voice.slice(voice.indexOf('function bindCall('),voice.indexOf('async function start('));
  const listeners={},events=[],call={parameters:{CallSid:'CA1'},on(name,handler){listeners[name]=handler}};
- vm.runInNewContext('let activeCall=call;'+bind+';bindCall(call,{attemptId:"attempt-one"})',{call,emit:(state,detail)=>events.push({state,...detail}),console});
+ vm.runInNewContext('let activeCall=call;'+bind+';bindCall(call,{attemptId:"attempt-one"})',{call,emit:(state,detail)=>events.push({state,...detail}),resetHoldAudio:async()=>{},console});
  listeners.cancel();listeners.disconnect();listeners.reject();listeners.accept();
  assert.equal(events.length,1);assert.equal(events[0].state,'ended');assert.equal(events[0].attemptId,'attempt-one');
 });

@@ -258,7 +258,9 @@ function bindCall(call, metadata = {}) {
 
 async function start(destination, metadata = {}) {
   if (activeCall || starting || window.SteadyHandsInboundVoice?.isActive()) throw new Error('A call is already active or incoming.');
-  // Restore normal microphone processing before beginning another call.
+  // Reserve this call slot before any asynchronous cleanup, preventing inbound interruption.
+  starting = true;
+  try {
   await resetHoldAudio();
 
   const to = cleanNumber(destination);
@@ -266,8 +268,6 @@ async function start(destination, metadata = {}) {
     throw new Error('This lead does not have a valid phone number.');
   }
 
-  starting = true;
-  try {
   if (!window.SteadyHandsLeadDisposition) throw new Error('Lead status checks are still loading. Please try again.');
   await window.SteadyHandsLeadDisposition.ensureCallable(metadata.crmId, to);
   emit('preparing', { message: 'Authorizing browser calling…' });
