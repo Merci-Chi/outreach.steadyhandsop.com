@@ -18,7 +18,7 @@ async function candidates(client,userId){
  // A call may have been made by a different associate. The database lastcalled
  // timestamp also excludes those records even when this user's history is empty.
  const called=new Set((calls.data||[]).filter(r=>normalized(r.outcome)!=='didnotcall').map(r=>String(r.crm_id)));
- const valid=(leads.data||[]).filter(r=>r.id&&r.phone&&!blocked(r));
+ const valid=(leads.data||[]).filter(r=>r.id&&r.phone&&!blocked(r)&&!window.SteadyHandsLeadDisposition?.blocked?.(r));
  return {fresh:valid.filter(r=>!r.lastcalled&&!called.has(String(r.id))&&!retryable(r)),
   retries:valid.filter(r=>retryable(r)&&Boolean(r.lastcalled||called.has(String(r.id))))};
 }
