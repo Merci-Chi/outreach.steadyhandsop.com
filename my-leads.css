@@ -654,3 +654,5 @@ body.page-my-leads .ml-bulk-queue-btn:disabled{opacity:.48;cursor:not-allowed}
 body.page-my-leads .ml-bulk-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 5px;border-radius:99px;background:rgba(255,255,255,.22);color:#fff;font-size:11px}
 body.page-my-leads .ml-bulk-count[hidden]{display:none}
 @media(max-width:640px){body.page-my-leads .ml-bulk-queue-btn{width:auto!important;min-width:42px;padding:6px 9px!important}body.page-my-leads .ml-bulk-queue-btn>span:not(.ml-bulk-count){display:none}}
+
+@media(min-width:900px){body.page-my-leads .my-leads-table .col-call-status{width:9%!important}body.page-my-leads .my-leads-table .col-company{width:17%!important}body.page-my-leads .my-leads-table .col-location{width:14%!important}body.page-my-leads .my-leads-table .col-phone{width:13%!important}}

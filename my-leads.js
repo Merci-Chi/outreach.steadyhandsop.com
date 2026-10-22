@@ -214,8 +214,9 @@
     const phone = row.phone || row.mobile || row.altphone || 'No phone';
     const email = row.email || row.email_address || 'No email';
     const loc = locationText(row);
-    const stage = window.SteadyHandsLeadDisposition?.displayStage(row) || row.stage || 'Not started';
-    const tags = arrayify(row.tags).slice(0, 3);
+    const stage = window.SteadyHandsLeadDisposition?.displayStage(row) || row.stage || 'Not called';
+    const tags = (window.SteadyHandsLeadDisposition?.businessTags(row) || arrayify(row.tags)).slice(0, 3);
+    const callStatus = window.SteadyHandsLeadDisposition.callStatus(row);
     const sources = arrayify(row.sources);
     const source = sources[0] || row.source || 'Other';
     const previewUrl = ''; // Preview is resolved from CRM.sitekey on click; never trust stored URLs.
@@ -246,6 +247,7 @@
           <div class="location-main">${htmlEscape(loc.main)}</div>
           <span class="location-time">${htmlEscape(loc.sub || 'Local time unavailable')}</span>
         </td>
+        <td data-call-status="${htmlEscape(callStatus)}"><span class="data-pill">${htmlEscape(callStatus)}</span></td>
         <td>
           <div class="pill-row">
             ${tags.length ? tags.map(tag => `<span class="data-pill ${colorClassForTag(tag)}">${htmlEscape(tag)}</span>`).join('') : `<span class="data-pill tag-gray">No tags</span>`}
@@ -534,7 +536,7 @@
     if (!userId) throw new Error('Please sign in to view your assigned leads.');
     const all = [];
     for (let offset = 0; offset < 50000; offset += 1000) {
-      const columns = 'id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id';
+      const columns = 'id,company,name,phone,email,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,call_status,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id';
       // Support CRM schemas both with and without a created_at timestamp.
       let response = await client.from('crm').select(columns + ',created_at')
         .eq('assigned_user_id', userId).order('id', {ascending:true}).range(offset,offset+999);

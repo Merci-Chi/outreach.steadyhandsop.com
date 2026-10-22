@@ -80,3 +80,5 @@ html[data-theme='dark'] body.page-my-leads #openFiltersBtn,html[data-theme='dark
  body.page-my-leads #openFiltersBtn > span[hidden],
  body.page-my-leads #bulkAddToQueueBtn > span[hidden]{display:none!important}
 }
+
+.ml-mobile-call-status{font-size:12px;font-weight:800;padding-top:6px}

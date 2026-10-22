@@ -15,8 +15,8 @@
 
   <link rel="stylesheet" href="styles.css?v=text-selection-20261019" />
   <link rel="stylesheet" href="sidebar.css?v=batch2" />
-  <link rel="stylesheet" href="my-leads.css?v=20261012-bulk-queue-v1" />
-  <link rel="stylesheet" href="my-leads-mobile.css?v=20261012-centered-stats-v2" />
+  <link rel="stylesheet" href="my-leads.css?v=20261022-call-status-column" />
+  <link rel="stylesheet" href="my-leads-mobile.css?v=20261022-call-status-column" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="app-update.js" defer></script>
   <script src="theme.js?v=20261005-account-theme"></script>
@@ -135,6 +135,7 @@
                     <span class="sort-pair"><i data-lucide="chevrons-up-down"></i></span>
                   </button>
                 </th>
+                <th class="col-call-status">Call status</th>
                 <th class="col-tags">
                   <button type="button" class="header-pill filter-pill" id="headerTagsBtn" aria-label="Filter tags" title="Filter tags">
                     <i data-lucide="tag"></i>
@@ -160,7 +161,7 @@
             </thead>
             <tbody id="myLeadsTableBody">
               <tr>
-                <td colspan="8" class="table-loading-row">Loading assigned leads…</td>
+                <td colspan="9" class="table-loading-row">Loading assigned leads…</td>
               </tr>
             </tbody>
           </table>
@@ -269,9 +270,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="auth-guard.js?v=20261019-access-error-recovery"></script>
   <script src="preview-resolver.js?v=20261017-existing-sitekey"></script>
-<script src="my-leads.js?v=20261022-disposition-fix" defer></script>
-<script src="lead-disposition.js?v=20261022-auto-called" defer></script>
-<script src="my-leads-mobile.js?v=20261019-dnc" defer></script>
+<script src="my-leads.js?v=20261022-call-status-column" defer></script>
+<script src="lead-disposition.js?v=20261022-call-status-column" defer></script>
+<script src="my-leads-mobile.js?v=20261022-call-status-column" defer></script>
 </body>
 </html>
 

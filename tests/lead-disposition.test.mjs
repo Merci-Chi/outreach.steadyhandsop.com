@@ -73,8 +73,16 @@ test('terminal tags block calls even without lastcalled and override retry tags'
 });
 test('contact labels detect call tags with an empty outcome and timestamp',()=>{
  const s=setup();
- assert.equal(s.api.displayStage({stage:'notstarted',tags:['Left Voicemail']}),'Called');
+ assert.equal(s.api.displayStage({stage:'notstarted',tags:['Left Voicemail']}),'Outreach');
  assert.equal(s.api.displayStage({stage:'notstarted',tags:['Wrong Number']}),'Wrong / invalid number');
  assert.equal(s.api.hasContact({tags:['No Answer']}),true);
  assert.equal(s.api.callBlocked({stage:'notstarted',tags:['No Answer']}),false);
+});
+
+test('call status is binary and shown separately from business tags',()=>{
+ const s=setup();
+ assert.equal(s.api.callStatus({call_status:'Called',tags:[]}), 'Called');
+ assert.equal(s.api.callStatus({call_status:'Not called',stage:'outreach'}), 'Not called');
+ assert.equal(s.api.callStatus({tags:[]}), 'Not called');
+ assert.deepEqual(Array.from(s.api.businessTags({tags:['Called','Not started','Not called','Wrong Number']})), ['Wrong Number']);
 });
