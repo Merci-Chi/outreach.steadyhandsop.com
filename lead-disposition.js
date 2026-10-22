@@ -10,13 +10,19 @@
     const {data:auth,error:authError} = await client.auth.getUser();
     if (authError || !auth?.user) throw new Error('Please sign in again.');
     const {data,error} = await client.from('crm')
-      .select('id,phone,do_not_call,stage,outcome,tags,notes,assigned_user_id').eq('id',id).single();
+      .select('id,phone,do_not_call,stage,outcome,tags,notes,assigned_user_id,lastcalled').eq('id',id).single();
     if (error || !data) throw new Error('Unable to check this lead. Please refresh and try again.');
     return {client,row:data,user:auth.user};
   }
   async function ensureCallable(id, destination) {
-    const {client,row} = await load(id);
+    const {client,row,user} = await load(id);
+    if (String(row.assigned_user_id)!==String(user.id)) throw new Error('This lead is not assigned to your account.');
     if (blocked(row)) throw new Error('DO NOT CALL: this lead has requested no further calls.');
+    const retry = ['noanswer','leftvoicemail','voicemail','busy'].includes(normalized(row.outcome)) || (Array.isArray(row.tags) && row.tags.some(v=>['noanswer','leftvoicemail','voicemail'].includes(normalized(v))));
+    const history=await client.from('callcenter_call_activity').select('outcome').eq('crm_id',String(id)).eq('user_id',user.id).limit(100);
+    if(history.error) throw new Error('Unable to verify calling history. Calling is blocked until the check succeeds.');
+    const previouslyCalled=!!row.lastcalled || (history.data||[]).some(v=>normalized(v.outcome)!=='didnotcall');
+    if(previouslyCalled && !retry) throw new Error('Previously called lead. Only no-answer or voicemail leads may be retried.');
     const {data,error} = await client.rpc('outreach_call_is_blocked', {
       p_phone: destination || row.phone, p_crm_id: String(id)
     });
