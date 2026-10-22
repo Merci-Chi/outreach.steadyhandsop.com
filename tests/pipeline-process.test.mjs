@@ -39,6 +39,6 @@ test('Start Sale / Track Customer button is wired on Outreach and call pages',as
  for(const page of ['index.html','call.html']){
   const html=await readFile(new URL('../'+page,import.meta.url),'utf8');
   assert.match(html,/id="refStartSale"/);
-  assert.match(html,/src="call-pipeline-stage\\.js\\?v=[^"]+"/);
+  assert(html.includes('src="call-pipeline-stage.js?v='));
  }
 });
