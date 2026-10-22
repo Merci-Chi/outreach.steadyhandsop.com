@@ -22,7 +22,7 @@ function update(){
  const b=document.getElementById('shQueueNext');if(!b)return;
  b.textContent='Next in Queue';
  const progress=document.getElementById('shQueueProgress');
- if(progress)progress.textContent=active?`${active.name} · ${items.filter(x=>x.status==='completed').length}/${items.length} completed`:'No active queue · add leads on the Queue page';
+ if(progress)progress.textContent=active?`${active.name} · ${items.filter(x=>x.status==='completed').length}/${items.length} completed`:'Assigned leads · next uncalled prospect';
 }
 async function advance(){
  if(busy)return;busy=true;
@@ -50,7 +50,8 @@ async function advance(){
    if(fresh.length===1&&String(next.crm_id)===String(current)){alert('Only this uncalled lead remains in the queue.');return;}
    openLead(next.crm_id);return;
   }
-  alert('Your queue is empty. Add leads from the Leads page or enable Auto Add in Queue Settings.');
+  if(!window.SteadyHandsLeadNavigation?.next)throw Error('Lead navigation unavailable. Please refresh.');
+  await window.SteadyHandsLeadNavigation.next();
 
  }catch(e){console.error(e);alert('Unable to select the next lead.');}
  finally{busy=false;if(button)button.disabled=false;}

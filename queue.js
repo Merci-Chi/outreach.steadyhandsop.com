@@ -16,7 +16,7 @@ async function generate(q) {
  if(f.exclude_called)query=query.is('lastcalled',null);
  if(f.preview)query=query.not('sitekey','is',null);
  const rows=await checked(await query);
- let allowed=rows.filter(r=>!inQueue.has(String(r.id))&&(!f.exclude_called||!window.SteadyHandsLeadDisposition.callStatus(r)==='Called')&&!['notinterested','not interested','do not call','donotcall','archived','sold','complete','completed','cancelled'].includes(String(r.stage||'').trim().toLowerCase()));
+ let allowed=rows.filter(r=>!inQueue.has(String(r.id))&&(!f.exclude_called||window.SteadyHandsLeadDisposition.callStatus(r)!=='Called')&&!['notinterested','not interested','do not call','donotcall','archived','sold','complete','completed','cancelled'].includes(String(r.stage||'').trim().toLowerCase()));
  const mode=q.sort_mode;
  if(mode==='random')allowed=allowed.map(v=>({v,k:Math.random()})).sort((a,b)=>a.k-b.k).map(x=>x.v);
  else if(mode==='az')allowed.sort((a,b)=>String(a.company||a.name||'').localeCompare(String(b.company||b.name||'')));
