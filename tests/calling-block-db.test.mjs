@@ -33,8 +33,8 @@ test('blocks direct reads and privileged RPCs, preserves peers and reverses with
  await db.exec(`reset role;insert into associate_calling_policies values('${a}','restricted');set role authenticated;`);
  assert.equal((await status()).calling_blocked,true);assert.equal((await status()).is_paused,true);
  for(const table of ['crm','callcenter_scheduled_calls'])assert.equal((await db.query('select * from '+table)).rows.length,0);
- await assert.rejects(db.query('select my_assigned_leads_v1()'),/blocked/);
- await assert.rejects(db.query("select callcenter_claim_lead('1')"),/blocked/);
+ await assert.rejects(db.query('select my_assigned_leads_v1()'),/temporarily paused/);
+ await assert.rejects(db.query("select callcenter_claim_lead('1')"),/temporarily paused/);
  await db.exec(`set request.jwt.claim.sub='${b}'`);
  assert.equal((await status()).is_paused,false);assert.equal((await db.query('select my_assigned_leads_v1() s')).rows[0].s.length,1);
  await db.exec(`reset role;update associate_calling_policies set mode='normal';insert into outreach_action_assignments values('${a}','assigned');set role authenticated;set request.jwt.claim.sub='${a}';`);
