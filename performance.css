@@ -67,3 +67,13 @@ html[data-theme="dark"] .sh-performance-bar-track{background:#223c58}html[data-t
  #performanceHistory[data-view="calls"] #performanceFollowups,#performanceHistory[data-view="followups"] #performanceCalls{display:none}
 }
 @media(max-width:480px){.performance-history-column{padding:14px}.performance-history-icon{width:36px;height:40px;flex-basis:36px}.performance-history-call,.performance-history-followup{gap:9px}.performance-history-side{flex-basis:90px}.performance-history-copy strong{font-size:13px}}
+
+/* Performance cards: main surface navigates to the prospect; explicit actions remain buttons. */
+.performance-card-quick-actions{display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px 14px;align-items:center}
+.performance-card-quick-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;min-height:38px;border:1px solid #b6d3f5;border-radius:10px;background:var(--card,#fff);color:var(--blue,#087efa);font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.performance-card-quick-actions button:hover,.performance-card-quick-actions button:focus-visible{background:#e6f1ff;outline-offset:2px}
+.performance-card-quick-actions svg{width:16px;height:16px;flex:none}
+.performance-history-card{border-bottom:1px solid var(--line,#dbe3ed)}
+.performance-history-client{cursor:pointer;text-decoration:none;color:inherit}
+.performance-history-client:hover{background:var(--page,#edf5ff)}
+@media(max-width:600px){.performance-card-quick-actions button{flex:1 1 auto}}
