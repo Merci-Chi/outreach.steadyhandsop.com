@@ -4,8 +4,8 @@ begin;
 create or replace function public.outreach_start_inbound_transcript(p_call_sid text)
 returns void language plpgsql security definer set search_path='' as $$
 declare incoming public.outreach_inbound_calls%rowtype;
-declare linked public.crm%rowtype;
-declare saved public.callcenter_transcripts%rowtype;
+linked public.crm%rowtype;
+saved public.callcenter_transcripts%rowtype;
 begin
   if p_call_sid is null or p_call_sid !~ '^CA[0-9a-fA-F]{32}$' then raise exception 'Invalid call SID'; end if;
   select * into strict incoming from public.outreach_inbound_calls where call_sid=p_call_sid for update;
