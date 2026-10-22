@@ -74,6 +74,10 @@ Deno.serve(async req=>{
    if(route.destination==='app'&&!owner)return xml(hangup());
    const {destination,forward}=route;
    await checked(await db.from('outreach_inbound_calls').upsert({call_sid:callSid,user_id:owner,from_number:form.From||'Unknown',to_number:form.To,route_destination:destination,forward_number:forward},{onConflict:'call_sid',ignoreDuplicates:true}));
+   // Batch 1: snapshot an authorized, unique CRM match using the signed PSTN parent SID.
+   // Never select a browser's current lead, and never block routing if lookup fails.
+   try { await checked(await db.rpc('outreach_resolve_inbound_caller',{p_call_sid:callSid})); }
+   catch(error) { console.error('Inbound caller match unavailable:',error); }
   }
   if(stage==='incoming'){
    const incoming=await checked(await db.from('outreach_inbound_calls').select('*').eq('call_sid',callSid).single());
