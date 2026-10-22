@@ -41,8 +41,10 @@ async function showCaller(incoming,parent){
   if(result.match_status==='matched'&&person){
    $('inboundCaller').textContent=[person.name,person.company].filter(Boolean).join(' · ')||result.from_number;
    $('inboundCallerDetails').textContent=[result.from_number,person.stage&&'Stage: '+person.stage,person.outcome&&'Outcome: '+person.outcome,person.notes&&'Notes: '+person.notes].filter(Boolean).join(' | ');
+   window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:person.id,callSid:parent,matchStatus:'matched'}}));
    window.dispatchEvent(new CustomEvent('steadyhands:open-inbound-caller',{detail:{crmId:person.id,callSid:parent}}));
   }else{
+   window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:null,callSid:parent,matchStatus:result.match_status}}));
    $('inboundCallerDetails').textContent=result.match_status==='ambiguous'
     ?'Multiple matching prospects — select the caller manually.'
     :result.match_status==='unknown'?'No assigned CRM match found.':'Caller matching is not ready.';
