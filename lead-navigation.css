@@ -1,14 +1,14 @@
-/* Identical three-control dock on Outreach and the call page. */
+/* Four-control dock: one row on desktop, responsive on small screens. */
 #outreachLeadDock {
   position:fixed;
   right:18px;
   bottom:calc(12px + env(safe-area-inset-bottom, 0px));
   z-index:1100;
-  width:min(540px,calc(100vw - 36px));
+  width:min(760px,calc(100vw - 36px));
   box-sizing:border-box;
   padding:8px;
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(4,minmax(0,1fr));
   gap:8px;
   border:1px solid var(--line,#d4e1ef);
   border-radius:14px;
@@ -62,3 +62,7 @@ body.page-outreach:has(#outreachLeadDock) .app {padding-bottom:calc(150px + env(
   #outreachLeadDock #shInbound #inboundToggle {font-size:12px;padding:8px 5px;gap:4px;min-height:58px;}
   #outreachLeadDock .ref-next-buttons > button svg {width:17px;height:17px;}
 }
+
+#outreachLeadDock #inboundCallSlot {min-width:0;min-height:52px;}
+#outreachLeadDock #shInbound #inboundToggle {height:100%;}
+@media(max-width:620px) {#outreachLeadDock {grid-template-columns:repeat(2,minmax(0,1fr));} }
