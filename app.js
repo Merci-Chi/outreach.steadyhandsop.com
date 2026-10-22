@@ -2720,7 +2720,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
 
   const isNotInterested = lead.stage === 'notinterested' || /not interested/i.test([lead.outcome,...crmTags(lead)].join(' '));
 
-  const tags = crmTags(lead);
+  const tags = window.SteadyHandsLeadDisposition?.businessTags(lead) || crmTags(lead);
   const disposition = window.SteadyHandsLeadDisposition;
   const callBlocked = disposition?.callBlocked(lead);
 
@@ -2761,6 +2761,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
     ${searchMatch ? `<div class="search-match-reason"><i data-lucide="search-check"></i><span><strong>“${crmEscape(searchMatch.query)}”</strong> found in ${crmEscape(searchMatch.label)}: <strong>${crmEscape(searchMatch.value)}</strong></span></div>` : ''}
 
     <div class="compact-lead-meta">
+      <div class="call-status-field"><small>Call status</small> <strong>${crmEscape(disposition?.callStatus(lead) || (lead.lastcalled?'Called':'Not called'))}</strong></div>
       ${callBlocked ? `<span class="tag">Calling blocked · ${crmEscape(disposition.displayStage(lead))}</span>` : ''}
       ${tags.length ? `<div class="tag-row compact-tag-row">${tags.map((t,i)=>`<span class="tag ${crmSourceClass(t)}">${crmEscape(t)}</span>`).join('')}</div>` : ''}
       <div class="compact-call-row">

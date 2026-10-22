@@ -6,6 +6,7 @@ const read=p=>readFile(new URL(p,import.meta.url),'utf8');
 const old=await read('../supabase/migrations/20261019090000_enforce_dnc_suppression.sql');
 const previous=await read('../sql/lead-disposition-consistency.sql');
 const automatic=await read('../sql/automatic-called-tags.sql');
+const separate=await read('../sql/separate-call-status.sql');
 test('Called tag is automatic, removes Not started, repairs queues and cannot be added manually',async()=>{
  const db=new PGlite();const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
  try{
@@ -53,6 +54,14 @@ test('Called tag is automatic, removes Not started, repairs queues and cannot be
  for(const statement of repair.split(';').map(x=>x.trim()).filter(Boolean))await db.exec(statement);
  assert.deepEqual((await lead(4)).tags,['Left Voicemail','Called']);
  assert.equal((await db.query('select status from outreach_queue_items where id=$1',[id(23)])).rows[0].status,'completed');
+ await db.exec("create table outreach_queues(id uuid primary key,name text);insert into outreach_queues values('99999999-9999-4999-8999-999999999999','not started')");
+ await db.exec(separate);
+ assert.equal((await lead(1)).call_status,'Called');
+ assert.equal((await lead(3)).call_status,'Not called');
+ await db.query("update crm set call_status='Called' where id=$1",[id(3)]);
+ assert.equal((await lead(3)).call_status,'Not called');
+ assert.equal((await db.query('select name from outreach_queues')).rows[0].name,'Not called');
+ await db.exec(separate);
  await db.exec('set role authenticated');
  await assert.rejects(db.query('select * from crm_dnc_private.called_tag_backup'),/permission denied/);
  }finally{await db.close()}

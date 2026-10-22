@@ -16,9 +16,9 @@ for(const row of rows){
  await window.SteadyHandsLeadDisposition.ensureCallable(row.dataset.rowId,phone);
  window.location.assign('tel:'+phone.replace(/[^+\d]/g,''));
  }catch(error){window.alert(error.message);}});info.append(link);}
- const loc=[read(row,'.location-main'),read(row,'.location-time')].filter(Boolean).join(' · ');if(loc)info.append(make('div','ml-mobile-location','⌖ '+loc));card.append(info);
+ const loc=[read(row,'.location-main'),read(row,'.location-time')].filter(Boolean).join(' · ');if(loc)info.append(make('div','ml-mobile-location','⌖ '+loc));const status=row.querySelector('[data-call-status]')?.dataset.callStatus||'Not called';info.append(make('div','ml-mobile-call-status','Call status: '+status));card.append(info);
  const menu=make('button','ml-mobile-menu','⋮');menu.type='button';menu.setAttribute('aria-label','Lead actions for '+read(row,'.company-name'));menu.addEventListener('click',()=>row.querySelector('[data-open-menu]')?.click());card.append(menu);
- const pills=make('div','ml-mobile-pills');row.querySelectorAll('.data-pill').forEach(p=>pills.append(p.cloneNode(true)));card.append(pills);fragment.append(card);
+ const pills=make('div','ml-mobile-pills');row.querySelectorAll('.data-pill').forEach(p=>{if(!p.closest('[data-call-status]'))pills.append(p.cloneNode(true))});card.append(pills);fragment.append(card);
 }list.replaceChildren(fragment);}
 let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;render();});};
 new MutationObserver(schedule).observe(table,{childList:true,subtree:true,attributes:true,attributeFilter:['checked']});render();

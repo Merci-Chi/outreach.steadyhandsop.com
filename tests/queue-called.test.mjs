@@ -17,6 +17,6 @@ test('queue shows Called and correct completion even when the item status is sta
  await s.window.api.previewItems({id:'queue'});
  assert.equal(s.node('qComplete').textContent,1);assert.equal(s.node('qRemaining').textContent,1);
  assert.match(s.node('qItemsPreview').innerHTML,/Called business[\s\S]*?Called/);
- assert.match(s.node('qItemsPreview').innerHTML,/New business[\s\S]*?Not started/);
+ assert.match(s.node('qItemsPreview').innerHTML,/New business[\s\S]*?Not called/);
  assert.doesNotMatch(s.node('qItemsPreview').innerHTML,/Not attempted/);
 });
