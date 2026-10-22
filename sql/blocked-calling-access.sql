@@ -73,7 +73,7 @@ begin
       -- calling-block-guard
       IF EXISTS (SELECT 1 FROM public.associate_calling_policies
                  WHERE user_id=auth.uid() AND mode='restricted') THEN
-        RAISE EXCEPTION 'Calling and lead access are blocked by your administrator.' USING ERRCODE='42501';
+        RAISE EXCEPTION 'Your calling and lead access are temporarily paused. Please contact your team administrator for help.' USING ERRCODE='42501';
       END IF;$guard$,'i');
     execute definition;
   end loop;
