@@ -14,9 +14,17 @@
     const leads = new Map(), transcripts = new Set();
     function callHTML(row,lead,followup=false){
       const label=lead.company||lead.name||'Lead',id=row?.id;
-      const content=`<span class="performance-history-icon" aria-hidden="true"><i data-lucide="phone-call"></i></span><span class="performance-history-copy"><span class="performance-history-owner">${esc(displayName||'You')}</span><strong>${esc(label)}</strong><small>${id?esc(stamp(row.created_at))+' · '+esc(duration(row.duration_seconds)):'No linked call'}${lead.phone?' · '+esc(lead.phone):''}</small>${followup?`<small>Follow-up: ${esc(lead.follow_up_at?stamp(lead.follow_up_at):lead.callbackdate||'Date not set')}${!lead.follow_up_at&&lead.callbackat?' · '+esc(lead.callbackat):''}${lead.follow_up_category?' · '+esc(lead.follow_up_category):''}</small>`:''}</span><span class="performance-history-side"><span class="performance-history-outcome">${esc(String(row?.outcome||'Follow-up').replace(/_/g,' '))}</span>${id?`<small>${transcripts.has(String(id))?'Transcript':'Call Details'} <span aria-hidden="true">›</span></small>`:'<small>No linked call</small>'}</span>`;
-      return id?`<button type="button" class="performance-history-call" data-history-call="${esc(id)}" aria-label="View call details for ${esc(label)}">${content}</button>`:`<div class="performance-history-call">${content}</div>`;
+      const leadId=lead.id||row?.crm_id;
+      const href=leadId?'index.html?crm_id='+encodeURIComponent(String(leadId)):'';
+      const content=`<span class="performance-history-icon" aria-hidden="true"><i data-lucide="phone-call"></i></span><span class="performance-history-copy"><span class="performance-history-owner">${esc(displayName||'You')}</span><strong>${esc(label)}</strong><small>${id?esc(stamp(row.created_at))+' · '+esc(duration(row.duration_seconds)):'No linked call'}${lead.phone?' · '+esc(lead.phone):''}</small>${followup?`<small>Follow-up: ${esc(lead.follow_up_at?stamp(lead.follow_up_at):lead.callbackdate||'Date not set')}</small>`:''}</span><span class="performance-history-side"><span class="performance-history-outcome">${esc(String(row?.outcome||'Follow-up').replace(/_/g,' '))}</span><small>Open prospect →</small></span>`;
+      const card=href?`<a href="${esc(href)}" class="performance-history-call performance-history-client" aria-label="Open ${esc(label)} in Outreach">${content}</a>`:`<div class="performance-history-call">${content}</div>`;
+      const buttons=`<div class="performance-card-quick-actions">
+        ${id?`<button type="button" data-history-call="${esc(id)}"><i data-lucide="file-text"></i> Transcript</button>`:''}
+        ${leadId?`<button type="button" data-history-action="task" data-history-lead="${esc(leadId)}"><i data-lucide="list-plus"></i> Add to Task</button><button type="button" data-history-action="calendar" data-history-lead="${esc(leadId)}"><i data-lucide="calendar-plus"></i> Add to Calendar</button>`:''}
+      </div>`;
+      return '<div class="performance-history-card">'+card+buttons+'</div>';
     }
+
     function render(kind) {
       const current = state[kind], term = String(find(kind,'search').value || '').trim().toLowerCase();
       const rows = current.rows.filter(row => {
@@ -27,8 +35,7 @@
         const lead = kind === 'calls' ? leads.get(String(row.crm_id)) || {} : row;
         const label = lead.company || lead.name || 'Lead';
         if(kind === 'calls')return callHTML(row,lead);
-        const href='call.html?'+new URLSearchParams({crm_id:String(lead.id),number:lead.phone||'',company:label,contact:lead.name||'',timezone:lead.timezone||''}).toString();
-        return `<article class="performance-followup-card">${callHTML(lead.call,lead,true)}${window.PerformanceFollowupActions.buttons(lead)}${!lead.call&&lead.phone?`<a class="performance-history-open" href="${esc(href)}">Open lead</a>`:''}</article>`;
+        return `<article class="performance-followup-card">${callHTML(lead.call,lead,true)}</article>`;
       }).join('') || `<p class="performance-history-empty">${current.busy ? 'Loading…' : term ? 'No matches in loaded records.' : kind === 'calls' ? 'No call history yet.' : 'No follow-ups scheduled.'}</p>`;
       find(kind,'count').textContent = current.total == null ? `${current.rows.length} loaded` : `${current.rows.length} of ${current.total}`;
       const button = find(kind,'more');
@@ -60,7 +67,7 @@
         if(kind === 'calls' && owned.length) {
           const ids = [...new Set(owned.map(row=>row.crm_id).filter(Boolean))];
           const [leadResult,transcriptResult] = await Promise.all([
-            ids.length ? client.from('crm').select('id,company,name,phone').in('id',ids) : Promise.resolve({data:[]}),
+            ids.length ? client.from('crm').select('id,company,name,phone,timezone').in('id',ids) : Promise.resolve({data:[]}),
             client.from('callcenter_transcripts').select('id,call_activity_id').eq('user_id',userId).in('call_activity_id',owned.map(row=>row.id))
           ]);
           if(leadResult.error)throw leadResult.error;
@@ -93,6 +100,12 @@
       if(button.dataset.followupAction){
         const lead=state.followups.rows.find(r=>String(r.id)===button.dataset.followupId&&String(r.callback_owner_id)===String(userId));
         if(lead)window.PerformanceFollowupActions.open({client,lead,userId,mode:button.dataset.followupAction,trigger:button});
+        return;
+      }
+      if(button.dataset.historyAction){
+        const leadId=button.dataset.historyLead;
+        const lead=state.followups.rows.find(r=>String(r.id)===String(leadId))||leads.get(String(leadId));
+        if(lead)window.PerformanceFollowupActions?.open({client,lead,userId,mode:button.dataset.historyAction,trigger:button});
         return;
       }
       const view = button.dataset.historyView;
