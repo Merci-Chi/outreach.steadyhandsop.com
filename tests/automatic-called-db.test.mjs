@@ -41,6 +41,18 @@ test('Called tag is automatic, removes Not started, repairs queues and cannot be
  assert.equal((await lead(3)).tags.includes('Called'),false); // suppression alone is not a call
  await db.exec(previous);await db.exec(automatic);
  assert.deepEqual((await lead(2)).tags,['Called']);
+ // Reproduce the original failure: ON COMMIT DROP disappears after an autocommit statement.
+ await db.exec('create temporary table called_tag_repair_ids on commit drop as select 1 id');
+ await assert.rejects(db.query('select * from called_tag_repair_ids'),/does not exist/);
+ // Seed a legacy row and run every corrected repair statement separately.
+ await db.query("insert into outreach_queue_items(id,crm_id) values($1,$2)",[id(23),id(4)]);
+ await db.exec('alter table crm disable trigger crm_auto_called_tag');
+ await db.query("update crm set tags='[\"Left Voicemail\",\"Not started\"]' where id=$1",[id(4)]);
+ await db.exec('alter table crm enable trigger crm_auto_called_tag');
+ const repair=automatic.slice(automatic.indexOf('with called_tag_repair_ids as'),automatic.indexOf("\ninsert into crm_dnc_private.called_tag_backup(source_table,lead_id,original_record)\n select 'callcenter-leads'"));
+ for(const statement of repair.split(';').map(x=>x.trim()).filter(Boolean))await db.exec(statement);
+ assert.deepEqual((await lead(4)).tags,['Left Voicemail','Called']);
+ assert.equal((await db.query('select status from outreach_queue_items where id=$1',[id(23)])).rows[0].status,'completed');
  await db.exec('set role authenticated');
  await assert.rejects(db.query('select * from crm_dnc_private.called_tag_backup'),/permission denied/);
  }finally{await db.close()}
