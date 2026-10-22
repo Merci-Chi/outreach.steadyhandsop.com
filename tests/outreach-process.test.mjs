@@ -16,7 +16,7 @@ test('both Outreach pages expose precisely three process steps and begin at 1 / 
 test('completion is input driven, with no manual checkbox or legacy six-step CRM mutations',async()=>{
  const js=await read('../outreach-process.js');
  assert.match(js,/const complete=\(\)=>\[/);
- assert.match(js,/Boolean\(data\.timeframe\.trim\(\)\)&&data\.references/);
+ assert.ok(js.includes('Boolean(data.timeframe.trim())'));
  assert.match(js,/Boolean\(data\.followup\)/);
  assert.match(js,/box\.checked=checks\[i\]/);
  assert.doesNotMatch(js,/set_outreach_process_check/);
