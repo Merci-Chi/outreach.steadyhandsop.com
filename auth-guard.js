@@ -226,7 +226,7 @@
           document.head.appendChild(style);
           const notice = document.createElement('main');
           notice.id = 'callingBlockedNotice';
-          notice.innerHTML = '<h1>Calling is blocked</h1><p>Your administrator has blocked calling and access to leads. Contact your administrator to restore access.</p><button type="button">Sign out</button>';
+          notice.innerHTML = '<h1>Outreach access paused</h1><p>Your calling and lead access are temporarily paused. Please contact your team administrator for help with next steps.</p><button type="button">Sign out</button>';
           notice.querySelector('button').onclick = async () => { await client.auth.signOut(); location.replace('login.html'); };
           document.body.appendChild(notice);
           window.dispatchEvent(new CustomEvent('outreach:calling-blocked'));
