@@ -73,7 +73,7 @@ test('terminal tags block calls even without lastcalled and override retry tags'
 });
 test('contact labels detect call tags with an empty outcome and timestamp',()=>{
  const s=setup();
- assert.equal(s.api.displayStage({stage:'notstarted',tags:['Left Voicemail']}),'Called / outreach');
+ assert.equal(s.api.displayStage({stage:'notstarted',tags:['Left Voicemail']}),'Called');
  assert.equal(s.api.displayStage({stage:'notstarted',tags:['Wrong Number']}),'Wrong / invalid number');
  assert.equal(s.api.hasContact({tags:['No Answer']}),true);
  assert.equal(s.api.callBlocked({stage:'notstarted',tags:['No Answer']}),false);

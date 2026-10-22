@@ -7,14 +7,15 @@
   const values = row => [row.stage,row.outcome,...(Array.isArray(row.tags)?row.tags:[])].map(normalized);
   const terminal = row => values(row).some(v=>['wrongnumber','invalidnumber','disconnected','numberdisconnected','notinterested','donotcall','donotcontact','dnc'].includes(v));
   const hasContact = row => !!row.lastcalled || values(row).some(v=>['called','outreach','review','complete','callback','followup','notinterested','wrongnumber','invalidnumber','disconnected','numberdisconnected','noanswer','leftvoicemail','voicemail','busy','interested','donotcall','donotcontact','dnc','haswebsite','hasawebsite','good','bad'].includes(v));
+  const hasCalled = row => !!row.lastcalled || [row.outcome,...(Array.isArray(row.tags)?row.tags:[])].map(normalized).some(v=>['called','noanswer','leftvoicemail','voicemail','busy','wrongnumber','invalidnumber','disconnected','numberdisconnected','notinterested','followup','good','bad','haswebsite','hasawebsite','interested'].includes(v));
   const retryable = row => !blocked(row) && !terminal(row) && values(row).some(v=>['noanswer','leftvoicemail','voicemail','busy'].includes(v));
   const callBlocked = row => blocked(row) || row.admin_archived===true || terminal(row) || (hasContact(row) && !retryable(row));
   const displayStage = row => {
     if(blocked(row))return 'Do not call';
     if(values(row).some(v=>['wrongnumber','invalidnumber','disconnected','numberdisconnected'].includes(v)))return 'Wrong / invalid number';
     if(values(row).includes('notinterested'))return 'Not interested';
-    if(['','new','notstarted'].includes(normalized(row.stage)) && hasContact(row))return 'Called / outreach';
-    return ({notstarted:'Not started',outreach:'Called / outreach',callback:'Follow-up'})[normalized(row.stage)] || row.stage || 'Not started';
+    if(['','new','notstarted'].includes(normalized(row.stage)) && hasContact(row))return 'Called';
+    return ({notstarted:'Not started',outreach:'Called',callback:'Follow-up'})[normalized(row.stage)] || row.stage || 'Not started';
   };
   async function load(id) {
     const client = window.steadyHandsCRMClient;
@@ -57,5 +58,5 @@
     window.dispatchEvent(new CustomEvent('steadyhands:lead-disposition',{detail:{id,action}}));
     return patch;
   }
-  window.SteadyHandsLeadDisposition = {blocked,terminal,hasContact,retryable,callBlocked,displayStage,ensureCallable,save};
+  window.SteadyHandsLeadDisposition = {blocked,terminal,hasCalled,hasContact,retryable,callBlocked,displayStage,ensureCallable,save};
 })();

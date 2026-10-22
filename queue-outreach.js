@@ -37,12 +37,12 @@ async function advance(){
    if(auth.error||!auth.data?.user?.id)throw Error('Please sign in.');
    const ids=usable.map(x=>x.crm_id);
    const [crm,history]=await Promise.all([
-     c.from('crm').select('id,lastcalled,do_not_call,stage,outcome,phone').eq('assigned_user_id',auth.data.user.id).in('id',ids),
+     c.from('crm').select('id,lastcalled,do_not_call,stage,outcome,phone,tags').eq('assigned_user_id',auth.data.user.id).in('id',ids),
      c.from('callcenter_call_activity').select('crm_id,outcome').eq('user_id',auth.data.user.id).in('crm_id',ids).limit(5000)
    ]);
    if(crm.error||history.error)throw Error('Unable to verify call eligibility.');
    const called=new Set((history.data||[]).filter(x=>String(x.outcome||'').toLowerCase().replace(/[^a-z]/g,'')!=='didnotcall').map(x=>String(x.crm_id)));
-   const available=new Set((crm.data||[]).filter(x=>x.phone&&!x.lastcalled&&!x.do_not_call&&!called.has(String(x.id))&&!['notinterested','donotcall','complete','sold'].includes(String(x.stage||'').toLowerCase().replace(/[^a-z]/g,''))).map(x=>String(x.id)));
+   const available=new Set((crm.data||[]).filter(x=>x.phone&&!window.SteadyHandsLeadDisposition.hasCalled(x)&&!x.lastcalled&&!x.do_not_call&&!called.has(String(x.id))&&!['notinterested','donotcall','complete','sold'].includes(String(x.stage||'').toLowerCase().replace(/[^a-z]/g,''))).map(x=>String(x.id)));
    const fresh=usable.filter(x=>available.has(String(x.crm_id)));
    if(!fresh.length){alert('No uncalled leads remain in this queue.');return;}
    const current=selectedId(),ix=fresh.findIndex(x=>String(x.crm_id)===String(current));
