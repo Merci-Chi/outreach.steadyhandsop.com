@@ -87,7 +87,7 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
  if(selected==='do_not_call'){
    if(!window.SteadyHandsLeadDisposition?.save)throw new Error('Call recorded, but Do Not Call protection is unavailable. Retry before dialing again.');
    await window.SteadyHandsLeadDisposition.save(result.crm_id,'dnc',String(d.get('notes')||''));
- }else if(selected==='has_website'||selected==='not_interested'){
+ }else if(selected==='has_website'||selected==='not_interested'||selected==='bad'){
    const {data:auth,error:authError}=await c.auth.getUser();
    if(authError||!auth?.user)throw new Error('Call recorded, but lead status could not be saved. Sign in and retry.');
    const {data:lead,error:readError}=await c.from('crm').select('tags').eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).single();
@@ -95,18 +95,19 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
    const tags=Array.isArray(lead.tags)?lead.tags.filter(x=>typeof x==='string'):[];
    const patch=selected==='has_website'
      ?{tags:[...new Set([...tags,'Has Website'])],outcome:'Has a website'}
-     :{outcome:'Not Interested'};
+     :{outcome:'Not Interested',stage:'notinterested'};
    const {data:updated,error:updateError}=await c.from('crm').update(patch).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
    if(updateError||!updated)throw new Error('Call recorded, but lead status could not be saved: '+(updateError?.message||'No assigned lead updated.'));
  }
- if(isVoicemail){
+ if(isVoicemail || selected==='no_answer'){
+   const contactOutcome=isVoicemail?'Left Voicemail':'No Answer';
    const {data:lead,error:readError}=await c.from('crm').select('tags').eq('id',result.crm_id).single();
    if(readError)throw new Error('Call recorded, but the voicemail tag could not be loaded: '+readError.message);
    const tags=Array.isArray(lead?.tags)?lead.tags.filter(x=>typeof x==='string'):[];
-   if(!tags.some(x=>x.trim().toLowerCase()==='left voicemail'))tags.push('Left Voicemail');
+   if(!tags.some(x=>x.trim().toLowerCase()===contactOutcome.toLowerCase()))tags.push(contactOutcome);
    const {data:auth,error:authError}=await c.auth.getUser();
    if(authError||!auth?.user)throw new Error('Call recorded, but voicemail status could not be saved. Sign in and retry.');
-   const {data:updated,error:tagError}=await c.from('crm').update({tags,outcome:'Left Voicemail'}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
+   const {data:updated,error:tagError}=await c.from('crm').update({tags,outcome:contactOutcome,stage:'outreach'}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
    if(tagError||!updated)throw new Error('Call recorded, but the voicemail status could not be saved: '+(tagError?.message||'No assigned lead updated.'));
  }
  drafts=drafts.filter(d=>d.event_id!==result.event_id);persist();if(pending===result)pending=null;renderDrafts();message.textContent='Saved to Supabase.';setTimeout(()=>{if(!pending||pending.event_id===result.event_id)overlay?.remove();window.dispatchEvent(new CustomEvent('steadyhands:activity-updated'));},400);

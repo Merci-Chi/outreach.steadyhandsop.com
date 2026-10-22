@@ -214,7 +214,7 @@
     const phone = row.phone || row.mobile || row.altphone || 'No phone';
     const email = row.email || row.email_address || 'No email';
     const loc = locationText(row);
-    const stage = row.stage || 'New';
+    const stage = window.SteadyHandsLeadDisposition?.displayStage(row) || row.stage || 'Not started';
     const tags = arrayify(row.tags).slice(0, 3);
     const sources = arrayify(row.sources);
     const source = sources[0] || row.source || 'Other';
@@ -266,7 +266,7 @@
   }
 
   function hasContact(row) {
-    return !!(row.lastcalled || row.callbackat || row.outcome && String(row.outcome).trim() && !['notstarted','not_started','new'].includes(String(row.outcome).toLowerCase()));
+    return !!(window.SteadyHandsLeadDisposition?.hasContact(row) || row.lastcalled || row.callbackat || row.outcome && String(row.outcome).trim() && !['notstarted','not_started','new'].includes(String(row.outcome).toLowerCase()));
   }
 
   function hasPreview(row) { return !!String(row.sitekey || '').trim(); }

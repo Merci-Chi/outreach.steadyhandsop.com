@@ -2721,6 +2721,8 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
   const isNotInterested = lead.stage === 'notinterested' || /not interested/i.test([lead.outcome,...crmTags(lead)].join(' '));
 
   const tags = crmTags(lead);
+  const disposition = window.SteadyHandsLeadDisposition;
+  const callBlocked = disposition?.callBlocked(lead);
 
   const urls = [...new Set(siteURLs.map(crmUrl).filter(Boolean))];
 
@@ -2742,7 +2744,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
 
   const callTiming = callcenterCallStatus(phone, lead.timezone);
   const theirLocalTime = callcenterLocalTimeText(phone, lead.timezone);
-  const dateText=lead.callbackdate ? `Callback: ${crmEscape(lead.callbackdate)}` : (lead.lastcalled ? 'Previously contacted' : 'Not yet contacted');
+  const dateText=lead.callbackdate ? `Callback: ${crmEscape(lead.callbackdate)}` : ((window.SteadyHandsLeadDisposition?.hasContact(lead) || lead.lastcalled) ? 'Previously contacted' : 'Not yet contacted');
 
   card.innerHTML=`
 
@@ -2759,6 +2761,7 @@ function makeCRMLinkCard(lead, siteURLs, searchMatch = null) {
     ${searchMatch ? `<div class="search-match-reason"><i data-lucide="search-check"></i><span><strong>“${crmEscape(searchMatch.query)}”</strong> found in ${crmEscape(searchMatch.label)}: <strong>${crmEscape(searchMatch.value)}</strong></span></div>` : ''}
 
     <div class="compact-lead-meta">
+      ${callBlocked ? `<span class="tag">Calling blocked · ${crmEscape(disposition.displayStage(lead))}</span>` : ''}
       ${tags.length ? `<div class="tag-row compact-tag-row">${tags.map((t,i)=>`<span class="tag ${crmSourceClass(t)}">${crmEscape(t)}</span>`).join('')}</div>` : ''}
       <div class="compact-call-row">
         <span class="call-time-status call-time-${callTiming.state}" data-live-call-status data-phone="${crmEscape(phone)}" data-timezone="${crmEscape(lead.timezone || '')}"><i data-lucide="phone-call"></i> ${crmEscape(callTiming.label)}</span>

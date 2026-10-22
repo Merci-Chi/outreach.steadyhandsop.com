@@ -75,8 +75,8 @@ Deno.serve(async (req) => {
     const {data: blocked, error: dncError} = await db.rpc('outreach_call_is_blocked', {
       p_phone: destination, p_crm_id: crmId || null,
     });
-    if (dncError || typeof blocked !== 'boolean') throw Error('Could not verify Do Not Call status.');
-    if (blocked) return xml('<Say>This number is marked Do Not Call. Calling is blocked.</Say><Hangup/>');
+    if (dncError || typeof blocked !== 'boolean') throw Error('Could not verify Do Not Call and lead calling eligibility.');
+    if (blocked) return xml('<Say>Do Not Call or the recorded lead disposition blocks further calls to this number.</Say><Hangup/>');
     const callback = Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL') || url + '/functions/v1/twilio-transcription-webhook';
     if (transcribe) {
       const {error} = await db.rpc('outreach_start_transcript', {
