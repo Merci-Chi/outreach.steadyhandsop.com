@@ -40,29 +40,27 @@ test('an old in-flight request cannot populate a newly selected prospect',async(
  s.window.steadyHandsCallLead={id:'next'};s.handlers['steadyhands:call-lead-ready']();resolve({id:'t',segments:[s.segment('1',1,'Old prospect')]});await tick();assert.equal(s.get('transcriptHistory').value,'');
 });
 
-test('incoming transcript renders independently of a selected lead and ignores stale call updates',async()=>{
- const s=setup(),show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
- show({started:true,callSid:'CA-incoming'});show({callSid:'CA-incoming',transcript:{transcript:'You: Hello\nProspect: Hi'}});
- assert.equal(s.get('transcriptHistory').value,'You: Hello\nProspect: Hi');assert.equal(s.queries.length,0);
- await s.state(true,'CA-outgoing');show({callSid:'CA-incoming',transcript:{transcript:'Stale'}});
- assert.doesNotMatch(s.get('transcriptHistory').value,/Stale/);
-});
-
-test('incoming finalized caller keywords suggest DNC; agent and provisional speech cannot trigger it',async()=>{
+test('unverified inbound speech never renders under the currently selected lead',async()=>{
  const s=setup(),show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
  show({started:true,callSid:'CA-incoming'});
- show({callSid:'CA-incoming',transcript:{segments:[{speaker:'agent',text:'Do not call me',final:true},{speaker:'customer',text:'Do not call me',final:false}]}});
+ show({callSid:'CA-incoming',transcript:{transcript:'Private caller speech',segments:[{speaker:'customer',text:'Do not call me',final:true}]}});
+ assert.equal(s.get('transcriptHistory').value,'');
  assert(!s.get('keywordActions').children.some(n=>n.textContent==='Mark Do Not Call'));
- show({callSid:'CA-incoming',transcript:{segments:[{speaker:'customer',text:'Do not call me',final:true}]}});
- const button=s.get('keywordActions').children.find(n=>n.textContent==='Mark Do Not Call');assert(button);
- let confirms=0,clicks=0;s.window.confirm=()=>{confirms++;return false};s.get('refDoNotCall').click=()=>clicks++;
- await button.onclick();assert.equal(confirms,1);assert.equal(clicks,0);
- s.window.confirm=()=>true;await button.onclick();assert.equal(clicks,1);
+ await s.state(true,'CA-outgoing');
+ show({callSid:'CA-incoming',transcript:{transcript:'Stale'}});
+ assert.doesNotMatch(s.get('transcriptHistory').value,/Stale/);
 });
-test('incoming keyword actions remain visible without a selected prospect and explain what to select',async()=>{
- const s=setup();s.window.steadyHandsCallLead=null;
+test('matched inbound speech appears only for its verified selected lead',async()=>{
+ const s=setup(),sid='CA'+'1'.repeat(32),crm='11111111-2222-3333-4444-555555555555';
+ s.window.steadyHandsCallLead={id:crm};
+ s.handlers['steadyhands:inbound-caller-identity']({detail:{callSid:sid,crmId:crm,matchStatus:'matched'}});
  const show=detail=>s.handlers['steadyhands:inbound-transcript']({detail});
- show({started:true,callSid:'CA-incoming'});show({callSid:'CA-incoming',transcript:{segments:[{speaker:'customer',text:'Not really interested',final:true}]}});
- const button=s.get('keywordActions').children.find(n=>n.textContent==='Add Not Interested tag');assert(button);
- await button.onclick();assert.match(s.get('keywordFeedback').textContent,/Select the caller/);
+ show({started:true,callSid:sid});
+ show({callSid:sid,transcript:{transcript:'Prospect: Do not call me',segments:[{speaker:'customer',text:'Do not call me',final:true}]}});
+ assert.match(s.get('transcriptHistory').value,/Do not call me/);
+ assert(s.get('keywordActions').children.some(n=>n.textContent==='Mark Do Not Call'));
+ s.window.steadyHandsCallLead={id:'other'};
+ s.handlers['steadyhands:call-lead-ready']();
+ assert.equal(s.get('transcriptHistory').value,'');
+ assert(!s.get('keywordActions').children.some(n=>n.textContent==='Mark Do Not Call'));
 });
