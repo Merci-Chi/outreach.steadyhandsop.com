@@ -29,6 +29,17 @@ test('repair historical stages and enforce dispositions for updates, duplicate p
  assert.equal((await db.query('select stage from crm where id=$1',[id(1)])).rows[0].stage,'outreach');
  await db.query("insert into crm(id,phone,stage,tags) values($1,'7025550199','notstarted','[]')",[id(99)]);
  assert.equal(await check(99),false);
+ // Reproduce a fresh lead that was put in the Outreach pipeline without a call.
+ await db.query("insert into crm(id,phone,stage,tags) values($1,'7025550177','outreach','[]')",[id(77)]);
+ assert.equal(await check(77),true);
+ await db.exec(await readFile(new URL('../sql/fresh-outreach-call-eligibility.sql',import.meta.url),'utf8'));
+ assert.equal(await check(77),false);
+ assert.equal(await check(1),true); // wrong-number evidence is still enforced
+ assert.equal(await check(3),true); // not-interested evidence is still enforced
+ assert.equal(await check(6),true); // real call history is still enforced
+ await db.exec("set role authenticated");
+ assert.equal(await check(77),false);
+ await db.exec("reset role");
  await db.query("insert into callcenter_call_activity(id,crm_id,outcome) values($1,$2,'did_not_call')",[id(100),id(99)]);
  assert.equal(await check(99),false);
  await db.query("insert into callcenter_call_activity(id,crm_id,outcome) values($1,$2,'called')",[id(101),id(99)]);

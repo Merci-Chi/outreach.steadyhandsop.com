@@ -49,6 +49,7 @@ async function pick(mode){
  }catch(err){console.error('Lead selection failed',err);tell('Unable to select prospect: '+(err?.message||err))}
  finally{picking=false;buttons.forEach(b=>b.disabled=false)}
 }
+window.SteadyHandsLeadNavigation={next:()=>pick('next')};
 function init(){
  byId('refPreviouslyCalled')?.addEventListener('click',()=>pick('retry'));
  byId('refRandomLead')?.addEventListener('click',()=>pick('random'));

@@ -6,7 +6,7 @@
     .some(value => ['donotcall','donotcontact','dnc'].includes(normalized(value)));
   const values = row => [row.stage,row.outcome,...(Array.isArray(row.tags)?row.tags:[])].map(normalized);
   const terminal = row => values(row).some(v=>['wrongnumber','invalidnumber','disconnected','numberdisconnected','notinterested','donotcall','donotcontact','dnc'].includes(v));
-  const hasContact = row => !!row.lastcalled || values(row).some(v=>['called','outreach','review','complete','callback','followup','notinterested','wrongnumber','invalidnumber','disconnected','numberdisconnected','noanswer','leftvoicemail','voicemail','busy','interested','donotcall','donotcontact','dnc','haswebsite','hasawebsite','good','bad'].includes(v));
+  const hasContact = row => !!row.lastcalled || values(row).some(v=>['called','review','complete','callback','followup','notinterested','wrongnumber','invalidnumber','disconnected','numberdisconnected','noanswer','leftvoicemail','voicemail','busy','interested','donotcall','donotcontact','dnc','haswebsite','hasawebsite','good','bad'].includes(v));
   const hasCalled = row => !!row.lastcalled || [row.outcome,...(Array.isArray(row.tags)?row.tags:[])].map(normalized).some(v=>['called','noanswer','leftvoicemail','voicemail','busy','wrongnumber','invalidnumber','disconnected','numberdisconnected','notinterested','followup','good','bad','haswebsite','hasawebsite','interested'].includes(v));
   const callStatus = row => row.call_status==='Called'||row.call_status==='Not called'?row.call_status:(hasCalled(row)?'Called':'Not called');
   const businessTags = row => (Array.isArray(row.tags)?row.tags:[]).filter(v=>!['called','notcalled','notstarted','notattempted','uncalled'].includes(normalized(v)));

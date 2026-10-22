@@ -59,6 +59,15 @@ test('previously called non-retryable leads cannot be called',async()=>{
  const s=setup({lastcalled:'2026-10-20T10:00:00Z'});
  await assert.rejects(s.api.ensureCallable('lead'),/Previously called lead/);
 });
+test('Outreach stage without a call attempt remains callable',async()=>{
+ const s=setup({stage:'outreach',outcome:'',tags:[],lastcalled:null,call_status:'Not called'});
+ assert.equal(s.api.hasContact({stage:'outreach',tags:[]}),false);
+ assert.equal(s.api.callBlocked({stage:'outreach',tags:[]}),false);
+ assert.equal(await s.api.ensureCallable('lead'),true);
+ for(const evidence of [{lastcalled:'2026-10-22T10:00:00Z'},{tags:['Called']},{history:[{outcome:'called'}]}]){
+  await assert.rejects(setup({stage:'outreach',outcome:'',tags:[],...evidence}).api.ensureCallable('lead'),/Previously called lead/);
+ }
+});
 test('voicemail leads may be called after DNC validation',async()=>{
  const s=setup({lastcalled:'2026-10-20T10:00:00Z',outcome:'Left Voicemail'});
  assert.equal(await s.api.ensureCallable('lead'),true);
