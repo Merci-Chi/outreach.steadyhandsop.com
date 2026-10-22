@@ -77,16 +77,32 @@ alter table crm_dnc_private.called_tag_backup enable row level security;
 revoke all on crm_dnc_private.called_tag_backup from public,anon,authenticated;
 
 -- Target candidates cheaply; the trigger verifies evidence before adding Called.
-create temporary table called_tag_repair_ids on commit drop as
- select id from public.crm where lastcalled is not null or coalesce(outcome,'') ~* '^(called|no.?answer|left.?voicemail|voicemail|busy|wrong.?number|invalid.?number|disconnected|number.?disconnected|not.?interested|follow.?up|good|bad|has.?a?.?website|interested)$'
+-- Each repair statement owns its candidate CTE; no temporary/session table is required.
+with called_tag_repair_ids as (
+select id from public.crm where lastcalled is not null or coalesce(outcome,'') ~* '^(called|no.?answer|left.?voicemail|voicemail|busy|wrong.?number|invalid.?number|disconnected|number.?disconnected|not.?interested|follow.?up|good|bad|has.?a?.?website|interested)$'
  or tags::text ~* '(called|no.?answer|voicemail|busy|wrong.?number|invalid.?number|disconnected|not.?interested)'
  union select crm_id from public.callcenter_call_activity where crm_id is not null
- and regexp_replace(lower(coalesce(outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall');
+ and regexp_replace(lower(coalesce(outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall')
+)
 insert into crm_dnc_private.called_tag_backup(source_table,lead_id,original_record)
  select 'crm',c.id::text,to_jsonb(c) from public.crm c join called_tag_repair_ids r on r.id=c.id on conflict do nothing;
+
+with called_tag_repair_ids as (
+select id from public.crm where lastcalled is not null or coalesce(outcome,'') ~* '^(called|no.?answer|left.?voicemail|voicemail|busy|wrong.?number|invalid.?number|disconnected|number.?disconnected|not.?interested|follow.?up|good|bad|has.?a?.?website|interested)$'
+ or tags::text ~* '(called|no.?answer|voicemail|busy|wrong.?number|invalid.?number|disconnected|not.?interested)'
+ union select crm_id from public.callcenter_call_activity where crm_id is not null
+ and regexp_replace(lower(coalesce(outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall')
+)
 insert into crm_dnc_private.called_tag_backup(source_table,lead_id,original_record)
  select 'outreach_queue_items',i.id::text,to_jsonb(i) from public.outreach_queue_items i
  join called_tag_repair_ids r on r.id::text=i.crm_id on conflict do nothing;
+
+with called_tag_repair_ids as (
+select id from public.crm where lastcalled is not null or coalesce(outcome,'') ~* '^(called|no.?answer|left.?voicemail|voicemail|busy|wrong.?number|invalid.?number|disconnected|number.?disconnected|not.?interested|follow.?up|good|bad|has.?a?.?website|interested)$'
+ or tags::text ~* '(called|no.?answer|voicemail|busy|wrong.?number|invalid.?number|disconnected|not.?interested)'
+ union select crm_id from public.callcenter_call_activity where crm_id is not null
+ and regexp_replace(lower(coalesce(outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall')
+)
 update public.crm c set tags=c.tags from called_tag_repair_ids r where c.id=r.id;
 
 insert into crm_dnc_private.called_tag_backup(source_table,lead_id,original_record)
