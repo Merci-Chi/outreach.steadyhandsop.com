@@ -49,7 +49,7 @@ test('calling blocks show a dedicated notice before onboarding and refresh after
  const status={is_paused:true,calling_blocked:true};
  const h=await guard('leads.html',status);
  assert.equal(h.redirects.length,0);assert.equal(h.errorDialog.id,'callingBlockedNotice');
- assert.match(h.errorDialog.innerHTML,/Calling is blocked/);
+ assert.match(h.errorDialog.innerHTML,/Outreach access paused/);
  status.is_paused=false;status.calling_blocked=false;await h.events.focus();
  assert.equal(h.reloads(),1);
 });
