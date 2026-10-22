@@ -70,6 +70,6 @@ test('pipeline follow-ups and tagged call results appear even without a legacy c
 });
 test('follow-up cards reuse call-details/transcript controls even when the associated call is not in loaded Recent Calls',async()=>{
  const p=setup({calls:205,followups:0});p.datasets.crm.forEach(r=>{r.stage='called';r.callback_owner_id=null});p.datasets.callcenter_call_activity[204].outcome='follow_up';
- await p.init();const html=p.node('followups','list').innerHTML;assert.match(html,/class="performance-history-call"/);assert.match(html,/data-history-call="call-204"/);assert.match(html,/Transcript/);assert.match(html,/Add to calendar/);assert.match(html,/Add to tasks/);
+ await p.init();const html=p.node('followups','list').innerHTML;assert.match(html,/class="performance-history-call"/);assert.match(html,/data-history-call="call-204"/);assert.match(html,/Transcript/);assert.match(html,/Add to Calendar/);assert.match(html,/Add to Task/);assert.match(html,/href="index.html\?crm_id=lead-204"/);
  await p.click({historyCall:'call-204'});assert.equal(p.opened[0].activityId,'call-204');assert.equal(p.opened[0].userId,'own');
 });
