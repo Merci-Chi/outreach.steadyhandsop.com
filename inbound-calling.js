@@ -11,7 +11,7 @@ const readPref=key=>{try{return localStorage.getItem(key)}catch{return null}};
 const writePref=(key,value)=>{try{localStorage.setItem(key,value)}catch{}};
 
 const root=document.createElement('div');root.id='shInbound';
-root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><button type="button" id="inboundAlertsTest">Test device call alerts</button><button type="button" id="inboundAlertsOff">Turn off device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Enable device call alerts to receive a notification when Outreach is closed. Tap the notification to reopen Outreach and answer while the caller waits.</p><p>Business voicemail greetings are managed by your administrator in Admin → Phone Numbers.</p><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><section id="inboundTranscriptPanel" hidden><h3>Incoming call transcript</h3><p id="inboundTranscriptStatus" role="status"></p><textarea id="inboundTranscriptText" rows="8" readonly aria-label="Incoming call transcript"></textarea></section><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
+root.innerHTML=`<button type="button" id="inboundToggle" aria-expanded="false" aria-controls="inboundPanel">Incoming calls</button><section id="inboundPanel" hidden aria-label="Incoming calls and voicemail"><header><h2>Incoming calls</h2><button type="button" id="inboundClose" aria-label="Close incoming calls">×</button></header><p id="inboundStatus" role="status">Connecting incoming calls… Keep Outreach open to answer.</p><button type="button" id="inboundEnable">Connect incoming calls</button><button type="button" id="inboundDisable" hidden>Go offline</button><button type="button" id="inboundAlerts">Enable device call alerts</button><button type="button" id="inboundAlertsTest">Test device call alerts</button><button type="button" id="inboundAlertsOff">Turn off device call alerts</button><p id="inboundAlertStatus" role="status"></p><p>Answer calls here using this device’s microphone and speakers. Enable device call alerts to receive a notification when Outreach is closed. Tap the notification to reopen Outreach and answer while the caller waits.</p><p>Business voicemail greetings are managed by your administrator in Admin → Phone Numbers.</p><div id="inboundActive" hidden role="region" aria-label="Incoming call" aria-live="assertive"><strong id="inboundCaller"></strong><p id="inboundCallerDetails"></p><p id="inboundCallStatus"></p><button type="button" id="inboundAnswer">Answer</button><button type="button" id="inboundDecline">Send to voicemail</button><button type="button" id="inboundMute" hidden>Mute</button><button type="button" id="inboundEnd" hidden>End call</button></div><section id="inboundTranscriptPanel" hidden><h3>Incoming call transcript</h3><p id="inboundTranscriptStatus" role="status"></p><textarea id="inboundTranscriptText" rows="8" readonly aria-label="Incoming call transcript"></textarea></section><h3>Recent calls & voicemail</h3><button type="button" id="inboundRefresh">Refresh inbox</button><div id="inboundInbox"></div></section>`;
 const css=document.createElement('link');css.rel='stylesheet';css.href='inbound-calling.css?v=20261019-shared-controls';document.head.append(css);(document.getElementById('inboundCallSlot')||document.body).append(root);
 const $=id=>root.querySelector('#'+id);
 const status=text=>{$('inboundStatus').textContent=text;};
@@ -27,6 +27,29 @@ async function publishPresence(ready){
  if(!incomingDeviceId)return;
  try { await invoke('device_ready',{device_id:incomingDeviceId,ready}); }
  catch(error){console.warn('Incoming device readiness unavailable:',error.message);}
+}
+// Caller identity must come from the server-owned PSTN parent Call SID, not the open lead.
+let callerLookupVersion=0;
+async function showCaller(incoming,parent){
+ const version=++callerLookupVersion;
+ $('inboundCallerDetails').textContent='Looking up caller…';
+ if(!/^CA[0-9a-fA-F]{32}$/.test(parent||'')){$('inboundCallerDetails').textContent='Caller record unavailable';return;}
+ try{
+  const result=await invoke('caller_info',{call_sid:parent});
+  if(version!==callerLookupVersion||(incoming!==pending&&incoming!==call))return;
+  const person=result.caller;
+  if(result.match_status==='matched'&&person){
+   $('inboundCaller').textContent=[person.name,person.company].filter(Boolean).join(' · ')||result.from_number;
+   $('inboundCallerDetails').textContent=[result.from_number,person.stage&&'Stage: '+person.stage,person.outcome&&'Outcome: '+person.outcome,person.notes&&'Notes: '+person.notes].filter(Boolean).join(' | ');
+   window.dispatchEvent(new CustomEvent('steadyhands:open-inbound-caller',{detail:{crmId:person.id,callSid:parent}}));
+  }else{
+   $('inboundCallerDetails').textContent=result.match_status==='ambiguous'
+    ?'Multiple matching prospects — select the caller manually.'
+    :result.match_status==='unknown'?'No assigned CRM match found.':'Caller matching is not ready.';
+  }
+ }catch(error){
+  if(version===callerLookupVersion)$('inboundCallerDetails').textContent='Caller lookup unavailable: '+error.message;
+ }
 }
 function stopPresence(){clearInterval(presenceTimer);presenceTimer=null;}
 function startPresence(){
@@ -92,7 +115,7 @@ function closeNotice(){
  desktopNotice?.close();desktopNotice=null;
  navigator.serviceWorker?.controller?.postMessage({type:'steadyhands:close-incoming-alert'});
 }
-function resetCall(){if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
+function resetCall(){callerLookupVersion++;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
  // Enrollment does not guarantee delivery; preserve the foreground fallback.
  if(!missed&&readPref(callPushKey())==='true'){
@@ -223,7 +246,7 @@ async function enable({automatic=false}={}){
    const parent=incoming.customParameters?.get('parentCallSid');alertedCallSid=parent||'';
    if(/^CA[0-9a-fA-F]{32}$/.test(parent||''))void invoke('call_received',{call_sid:parent}).catch(()=>{});
    if(call||pending||window.SteadyHandsTwilioVoice?.isActive()){incoming.reject();if(!call&&!pending){$('inboundToggle').textContent='Missed call · Busy';void notifyCall(incoming,true);}return;}
-   pending=incoming;bind(incoming);root.classList.add('is-ringing');document.title='Incoming call — Outreach';$('inboundToggle').textContent='Incoming call';void notifyCall(incoming);$('inboundCaller').textContent='Callback from '+(incoming.parameters.From||'Unknown caller');$('inboundCallStatus').textContent='Incoming call';$('inboundActive').hidden=false;$('inboundAnswer').hidden=false;$('inboundDecline').hidden=false;$('inboundMute').hidden=true;$('inboundEnd').hidden=true;open();$('inboundActive').scrollIntoView?.({block:'nearest'});$('inboundAnswer').focus();
+   pending=incoming;bind(incoming);root.classList.add('is-ringing');document.title='Incoming call — Outreach';$('inboundToggle').textContent='Incoming call';void notifyCall(incoming);$('inboundCaller').textContent='Callback from '+(incoming.parameters.From||'Unknown caller');void showCaller(incoming,parent);$('inboundCallStatus').textContent='Incoming call';$('inboundActive').hidden=false;$('inboundAnswer').hidden=false;$('inboundDecline').hidden=false;$('inboundMute').hidden=true;$('inboundEnd').hidden=true;open();$('inboundActive').scrollIntoView?.({block:'nearest'});$('inboundAnswer').focus();
   });
   next.on('registered',()=>{startPresence();status('Ready for incoming calls to '+data.number+'. Keep Outreach open.');$('inboundEnable').hidden=true;$('inboundDisable').hidden=false;});
   next.on('unregistered',()=>{stopPresence();void publishPresence(false);status('Offline — browser ringing is off.');$('inboundEnable').hidden=false;$('inboundDisable').hidden=true;if(device===next){device=null;next.destroy();}scheduleReconnect();});
