@@ -130,8 +130,10 @@ Deno.serve(async req=>{
    let transcription='';
    try {
     const {data:existing}=await db.from('callcenter_transcripts').select('id').eq('call_sid',callSid).maybeSingle();
-    if(!existing){
+    // Always validate/complete the CRM association for this inbound parent SID,
+    // even when a retry finds a previously started transcript.
     await checked(await db.rpc('outreach_start_inbound_transcript',{p_call_sid:callSid}));
+    if(!existing){
     const callback=Deno.env.get('TWILIO_TRANSCRIPTION_CALLBACK_URL')||url.replace(/\/$/,'')+'/functions/v1/twilio-transcription-webhook';
     transcription=`<Start><Transcription name="inbound" statusCallbackUrl="${escapeXML(callback)}" track="both_tracks" inboundTrackLabel="customer" outboundTrackLabel="agent" languageCode="en-US" partialResults="true" enableAutomaticPunctuation="true" transcriptionEngine="google"/></Start>`;
     }
