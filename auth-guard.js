@@ -216,6 +216,23 @@
       function clearAccessError() {
         if (accessErrorDialog) { accessErrorDialog.close(); accessErrorDialog.remove(); accessErrorDialog = null; }
       }
+      let callingBlocked = false;
+      function showCallingBlock() {
+        callingBlocked = true;
+        document.documentElement.classList.add('calling-blocked');
+        if (!document.getElementById('callingBlockedNotice')) {
+          const style = document.createElement('style');
+          style.textContent = '.calling-blocked body > :not(#callingBlockedNotice){display:none!important}.calling-blocked #callingBlockedNotice{display:block!important;max-width:440px;margin:15vh auto;padding:28px;border-radius:18px;background:#fff;color:#10284a;font:16px system-ui;box-shadow:0 12px 60px #10284a33}';
+          document.head.appendChild(style);
+          const notice = document.createElement('main');
+          notice.id = 'callingBlockedNotice';
+          notice.innerHTML = '<h1>Calling is blocked</h1><p>Your administrator has blocked calling and access to leads. Contact your administrator to restore access.</p><button type="button">Sign out</button>';
+          notice.querySelector('button').onclick = async () => { await client.auth.signOut(); location.replace('login.html'); };
+          document.body.appendChild(notice);
+          window.dispatchEvent(new CustomEvent('outreach:calling-blocked'));
+        }
+        document.documentElement.classList.remove('auth-checking');
+      }
       let inFlight = null;
       async function checkAccess() {
         if (inFlight) return inFlight;
@@ -224,6 +241,11 @@
           if (error || typeof status?.is_paused !== 'boolean') throw new Error('Could not verify account access.');
           window.outreachAccessStatus = status;
           clearAccessError();
+          if (status.calling_blocked === true) {
+            showCallingBlock();
+            return status;
+          }
+          if (callingBlocked) { location.reload(); return status; }
           if (status.is_paused) {
             handoff();
           } else {

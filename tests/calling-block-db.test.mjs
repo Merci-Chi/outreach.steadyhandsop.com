@@ -1,0 +1,45 @@
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync} from 'node:fs';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+const sql=readFileSync(new URL('../sql/blocked-calling-access.sql',import.meta.url),'utf8');
+test('blocks direct reads and privileged RPCs, preserves peers and reverses without clearing other pauses',async()=>{
+ const db=new PGlite(),a='11111111-1111-1111-1111-111111111111',b='22222222-2222-2222-2222-222222222222';
+ try {
+ await db.exec(`create schema auth;create role anon;create role authenticated;create role service_role;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create function auth.role() returns text language sql as $$select current_setting('request.jwt.claim.role',true)$$;
+ grant usage on schema auth to authenticated,service_role;
+ create table outreach_action_assignments(user_id uuid,status text);
+ create function sh_get_my_access_pause() returns table(is_paused boolean) language sql as $$select false$$;
+ create table associate_calling_policies(user_id uuid primary key,mode text);
+ alter table associate_calling_policies enable row level security;grant select on associate_calling_policies to authenticated;
+ create policy own_policy on associate_calling_policies for select to authenticated using(user_id=auth.uid());
+ create table crm(id int);insert into crm values(1);
+ create table callcenter_scheduled_calls(id int);insert into callcenter_scheduled_calls values(1);
+ grant select on crm,callcenter_scheduled_calls to authenticated;
+ alter table crm enable row level security;create policy read_crm on crm for select to authenticated using(true);
+ alter table callcenter_scheduled_calls enable row level security;create policy read_schedule on callcenter_scheduled_calls for select to authenticated using(true);
+ create function my_assigned_leads_v1() returns jsonb language plpgsql security definer as $$BEGIN RETURN (select jsonb_agg(c) from crm c); END$$;
+ create function callcenter_claim_lead(p_id text) returns boolean language plpgsql security definer as $$BEGIN RETURN true; END$$;
+ create function outreach_notify_access_changed() returns trigger language plpgsql as $$begin return null;end$$;`);
+ await db.exec(sql);await db.exec(sql);
+ await db.exec(`create policy outreach_required_actions on crm as restrictive for all to authenticated using(not (public.outreach_access_status()->>'is_paused')::boolean);
+ set request.jwt.claim.sub='${a}';set request.jwt.claim.role='authenticated';set role authenticated;`);
+ const status=async()=>(await db.query('select outreach_access_status() s')).rows[0].s;
+ assert.equal((await status()).calling_blocked,false);assert.equal((await db.query('select * from crm')).rows.length,1);
+ await assert.rejects(db.query('select outreach_access_status($1)',[b]),/own access/);
+ await assert.rejects(db.query("insert into associate_calling_policies values($1,'normal')",[a]),/permission denied/);
+ await db.exec(`reset role;insert into associate_calling_policies values('${a}','restricted');set role authenticated;`);
+ assert.equal((await status()).calling_blocked,true);assert.equal((await status()).is_paused,true);
+ for(const table of ['crm','callcenter_scheduled_calls'])assert.equal((await db.query('select * from '+table)).rows.length,0);
+ await assert.rejects(db.query('select my_assigned_leads_v1()'),/blocked/);
+ await assert.rejects(db.query("select callcenter_claim_lead('1')"),/blocked/);
+ await db.exec(`set request.jwt.claim.sub='${b}'`);
+ assert.equal((await status()).is_paused,false);assert.equal((await db.query('select my_assigned_leads_v1() s')).rows[0].s.length,1);
+ await db.exec(`reset role;update associate_calling_policies set mode='normal';insert into outreach_action_assignments values('${a}','assigned');set role authenticated;set request.jwt.claim.sub='${a}';`);
+ assert.equal((await status()).calling_blocked,false);assert.equal((await status()).is_paused,true);
+ await db.exec('reset role;delete from outreach_action_assignments;set role authenticated;');
+ assert.equal((await status()).is_paused,false);assert.equal((await db.query('select * from crm')).rows.length,1);
+ }finally{await db.close();}
+});
