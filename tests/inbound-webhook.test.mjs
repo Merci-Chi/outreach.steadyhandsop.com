@@ -8,7 +8,7 @@ const account='AC'+'a'.repeat(32),parent='CA'+'1'.repeat(32),child='CA'+'2'.repe
 function setup(){
  const rows={callcenter_phone_numbers:[{id:'number',phone_number:'+17025550101',active:true,twilio_status:'ready'}],callcenter_phone_assignments:[{phone_number_id:'number',user_id:'agent'}],team_permissions:[{user_id:'agent',role:'ADMIN',active:true,listed:true}],callcenter_profiles:[{user_id:'agent',disabled_at:null}],outreach_inbound_settings:[{user_id:'agent',enabled:true,cellphone_number:'+17025550102',voicemail_greeting:'Business greeting'}],outreach_inbound_push_subscriptions:[],outreach_inbound_devices:[],callcenter_transcripts:[],outreach_inbound_calls:[]};
  const writes=[],pushes=[],deleted=[];let failTranscript=false,pushError=null;
- const db={async rpc(name,args){if(name==='outreach_access_status')return {data:{is_paused:!!env.PAUSED}};writes.push({name,args});if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null,removing=false;const q={select(){return q},delete(){removing=true;return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
+ const db={async rpc(name,args){if(name==='outreach_access_status')return {data:{is_paused:!!env.PAUSED}};writes.push({name,args});if(name==='outreach_resolve_inbound_caller')return {data:[{match_status:'unknown',matched_crm_id:null}],error:null};if(failTranscript)return {error:{message:'missing migration'}};rows.callcenter_transcripts.push({id:'transcript',call_sid:args.p_call_sid});return {error:null}},from(table){let filters=[],patch=null,insert=null,removing=false;const q={select(){return q},delete(){removing=true;return q},limit(){return q},eq(k,v){filters.push([k,v]);return q},update(v){patch=v;return q},upsert(v){insert=v;return q},maybeSingle(){return run(false)},single(){return run(true)},then(resolve,reject){return run('many').then(resolve,reject)}};
   async function run(single){if(insert&&!rows[table].some(x=>x.call_sid===insert.call_sid))rows[table].push({status:'ringing',cellphone_accepted:false,...insert});const found=rows[table].filter(row=>filters.every(([k,v])=>row[k]===v));if(patch)found.forEach(x=>Object.assign(x,patch));if(removing){found.forEach(x=>deleted.push(x.endpoint));rows[table]=rows[table].filter(x=>!found.includes(x));}return {data:structuredClone(single==='many'?found:found[0]||null),error:single===true&&!found.length?{message:'not found'}:null};}return q;
  }};
  let handler,dbAccess=0;
@@ -119,7 +119,7 @@ test('inbound transcription uses the original parent and stops before voicemail'
  assert(xml.indexOf('<Start>')<xml.indexOf('<Dial '));
  assert.match(xml,/inboundTrackLabel="customer" outboundTrackLabel="agent"/);
  assert.match(xml,new RegExp('name="parentCallSid" value="'+parent+'"'));
- assert.equal(s.writes[0].name,'outreach_start_inbound_transcript');assert.equal(s.writes[0].args.p_call_sid,parent);
+ assert(s.writes.some(w=>w.name==='outreach_start_inbound_transcript'&&w.args.p_call_sid===parent));
  const ended=await (await s.request('browser-ended',{DialCallStatus:'no-answer'})).text();
  assert(ended.indexOf('<Stop>')<ended.indexOf('<Say>'));
 });
