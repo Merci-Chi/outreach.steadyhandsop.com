@@ -34,3 +34,11 @@ test('failed stage reads keep loading and schedule a retry instead of inventing 
  const s=setup([],{message:'Network error'});s.api.mount(s.client,[{crm_id:'a'}]);await s.api.loadProcessChecks();
  assert.equal(s.api.processStage({crm_id:'a'}),'Process: Loading…');assert.equal(s.timers.length,1);
 });
+
+test('Start Sale / Track Customer button is wired on Outreach and call pages',async()=>{
+ for(const page of ['index.html','call.html']){
+  const html=await readFile(new URL('../'+page,import.meta.url),'utf8');
+  assert.match(html,/id="refStartSale"/);
+  assert.match(html,/src="call-pipeline-stage\\.js\\?v=[^"]+"/);
+ }
+});
