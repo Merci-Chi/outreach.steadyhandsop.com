@@ -55,9 +55,15 @@ test('allowed lead uses its saved number if no destination override was passed',
  assert.equal(s.checks[0].args.p_phone,'(702) 555-0100');
 });
 
-test('previously called non-retryable leads cannot be called',async()=>{
- const s=setup({lastcalled:'2026-10-20T10:00:00Z'});
- await assert.rejects(s.api.ensureCallable('lead'),/Previously called lead/);
+test('previously called and interested callback leads can be called for follow-up',async()=>{
+ for(const row of [{lastcalled:'2026-10-20T10:00:00Z'},
+  {stage:'callback',tags:['Interested','Called'],lastcalled:'2026-10-21T20:19:26Z'},
+  {history:[{outcome:'called'}]}, {outcome:'Interested'}]){
+  const s=setup(row);
+  assert.equal(await s.api.ensureCallable('lead'),true);
+  assert.equal(s.api.callBlocked(row),false);
+  assert.equal(s.checks.length,1);
+ }
 });
 test('Outreach stage without a call attempt remains callable',async()=>{
  const s=setup({stage:'outreach',outcome:'',tags:[],lastcalled:null,call_status:'Not called'});
@@ -65,7 +71,7 @@ test('Outreach stage without a call attempt remains callable',async()=>{
  assert.equal(s.api.callBlocked({stage:'outreach',tags:[]}),false);
  assert.equal(await s.api.ensureCallable('lead'),true);
  for(const evidence of [{lastcalled:'2026-10-22T10:00:00Z'},{tags:['Called']},{history:[{outcome:'called'}]}]){
-  await assert.rejects(setup({stage:'outreach',outcome:'',tags:[],...evidence}).api.ensureCallable('lead'),/Previously called lead/);
+  assert.equal(await setup({stage:'outreach',outcome:'',tags:[],...evidence}).api.ensureCallable('lead'),true);
  }
 });
 test('voicemail leads may be called after DNC validation',async()=>{
@@ -79,6 +85,11 @@ test('terminal tags block calls even without lastcalled and override retry tags'
   await assert.rejects(s.api.ensureCallable('lead'),/Calling blocked/);
   assert.equal(s.api.callBlocked(row),true);
  }
+});
+test('follow-up permission cannot override assignment, archived leads or phone suppression',async()=>{
+ await assert.rejects(setup({stage:'callback',tags:['Interested','Called'],assigned_user_id:'other'}).api.ensureCallable('lead'),/not assigned/);
+ await assert.rejects(setup({stage:'callback',tags:['Interested','Called'],admin_archived:true}).api.ensureCallable('lead'),/archived/);
+ await assert.rejects(setup({stage:'callback',tags:['Interested','Called'],rpcResult:{data:true}}).api.ensureCallable('lead'),/DO NOT CALL/);
 });
 test('contact labels detect call tags with an empty outcome and timestamp',()=>{
  const s=setup();

@@ -47,7 +47,19 @@ test('repair historical stages and enforce dispositions for updates, duplicate p
  await db.query("update crm set outcome='No Answer',tags='[\"No Answer\"]' where id=$1",[id(99)]);assert.equal(await check(99),false);
  await db.exec(sql);
  assert.equal((await db.query('select original_record->>\'stage\' s from crm_dnc_private.contact_stage_backup where lead_id=$1',[id(1)])).rows[0].s,'notstarted');
+ await db.exec(await readFile(new URL('../sql/fresh-outreach-call-eligibility.sql',import.meta.url),'utf8'));
+ await db.query("insert into crm(id,phone,stage,outcome,tags,lastcalled) values($1,'7025550166','callback','','[\"Interested\",\"Called\"]',now())",[id(66)]);
+ assert.equal(await check(66),true); // reproduce the interested callback blocked by history
+ await db.exec(await readFile(new URL('../sql/allow-follow-up-calls.sql',import.meta.url),'utf8'));
+ assert.equal(await check(66),false);
+ assert.equal(await check(6),false); // previous call alone permits follow-up
+ assert.equal(await check(1),true);assert.equal(await check(3),true);assert.equal(await check(4),true);
+ await db.query("insert into crm_dnc_private.suppressed_phones(phone,source) values('7025550166','test')");
+ assert.equal(await check(66),true); // private suppression overrides Interested
+ await db.query("insert into crm(id,phone,stage,tags,lastcalled,admin_archived) values($1,'7025550167','callback','[\"Called\"]',now(),true)",[id(67)]);
+ assert.equal(await check(67),true);
  await db.exec('set role authenticated');assert.equal(await check(1),true);
+ assert.equal(await check(6),false);assert.equal(await check(66),true);
  await assert.rejects(db.query('select * from crm_dnc_private.contact_stage_backup'),/permission denied/);
  await db.exec('reset role;set role anon');await assert.rejects(check(1),/permission denied/);
  }finally{await db.close();}

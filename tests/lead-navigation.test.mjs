@@ -51,5 +51,19 @@ test('previously contacted leads stay out of new-lead navigation',async()=>{
 });
 test('previously called no-answer selection is separate from fresh queue',async()=>{
  const s=setup({rows:[{id:'a',phone:'111',lastcalled:'2026-10-20T10:00:00Z',outcome:'Left Voicemail'},{id:'b',phone:'222'}]});
- await s.click('refPreviouslyCalled');assert.equal(s.routes[0],'index.html?crm_id=a&retry_no_answer=1');
+ await s.click('refPreviouslyCalled');assert.equal(s.routes[0],'index.html?crm_id=a&follow_up=1');
+});
+test('follow-up navigation includes interested callbacks and history-only calls',async()=>{
+ for(const row of [{id:'b',phone:'222',stage:'callback',tags:['Interested','Called'],lastcalled:'2026-10-21T20:19:26Z'},
+  {id:'b',phone:'222'}]){
+  const s=setup({rows:[row],calls:[{crm_id:'b',outcome:'called'}]});
+  await s.click('refPreviouslyCalled');assert.equal(s.routes[0],'index.html?crm_id=b&follow_up=1');
+ }
+});
+test('follow-up navigation excludes terminal dispositions, archives and DNC',async()=>{
+ const rows=[{id:'bad',phone:'111',tags:['Wrong Number']},{id:'dnc',phone:'222',do_not_call:true},
+  {id:'uninterested',phone:'333',outcome:'Not Interested'},{id:'archive',phone:'444',admin_archived:true}]
+  .map(row=>({...row,lastcalled:'2026-10-21T20:19:26Z'}));
+ const s=setup({rows});await s.click('refPreviouslyCalled');
+ assert.equal(s.routes.length,0);assert.match(s.nodes.leadNavigationStatus.textContent,/No eligible follow-up/);
 });
