@@ -14,7 +14,7 @@
  const complete=()=>[
    (data.sameNumber && validPhone(window.steadyHandsCallLead?.number||window.steadyHandsCallLead?.phone||''))
      ||validPhone(data.phone)||validEmail(data.email),
-   Boolean(data.timeframe.trim())&&data.references,
+   Boolean(data.timeframe.trim()),
    Boolean(data.followup)
  ];
  function save(){
