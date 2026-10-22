@@ -12,7 +12,7 @@ test('incoming caller resolution is unique, owner-scoped and stable per Call SID
   const db = new PGlite();
   try {
     await db.exec(`
-      create schema auth;
+      create role service_role;\n      create schema auth;
       create table auth.users(id uuid primary key);
       insert into auth.users values ('${uid}'), ('${other}');
       create table public.crm(
