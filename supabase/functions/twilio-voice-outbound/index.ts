@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     const {data: policy, error: policyError} = await db.from('associate_calling_policies')
       .select('mode,ready_after').eq('user_id',userId).maybeSingle();
     if(policyError) throw Error('Could not verify calling policy.');
-    if(policy?.mode==='restricted') return xml('<Say>Outbound calling is restricted by your administrator.</Say><Hangup/>');
+    if(policy?.mode==='restricted') return xml('<Say>Your calling access is temporarily paused. Please contact your team administrator for help.</Say><Hangup/>');
     if(policy?.mode==='delayed' && (!policy.ready_after || Date.now()<new Date(policy.ready_after).getTime()))
       return xml('<Say>Call preparation has not finished.</Say><Hangup/>');
     if(policy?.mode==='delayed'){
