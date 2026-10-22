@@ -7,6 +7,7 @@ function setup(overrides={},writeResult={data:{id:'lead'}}) {
  const row={id:'lead',stage:'outreach',tags:['Existing'],notes:'Original notes',assigned_user_id:'agent',phone:'(702) 555-0100',...overrides};
  const writes=[],filters=[],events=[],checks=[];
  const window={dispatchEvent:e=>events.push(e),steadyHandsCRMClient:{rpc:async(name,args)=>{checks.push({name,args});return overrides.rpcResult || {data:false};},auth:{getUser:async()=>({data:{user:{id:'agent',email:'agent@example.com'}}})},from(table){
+  if(table==='callcenter_call_activity'){const history={select:()=>history,eq:()=>history,limit:async()=>({data:overrides.history||[],error:overrides.historyError||null})};return history;}
   let writing=false;const q={select:()=>q,eq:(key,value)=>{filters.push([key,value]);return q},
    update(patch){writing=true;writes.push(patch);return q},single:async()=>writing?writeResult:{data:row}};return q;
  }}};
@@ -52,4 +53,13 @@ test('call guard fails closed on a missing, failed, or malformed DNC lookup',asy
 test('allowed lead uses its saved number if no destination override was passed',async()=>{
  const s=setup();assert.equal(await s.api.ensureCallable('lead'),true);
  assert.equal(s.checks[0].args.p_phone,'(702) 555-0100');
+});
+
+test('previously called non-retryable leads cannot be called',async()=>{
+ const s=setup({lastcalled:'2026-10-20T10:00:00Z'});
+ await assert.rejects(s.api.ensureCallable('lead'),/Previously called lead/);
+});
+test('voicemail leads may be called after DNC validation',async()=>{
+ const s=setup({lastcalled:'2026-10-20T10:00:00Z',outcome:'Left Voicemail'});
+ assert.equal(await s.api.ensureCallable('lead'),true);
 });
