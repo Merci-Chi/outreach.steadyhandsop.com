@@ -33,12 +33,21 @@ async function advance(){
   if(active){
    const usable=items.filter(x=>x.status==='pending');
    if(!usable.length){alert('Queue complete. Activate another queue or add leads.');return;}
-   const current=selectedId();const index=usable.findIndex(x=>String(x.crm_id)===String(current));
-   const next=usable[index>=0? (index+1)%usable.length:0];
-   if(usable.length===1&&String(next.crm_id)===String(current)){alert('Only this pending lead remains in your queue.');return;}
-   // Do not claim a call occurred by merely advancing the queue.
-   const permission=await c.from('crm').select('id').eq('id',next.crm_id).eq('assigned_user_id',(await c.auth.getUser()).data.user.id).maybeSingle();
-   if(permission.error||!permission.data){alert('This prospect is no longer assigned to you. Please refresh the queue.');return;}
+   const auth=await c.auth.getUser();
+   if(auth.error||!auth.data?.user?.id)throw Error('Please sign in.');
+   const ids=usable.map(x=>x.crm_id);
+   const [crm,history]=await Promise.all([
+     c.from('crm').select('id,lastcalled,do_not_call,stage,outcome,phone').eq('assigned_user_id',auth.data.user.id).in('id',ids),
+     c.from('callcenter_call_activity').select('crm_id,outcome').eq('user_id',auth.data.user.id).in('crm_id',ids).limit(5000)
+   ]);
+   if(crm.error||history.error)throw Error('Unable to verify call eligibility.');
+   const called=new Set((history.data||[]).filter(x=>String(x.outcome||'').toLowerCase().replace(/[^a-z]/g,'')!=='didnotcall').map(x=>String(x.crm_id)));
+   const available=new Set((crm.data||[]).filter(x=>x.phone&&!x.lastcalled&&!x.do_not_call&&!called.has(String(x.id))&&!['notinterested','donotcall','complete','sold'].includes(String(x.stage||'').toLowerCase().replace(/[^a-z]/g,''))).map(x=>String(x.id)));
+   const fresh=usable.filter(x=>available.has(String(x.crm_id)));
+   if(!fresh.length){alert('No uncalled leads remain in this queue.');return;}
+   const current=selectedId(),ix=fresh.findIndex(x=>String(x.crm_id)===String(current));
+   const next=fresh[ix>=0?(ix+1)%fresh.length:0];
+   if(fresh.length===1&&String(next.crm_id)===String(current)){alert('Only this uncalled lead remains in the queue.');return;}
    openLead(next.crm_id);return;
   }
   alert('Your queue is empty. Add leads from the Leads page or enable Auto Add in Queue Settings.');
