@@ -109,11 +109,13 @@
   const history=$('transcriptHistory'), feedback=$('transcriptFeedback'), actions=$('keywordActions');
   let current=leadId(), entries=[], callActive=$('refEndCall')?.dataset.callState==='active'||!!document.querySelector('#refRegularCallTracker:not([hidden])');
   const applied=new Set(), imported=new Set();
-  let inboundCallSid=null;
+  let inboundCallSid=null, inboundMatchedCrmId=null;
+  const inboundIdentityBySid=new Map();
+  const inboundTargetValid=()=>Boolean(inboundCallSid&&inboundMatchedCrmId&&leadId()===inboundMatchedCrmId);
   let syncTimer=null, since=null, syncEpoch=0, syncBusy=false, drainUntil=0, activeCallSid=null;
   function resetLead() {
     const id=leadId();if(id===current)return;
-    if(inboundCallSid){current=id;applied.clear();$('keywordFeedback').textContent='';renderActions();return;}
+    if(inboundCallSid){current=id;applied.clear();$('keywordFeedback').textContent='';if(!inboundTargetValid()){entries=[];history.value='';feedback.textContent='Incoming call transcript is available in Incoming calls until the caller is verified.';}renderActions();return;}
     stopSync();inboundCallSid=null;callActive=false;current=id;entries=[];applied.clear();history.value='';renderActions();feedback.textContent='';
     $('keywordFeedback').textContent='';
     $('refTranscriptStatus').textContent='';
@@ -131,7 +133,7 @@
   }
   function renderActions() {
     // Latest prospect utterances determine suggestions; a DNC request takes precedence.
-    const recent=entries.filter(entry=>entry.speaker==='prospect').slice(-4).map(entry=>entry.text).join(' ');
+    const recent=(inboundCallSid&&!inboundTargetValid()?[]:entries).filter(entry=>entry.speaker==='prospect').slice(-4).map(entry=>entry.text).join(' ');
     const suggested=core.suggestions(recent).filter(action=>!applied.has(action.id));actions.replaceChildren();
     for(const action of suggested) {
       const button=make('button',action.label,'sh-tag-pill');button.type='button';actions.append(button);
@@ -140,6 +142,7 @@
         if(leadId()!==id){resetLead();return;}
         if(!id){$('keywordFeedback').textContent='Select the caller’s prospect to apply this suggestion.';return;}
         const incoming=inboundCallSid;
+        if(incoming&&!inboundTargetValid()){$('keywordFeedback').textContent='Caller identity is not verified for this prospect.';return;}
         button.disabled=true;
         try {
           if(incoming){
@@ -159,17 +162,29 @@
     }
     if(!suggested.length){const empty=make('span',null,'suggested-action-empty');empty.setAttribute('aria-hidden','true');actions.append(empty);}
   }
+  window.addEventListener('steadyhands:inbound-caller-identity',event=>{
+    const {callSid,crmId,matchStatus}=event.detail||{};
+    if(!/^CA[0-9a-fA-F]{32}$/.test(callSid||''))return;
+    const matched=matchStatus==='matched'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(crmId||'')?String(crmId):null;
+    inboundIdentityBySid.set(callSid,matched);
+    if(callSid!==inboundCallSid)return;
+    inboundMatchedCrmId=matched;
+    if(!inboundTargetValid()){entries=[];history.value='';feedback.textContent='Caller not verified for the selected prospect. Use the Incoming calls transcript panel.';renderActions();}
+  });
   window.addEventListener('steadyhands:inbound-transcript',event=>{
     const detail=event.detail||{};
     if(detail.cleared){
-      if(inboundCallSid){inboundCallSid=null;entries=[];history.value='';feedback.textContent='';$('refTranscriptStatus').textContent='';renderActions();}
+      if(inboundCallSid){inboundCallSid=null;inboundMatchedCrmId=null;entries=[];history.value='';feedback.textContent='';$('refTranscriptStatus').textContent='';renderActions();}
       return;
     }
     if(detail.started){
-      stopSync();callActive=false;current=leadId();inboundCallSid=detail.callSid;entries=[];applied.clear();history.value='';renderActions();
+      stopSync();callActive=false;current=leadId();inboundCallSid=detail.callSid;inboundMatchedCrmId=inboundIdentityBySid.get(detail.callSid)||null;entries=[];applied.clear();history.value='';renderActions();
       feedback.textContent='Waiting for the incoming transcript…';$('refTranscriptStatus').textContent='Incoming call';
     }
     if(!inboundCallSid||detail.callSid!==inboundCallSid)return;
+    if(!inboundTargetValid()){
+      entries=[];history.value='';feedback.textContent='Caller not verified for the selected prospect. Use the Incoming calls transcript panel.';renderActions();return;
+    }
     if(detail.transcript){
       history.value=detail.displayText??detail.transcript.transcript??'';history.scrollTop=history.scrollHeight;
       entries=core.transcriptSegments(detail.transcript);renderActions();
