@@ -39,7 +39,7 @@ test('Called tag is automatic, removes Not started, repairs queues and cannot be
  assert.equal((await db.query('select status from outreach_queue_items where id=$1',[id(22)])).rows[0].status,'completed');
  await db.query("update crm set outcome='Do Not Call',do_not_call=true where id=$1",[id(3)]);
  assert.equal((await lead(3)).tags.includes('Called'),false); // suppression alone is not a call
- await db.exec(automatic);
+ await db.exec(previous);await db.exec(automatic);
  assert.deepEqual((await lead(2)).tags,['Called']);
  await db.exec('set role authenticated');
  await assert.rejects(db.query('select * from crm_dnc_private.called_tag_backup'),/permission denied/);
