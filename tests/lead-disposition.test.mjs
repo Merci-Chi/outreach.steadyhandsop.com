@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../lead-disposition.js',import.meta.url),'utf8');
 function setup(overrides={},writeResult={data:{id:'lead'}}) {
- const row={id:'lead',stage:'outreach',tags:['Existing'],notes:'Original notes',assigned_user_id:'agent',phone:'(702) 555-0100',...overrides};
+ const row={id:'lead',stage:'notstarted',tags:['Existing'],notes:'Original notes',assigned_user_id:'agent',phone:'(702) 555-0100',...overrides};
  const writes=[],filters=[],events=[],checks=[];
  const window={dispatchEvent:e=>events.push(e),steadyHandsCRMClient:{rpc:async(name,args)=>{checks.push({name,args});return overrides.rpcResult || {data:false};},auth:{getUser:async()=>({data:{user:{id:'agent',email:'agent@example.com'}}})},from(table){
   if(table==='callcenter_call_activity'){const history={select:()=>history,eq:()=>history,limit:async()=>({data:overrides.history||[],error:overrides.historyError||null})};return history;}
@@ -62,4 +62,19 @@ test('previously called non-retryable leads cannot be called',async()=>{
 test('voicemail leads may be called after DNC validation',async()=>{
  const s=setup({lastcalled:'2026-10-20T10:00:00Z',outcome:'Left Voicemail'});
  assert.equal(await s.api.ensureCallable('lead'),true);
+});
+
+test('terminal tags block calls even without lastcalled and override retry tags',async()=>{
+ for(const row of [{tags:['Wrong Number']},{outcome:'Wrong Number'},{tags:['Not Interested']},{tags:['No Answer','Wrong Number']},{tags:['Left Voicemail','Not Interested']}]){
+  const s=setup({stage:'notstarted',...row});
+  await assert.rejects(s.api.ensureCallable('lead'),/Calling blocked/);
+  assert.equal(s.api.callBlocked(row),true);
+ }
+});
+test('contact labels detect call tags with an empty outcome and timestamp',()=>{
+ const s=setup();
+ assert.equal(s.api.displayStage({stage:'notstarted',tags:['Left Voicemail']}),'Called / outreach');
+ assert.equal(s.api.displayStage({stage:'notstarted',tags:['Wrong Number']}),'Wrong / invalid number');
+ assert.equal(s.api.hasContact({tags:['No Answer']}),true);
+ assert.equal(s.api.callBlocked({stage:'notstarted',tags:['No Answer']}),false);
 });
