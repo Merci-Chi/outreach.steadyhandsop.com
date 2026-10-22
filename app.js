@@ -1247,6 +1247,27 @@ function setupOutreach() {
 
   };
 
+  // Inbound caller selection never navigates or reloads the active Twilio Device.
+  // The CRM row is revalidated against this signed-in representative.
+  window.addEventListener('steadyhands:open-inbound-caller', async event => {
+    const id=String(event.detail?.crmId||'');
+    if(!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id))return;
+    const {data:lead,error}=await client.from('crm')
+      .select('id,company,name,phone,notes,tags,sources,stage,outcome,callbackdate,callbackat,lastcalled,timezone,leadpotential,tier,state_code,sitekey,previewurl,assigned_user_id')
+      .eq('id',id).eq('assigned_user_id',userId).maybeSingle();
+    if(error||!lead)return;
+    const existing=[...leadContainer.querySelectorAll('.lead-card'),...(selectedLeadTop?.querySelectorAll('.lead-card')||[])]
+      .find(card=>card.dataset.crmId===id);
+    const card=existing||makeCRMLinkCard(lead,[]);
+    if(!existing)leadContainer.append(card);
+    selectedCard=card;
+    if(selectedLeadTop){card.style.display='';card.classList.add('selected-lead');selectedLeadTop.replaceChildren(card);}
+    try{sessionStorage.setItem('steadyhands-selected-outreach-crm-id',id)}catch{}
+    window.steadyHandsForcedCRMId=id;
+    renderQueue(false);
+    window.dispatchEvent(new CustomEvent('steadyhands:call-lead-ready',{detail:{id}}));
+  });
+
   const selectCard = (card, shouldScroll = true) => {
 
     if (!card || !matchesFilter(card)) return;

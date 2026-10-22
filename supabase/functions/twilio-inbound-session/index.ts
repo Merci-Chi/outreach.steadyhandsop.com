@@ -82,6 +82,22 @@ Deno.serve(async req=>{
    await checked(await db.from('outreach_inbound_calls').update({browser_alerted_at:new Date().toISOString()}).eq('call_sid',callSid).eq('user_id',userId).eq('route_destination','app'));
    return json({ok:true});
   }
+  if(action==='caller_info'){
+   const callSid=String(body.call_sid||'');
+   if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
+   const incoming=await checked(await db.from('outreach_inbound_calls')
+     .select('call_sid,from_number,crm_id,caller_match_status')
+     .eq('call_sid',callSid).eq('user_id',userId).eq('route_destination','app').maybeSingle());
+   if(!incoming)return json({error:'Incoming call not found.'},404);
+   let caller=null;
+   if(incoming.caller_match_status==='matched'&&incoming.crm_id){
+    caller=await checked(await db.from('crm')
+      .select('id,name,company,phone,altphone,notes,stage,outcome,callbackat,timezone')
+      .eq('id',incoming.crm_id).eq('assigned_user_id',userId).maybeSingle());
+   }
+   return json({call_sid:callSid,from_number:incoming.from_number,
+     match_status:caller?'matched':incoming.caller_match_status==='matched'?'unknown':incoming.caller_match_status||'unresolved',caller});
+  }
   if(action==='transcript'){
    const callSid=String(body.call_sid||'');
    if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
