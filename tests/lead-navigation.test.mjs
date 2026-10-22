@@ -51,5 +51,5 @@ test('previously contacted leads stay out of new-lead navigation',async()=>{
 });
 test('previously called no-answer selection is separate from fresh queue',async()=>{
  const s=setup({rows:[{id:'a',phone:'111',lastcalled:'2026-10-20T10:00:00Z',outcome:'Left Voicemail'},{id:'b',phone:'222'}]});
- await s.click('refPreviouslyCalled');assert.match(s.routes[0],/^index.html\\?crm_id=a&retry_no_answer=1$/);
+ await s.click('refPreviouslyCalled');assert.equal(s.routes[0],'index.html?crm_id=a&retry_no_answer=1');
 });
