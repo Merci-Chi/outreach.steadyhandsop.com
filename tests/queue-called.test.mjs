@@ -22,7 +22,7 @@ test('queue shows Called and correct completion even when the item status is sta
 });
 test('Exclude Called generates fresh leads while skipping previously called leads',async()=>{
  const s=setup(),inserted=[];
- const leads=[{id:'fresh',company:'Fresh',tags:[],lastcalled:null},{id:'called',tags:['Called'],lastcalled:null}];
+ const leads=[{id:'fresh',company:'Fresh',phone:'111',tags:[],lastcalled:null},{id:'called',phone:'222',tags:['Called'],lastcalled:null}];
  s.window.api.configure({from(table){const result={select:()=>result,eq:()=>result,is:()=>result,order:()=>result,limit:()=>result,upsert:rows=>{inserted.push(...rows);return result},then:resolve=>resolve({data:table==='crm'?leads:[]})};return result;}});
  await s.window.api.generate({id:'queue',name:'Fresh queue',filters:{exclude_called:true}});
  assert.deepEqual(inserted.map(row=>row.crm_id),['fresh']);
