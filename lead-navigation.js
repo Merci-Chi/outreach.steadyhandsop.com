@@ -38,6 +38,7 @@ async function pick(mode){
  try{
   const client=window.steadyHandsCRMClient;if(!client)throw Error('CRM connection unavailable.');
   const {data,error}=await client.auth.getUser();if(error||!data?.user?.id)throw Error('Please sign in again.');
+  if(mode==='next'&&window.SteadyHandsQueue&&await window.SteadyHandsQueue.next())return;
   const {fresh,followups}=await candidates(client,data.user.id);
   const list=mode==='retry'?followups:fresh;
   if(!list.length){tell(mode==='retry'?'No eligible follow-up leads assigned to you.':'No new uncalled assigned prospects are available.');return}
@@ -50,7 +51,7 @@ async function pick(mode){
  }catch(err){console.error('Lead selection failed',err);tell('Unable to select prospect: '+(err?.message||err))}
  finally{picking=false;buttons.forEach(b=>b.disabled=false)}
 }
-window.SteadyHandsLeadNavigation={next:()=>pick('next')};
+window.SteadyHandsLeadNavigation={next:()=>pick('next'),open:navigate,isBusy:busy};
 function init(){
  byId('refPreviouslyCalled')?.addEventListener('click',()=>pick('retry'));
  byId('refRandomLead')?.addEventListener('click',()=>pick('random'));
