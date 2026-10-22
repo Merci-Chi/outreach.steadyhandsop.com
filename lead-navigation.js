@@ -26,7 +26,7 @@ function navigate(row,retry){
  sessionStorage.setItem('steadyhands-selected-outreach-crm-id',String(row.id));
  const params=new URLSearchParams({crm_id:String(row.id)});
  if(retry)params.set('retry_no_answer','1');
- window.location.assign('index.html?'+params);
+ if(location.pathname.endsWith('/call.html')){const handoff={id:String(row.id),company:row.company||row.name||'',number:row.phone||'',contact:row.name||'',timezone:row.timezone||''};sessionStorage.setItem('steadyhands-outreach-call-handoff',JSON.stringify(handoff));for(const [key,value] of Object.entries(handoff))if(key!=='id')params.set(key,value);window.location.assign('call.html?'+params.toString());}else window.location.assign('index.html?'+params.toString());
 }
 async function pick(mode){
  if(picking)return;if(busy()){tell('Finish the current call before switching prospects.');return}
