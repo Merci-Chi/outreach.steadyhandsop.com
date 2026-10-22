@@ -81,28 +81,46 @@ create table if not exists crm_dnc_private.contact_stage_backup(
 alter table crm_dnc_private.contact_stage_backup enable row level security;
 revoke all on crm_dnc_private.contact_stage_backup from public,anon,authenticated;
 
--- Back up only rows requiring repair, including call evidence missing from the CRM.
+-- Filter cheap evidence fields first. MATERIALIZED prevents the expensive helper
+-- from running on every uncalled CRM row (over 200,000 rows in this project).
+with candidates as materialized (
+select c.id,to_jsonb(c) record from public.crm c
+ where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
+ and (c.lastcalled is not null or nullif(c.outcome,'') is not null or coalesce(c.tags,'[]'::jsonb)<>'[]'::jsonb)
+), repair_ids as (
+ select id from candidates where crm_dnc_private.has_contact(record)
+ union select c.id from public.callcenter_call_activity a join public.crm c on c.id=a.crm_id
+ where regexp_replace(lower(coalesce(a.outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall')
+ and (c.lastcalled is null or c.lastcalled<coalesce(a.ended_at,a.created_at))
+)
 insert into crm_dnc_private.contact_stage_backup(source_table,lead_id,original_record)
-select 'crm',c.id,to_jsonb(c) from public.crm c where
- (regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted') and crm_dnc_private.has_contact(to_jsonb(c)))
- or exists(select 1 from public.callcenter_call_activity a where a.crm_id=c.id
-   and regexp_replace(lower(coalesce(a.outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall')
-   and (c.lastcalled is null or c.lastcalled<coalesce(a.ended_at,a.created_at)))
-on conflict do nothing;
+ select 'crm',c.id,to_jsonb(c) from public.crm c join repair_ids r on r.id=c.id on conflict do nothing;
+with candidates as materialized (
+select c.id,to_jsonb(c) record from public."callcenter-leads" c
+ where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
+ and (c.lastcalled is not null or nullif(c.outcome,'') is not null or coalesce(c.tags,'[]'::jsonb)<>'[]'::jsonb)
+)
 insert into crm_dnc_private.contact_stage_backup(source_table,lead_id,original_record)
-select 'callcenter-leads',c.id,to_jsonb(c) from public."callcenter-leads" c
-where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
- and crm_dnc_private.has_contact(to_jsonb(c)) on conflict do nothing;
+ select 'callcenter-leads',id,record from candidates where crm_dnc_private.has_contact(record) on conflict do nothing;
 
 update public.crm c set lastcalled=greatest(c.lastcalled,a.last_call)
 from (select crm_id,max(coalesce(ended_at,created_at)) last_call from public.callcenter_call_activity
  where regexp_replace(lower(coalesce(outcome,'')),'[^a-z]','','g') not in ('didnotcall','didntcall') group by crm_id) a
 where c.id=a.crm_id and (c.lastcalled is null or c.lastcalled<a.last_call);
--- The trigger derives the stage from current outcome/tags without inventing call timestamps.
-update public.crm c set stage=c.stage where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
- and crm_dnc_private.has_contact(to_jsonb(c));
-update public."callcenter-leads" c set stage=c.stage where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
- and crm_dnc_private.has_contact(to_jsonb(c));
+with candidates as materialized (
+select c.id,to_jsonb(c) record from public.crm c
+ where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
+ and (c.lastcalled is not null or nullif(c.outcome,'') is not null or coalesce(c.tags,'[]'::jsonb)<>'[]'::jsonb)
+)
+update public.crm c set stage=c.stage from candidates r
+ where c.id=r.id and crm_dnc_private.has_contact(r.record);
+with candidates as materialized (
+select c.id,to_jsonb(c) record from public."callcenter-leads" c
+ where regexp_replace(lower(coalesce(c.stage,'')),'[^a-z]','','g') in ('','new','notstarted')
+ and (c.lastcalled is not null or nullif(c.outcome,'') is not null or coalesce(c.tags,'[]'::jsonb)<>'[]'::jsonb)
+)
+update public."callcenter-leads" c set stage=c.stage from candidates r
+ where c.id=r.id and crm_dnc_private.has_contact(r.record);
 
 -- This existing RPC is also enforced by the signed Twilio webhook before Dial.
 -- ID lookup and normalized-phone lookup use the existing primary/phone indexes.
