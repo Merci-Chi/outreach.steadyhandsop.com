@@ -34,7 +34,6 @@
   };
 
   const process=document.querySelector('.outreach-process');
-  window.SteadyHandsCallGuide.mount({process,leadId});
 
   let reviewPending=null;
   window.SteadyHandsReviewBeforeCall = id => {
@@ -104,6 +103,14 @@
     });
     return reviewPending;
   };
+
+  // Register the mandatory review before initializing the optional call guide.
+  // A call-guide failure must not leave dialing permanently blocked.
+  try {
+    window.SteadyHandsCallGuide?.mount?.({process,leadId});
+  } catch (error) {
+    console.error('Unable to initialize call guide:', error);
+  }
 
   // All transcript state is scoped to the selected lead and stays in memory.
   const history=$('transcriptHistory'), feedback=$('transcriptFeedback'), actions=$('keywordActions');
