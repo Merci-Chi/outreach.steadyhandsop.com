@@ -8,7 +8,7 @@
   const HANDOFF_KEY = 'outreach-onboarding-return';
   const OUTREACH_ORIGIN = 'https://outreach.steadyhandsop.com';
   const PORTAL_ORIGIN = 'https://onboard.steadyhandsop.com';
-  const workspacePages = new Set(['index.html','call.html','leads.html','queue.html','activity.html','sales.html','earnings.html','account.html','skills.html','admin.html']);
+  const workspacePages = new Set(['tasks.html','index.html','call.html','leads.html','queue.html','activity.html','sales.html','earnings.html','account.html','skills.html','admin.html']);
   function safeWorkspace(value) {
     try {
       const url = new URL(value, OUTREACH_ORIGIN);
