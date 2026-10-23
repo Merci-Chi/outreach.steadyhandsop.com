@@ -27,24 +27,23 @@ async function next(){
  if(result.error)throw result.error;
  const disposition=window.SteadyHandsLeadDisposition;
  if(!disposition)throw Error('Calling eligibility is unavailable. Please refresh.');
- let called=new Set();
- if(active.filters?.exclude_called){
-  const history=await c.from('callcenter_call_activity').select('crm_id,outcome').eq('user_id',userId).in('crm_id',ids).limit(5000);
-  if(history.error)throw history.error;
-  called=new Set((history.data||[]).filter(x=>!['didnotcall','didntcall'].includes(String(x.outcome||'').toLowerCase().replace(/[^a-z]/g,''))).map(x=>String(x.crm_id)));
- }
- const byId=new Map((result.data||[]).filter(x=>x.phone&&!disposition.callBlocked(x)&&!['complete','completed','sold','archived'].includes(String(x.stage||'').toLowerCase().replace(/[^a-z]/g,''))&&(!active.filters?.exclude_called||(disposition.callStatus(x)!=='Called'&&!called.has(String(x.id))))).map(x=>[String(x.id),x]));
+ // Every normal Next Lead action is fresh-only, regardless of the queue's optional filter.
+ // Check recorded activity as well as CRM fields because call_status can be stale.
+ const history=await c.from('callcenter_call_activity').select('crm_id,outcome').in('crm_id',ids).limit(5000);
+ if(history.error)throw history.error;
+ const called=new Set((history.data||[]).filter(x=>!['didnotcall','didntcall'].includes(String(x.outcome||'').toLowerCase().replace(/[^a-z]/g,''))).map(x=>String(x.crm_id)));
+ const byId=new Map((result.data||[]).filter(x=>x.phone&&!disposition.callBlocked(x)&&!['complete','completed','sold','archived'].includes(String(x.stage||'').toLowerCase().replace(/[^a-z]/g,''))&&!x.lastcalled&&x.call_status!=='Called'&&!disposition.hasContact(x)&&!called.has(String(x.id))).map(x=>[String(x.id),x]));
  let ordered=usable.map(i=>byId.get(String(i.crm_id))).filter(Boolean);
  const mode=active.sort_mode;
  if(mode==='az'||mode==='za')ordered.sort((a,b)=>(mode==='az'?1:-1)*String(a.company||a.name||'').localeCompare(String(b.company||b.name||'')));
  if(mode==='newest'||mode==='oldest')ordered.sort((a,b)=>(mode==='newest'?-1:1)*(String(a.created||'').localeCompare(String(b.created||''))||String(a.id).localeCompare(String(b.id))));
- if(!ordered.length)throw Error(`No eligible ${active.filters?.exclude_called?'uncalled ':''}leads in active queue "${active.name}". Update its filters or set it Inactive.`);
+ if(!ordered.length)throw Error(`No eligible uncalled leads in active queue "${active.name}". Update its filters or set it Inactive.`);
  const current=String(window.steadyHandsCallLead?.id||document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId||new URLSearchParams(location.search).get('crm_id')||'');
  const ix=ordered.findIndex(x=>String(x.id)===current);
  const row=ordered[ix>=0?(ix+1)%ordered.length:0];
  if(String(row.id)===current)throw Error('Only the current eligible lead remains in this queue.');
  if(window.SteadyHandsLeadNavigation?.isBusy())throw Error('Finish the current call before switching prospects.');
- window.SteadyHandsLeadNavigation.open(row,disposition.callStatus(row)==='Called');
+ window.SteadyHandsLeadNavigation.open(row,false);
  return true;
 }
 window.SteadyHandsQueue={next,sync};
