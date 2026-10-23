@@ -105,7 +105,7 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
        const {data,error:sendError}=await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:chosenRecipient,p_kind:destination,p_notes:notes});
        if(sendError)throw sendError;
        sent=true;button.textContent='Shared successfully';
-       msg(m,'Shared with the selected recipient. The request will appear in their handoff queue and notifications.');
+       msg(m,destination==='development'?'Sent to Admin → DEVELOP. CRM ownership is unchanged.':'Spanish transfer sent. The recipient will receive a notification and can accept the lead.');
        window.dispatchEvent(new CustomEvent('steadyhands:handoff-created',{detail:{id:data}}));
      }catch(e){error(m,e);kind.disabled=false;recipient.disabled=false;}
      finally{submitting=false;button.disabled=sent||loading||!recipient.value;}
