@@ -30,7 +30,7 @@ window.steadyHandsResumePostCallQuestionnaire=id=>{
  captureAnswers();pending=draft;view();return true;
 };
 const client=()=>window.steadyHandsCRMClient;
-const choices=[['good','thumbs-up','Good'],['bad','thumbs-down','Bad'],['left_voicemail','voicemail','Voicemail'],['follow_up','calendar-clock','Follow Up'],['no_answer','phone-off','No Answer'],['did_not_call','skip-forward','Did not Call'],['has_website','globe','Has a website'],['not_interested','thumbs-down','Not interested'],['do_not_call','ban','Do not call']];
+const choices=[['good','thumbs-up','Good'],['bad','thumbs-down','Bad'],['left_voicemail','voicemail','Voicemail'],['follow_up','calendar-clock','Follow Up'],['no_answer','phone-off','No Answer'],['did_not_call','skip-forward','Did not Call'],['has_website','globe','Has a website'],['gatekeeper','shield','Gatekeeper'],['not_interested','thumbs-down','Not interested'],['do_not_call','ban','Do not call']];
 function addOutcomeStyle(){
  if(q('#shOutcomeStyle'))return;
  const style=document.createElement('style');style.id='shOutcomeStyle';
@@ -53,8 +53,8 @@ function view(){
 async function save(e){e.preventDefault();if(!pending||submitting)return;const result=pending,overlay=q('#shFeedbackOverlay'),c=client(),f=e.currentTarget,btn=q('#shFeedbackSave'),message=q('#shFeedbackStatus');captureAnswers();if(!c){message.textContent='Sign in before saving.';return;}submitting=true;btn.disabled=true;
  try{const d=new FormData(f);const selected=String(d.get('outcome')||'');
  if(!choices.some(x=>x[0]===selected))throw new Error('Choose an outcome.');
- const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call',has_website:'called',not_interested:'not_interested',do_not_call:'not_interested'};
- const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.',has_website:'Prospect has a website.',not_interested:'Prospect is not interested.',do_not_call:'Prospect requested Do Not Call.'}[selected]||'';
+ const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call',has_website:'called',gatekeeper:'called',not_interested:'not_interested',do_not_call:'not_interested'};
+ const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.',has_website:'Prospect has a website.',gatekeeper:'Spoke with gatekeeper.',not_interested:'Prospect is not interested.',do_not_call:'Prospect requested Do Not Call.'}[selected]||'';
  const args={p_crm_id:result.crm_id,p_client_event_id:result.event_id,p_outcome:mapped[selected],p_elapsed_seconds:Math.max(0,Math.min(86400,Number(result.elapsed_seconds)||0)),p_interest_stages:d.getAll('interest'),p_notes:[prefix,String(d.get('notes')||'').trim()].filter(Boolean).join('\n'),p_portal_link_sent:d.has('portal_link_sent'),p_registered:d.has('registered'),p_site_reviewed:d.has('site_reviewed'),p_ready_to_buy:d.has('ready_to_buy')};const isVoicemail=selected==='left_voicemail';
  if(result.call_method==='outreach'){
    const {data:auth,error:authError}=await c.auth.getUser();if(authError)throw authError;
@@ -98,6 +98,19 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
      :{outcome:'Not Interested',stage:'notinterested'};
    const {data:updated,error:updateError}=await c.from('crm').update(patch).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
    if(updateError||!updated)throw new Error('Call recorded, but lead status could not be saved: '+(updateError?.message||'No assigned lead updated.'));
+ }
+ if(selected==='gatekeeper'){
+   // This is a call outcome AND a durable CRM tag, not a terminal disposition.
+   const {data:auth,error:authError}=await c.auth.getUser();
+   if(authError||!auth?.user)throw new Error('Call recorded, but Gatekeeper tag could not be saved. Sign in and retry.');
+   const {data:lead,error:readError}=await c.from('crm').select('tags').eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).single();
+   if(readError||!lead)throw new Error('Call recorded, but Gatekeeper tag could not be loaded: '+(readError?.message||'Lead not assigned to you.'));
+   const tags=Array.isArray(lead.tags)?lead.tags.filter(x=>typeof x==='string'):[];
+   if(!tags.some(tag=>tag.trim().toLowerCase()==='gatekeeper')){
+     const {data:updated,error:tagError}=await c.from('crm')
+       .update({tags:[...tags,'Gatekeeper']}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
+     if(tagError||!updated)throw new Error('Call recorded, but Gatekeeper tag could not be saved: '+(tagError?.message||'No assigned lead updated.'));
+   }
  }
  if(isVoicemail || selected==='no_answer'){
    const contactOutcome=isVoicemail?'Left Voicemail':'No Answer';

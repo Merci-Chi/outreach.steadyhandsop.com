@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+const get=p=>readFile(new URL(p,import.meta.url),'utf8');
+test('Send To exposes both handoffs without granting sales ownership to developers',async()=>{const ui=await get('../outreach-tools.js'),sql=await get('../supabase/migrations/20261022030000_lead_handoff_queue.sql');assert.match(ui,/Spanish-Speaking Sales Associate/);assert.match(ui,/Development Team/);assert.match(sql,/if h.kind='spanish' then/);assert.match(sql,/assigned_user_id=h.recipient_id/);assert.match(sql,/outreach_notifications/);});
+test('notification queue accepts before opening assigned lead',async()=>{const js=await get('../outreach-handoff-queue.js');assert(js.indexOf("outreach_accept_lead_handoff")<js.indexOf("location.assign('index.html?crm_id="));});

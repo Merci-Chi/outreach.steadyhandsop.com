@@ -28,7 +28,7 @@ async function checkSelectedLeadAlerts(){
  }catch(e){console.warn('Unable to load selected lead alerts',e);}
 }
 const prices=[['Website Development','One-time','$100'],['Standard Hosting','per month','$20'],['Business Hosting','per month','$30']];
-async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='preview'?'Send Site Preview':k[0].toUpperCase()+k.slice(1),'<p>Loading…</p>');try{
+async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Send To':k==='preview'?'Send Site Preview':k[0].toUpperCase()+k.slice(1),'<p>Loading…</p>');try{
  if(k==='quick'){m=sheet('Quick Info',`<div class="sh-prices">${prices.map(([a,b,c])=>`<div class="sh-price"><div><b>${a}</b><small>${b}</small></div><strong>${c}</strong></div>`).join('')}</div>`);return;}
  const l=await fetchLead();if(!document.body.contains(m))return;if(String(l.id)!==String(id())){msg(m,'The selected prospect changed. Reopen this tool for the current prospect.');return;}
  if(k==='notes'){
@@ -76,6 +76,21 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='preview'?'S
    }catch(e){console.error('Tag save failed',e);msg(m,'Could not save tags: '+(e.message||'Unknown error. Try again.'))}
    finally{b.disabled=false}
  };return;
+ }
+ if(k==='sendto'){
+   const fetchRecipients=async kind=>{const {data,error}=await client().rpc('outreach_handoff_eligible_recipients',{p_kind:kind});if(error)throw error;return data||[];};
+   m=sheet('Send To',`<p class="sh-sheet-help">Choose the receiving associate. Spanish transfers change ownership only when accepted. Development requests keep the existing salesperson.</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Associate</option></select></label><label class="sh-field-label">Recipient<select id="shHandoffRecipient" class="sh-sheet-input"></select></label><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the recipient know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary">Share Lead</button>`);
+   const kind=$('#shHandoffKind',m),recipient=$('#shHandoffRecipient',m),button=$('#shSubmitHandoff',m);
+   const renderRecipients=async()=>{button.disabled=true;recipient.replaceChildren();try{const rows=await fetchRecipients(kind.value);for(const row of rows){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name;recipient.appendChild(opt);}if(!rows.length)msg(m,'No eligible recipients are configured for this destination.');button.disabled=!rows.length;}catch(e){msg(m,'Could not load recipients: '+e.message);}};
+   kind.onchange=()=>{void renderRecipients()};void renderRecipients();
+   button.onclick=async()=>{button.disabled=true;try{
+     if(String(id())!==String(l.id))throw Error('Selected lead changed. Reopen Send To.');
+     const {data,error:sendError}=await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:recipient.value,p_kind:kind.value,p_notes:$('#shHandoffNotes',m).value});
+     if(sendError)throw sendError;
+     msg(m,'Lead shared. The recipient will see it in Notifications and their handoff queue.');
+     window.dispatchEvent(new CustomEvent('steadyhands:handoff-created',{detail:{id:data}}));
+   }catch(e){error(m,e);button.disabled=false;}};
+   return;
  }
  if(k==='preview'){
  let details;try{details=await window.SteadyHandsPreviews.resolveLeadDetails(l,{fresh:true})}catch(e){msg(m,e.message);return;}if(!document.body.contains(m))return;if(String(l.id)!==String(id())){msg(m,'The selected prospect changed. Reopen Site Preview to share the correct website.');return;}const link=details.previewUrl;const message=`Hi! Here is the website preview we made for ${l.company||f().name}: ${link}`;
