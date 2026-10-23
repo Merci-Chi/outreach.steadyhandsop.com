@@ -44,8 +44,10 @@ async function pick(mode){
   if(!list.length){tell(mode==='retry'?'No eligible follow-up leads assigned to you.':'No new uncalled assigned prospects are available.');return}
   const current=String(selected());
   const other=list.filter(r=>String(r.id)!==current);
-  const pool=other.length?other:list;
-  const row=mode==='random'||mode==='retry'?pool[Math.floor(Math.random()*pool.length)]:pool[0];
+  if(!other.length){tell('No other eligible prospects are available. The current lead will not be repeated.');return}
+ const pool=other;
+ // Select across the eligible pool instead of repeatedly picking the first sorted lead.
+ const row=pool[Math.floor(Math.random()*pool.length)];
   if(busy()){tell('Finish the current call before switching prospects.');return}
   navigate(row,mode==='retry');
  }catch(err){console.error('Lead selection failed',err);tell('Unable to select prospect: '+(err?.message||err))}
