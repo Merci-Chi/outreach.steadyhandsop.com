@@ -85,10 +85,20 @@ Deno.serve(async req=>{
   if(action==='caller_info'){
    const callSid=String(body.call_sid||'');
    if(!/^CA[0-9a-fA-F]{32}$/.test(callSid))return json({error:'Invalid call SID.'},400);
-   const incoming=await checked(await db.from('outreach_inbound_calls')
+   let incoming=await checked(await db.from('outreach_inbound_calls')
      .select('call_sid,from_number,crm_id,caller_match_status')
      .eq('call_sid',callSid).eq('user_id',userId).eq('route_destination','app').maybeSingle());
    if(!incoming)return json({error:'Incoming call not found.'},404);
+   // Recover from inbound webhook versions that have not yet resolved CRM identity.
+   // Ownership is checked before this server-only RPC; the resolver itself only
+   // matches leads assigned to the incoming call's recorded user_id.
+   if(incoming.caller_match_status==='unresolved'){
+    await checked(await db.rpc('outreach_resolve_inbound_caller',{p_call_sid:callSid}));
+    incoming=await checked(await db.from('outreach_inbound_calls')
+      .select('call_sid,from_number,crm_id,caller_match_status')
+      .eq('call_sid',callSid).eq('user_id',userId).eq('route_destination','app').maybeSingle());
+    if(!incoming)return json({error:'Incoming call not found.'},404);
+   }
    let caller=null;
    if(incoming.caller_match_status==='matched'&&incoming.crm_id){
     caller=await checked(await db.from('crm')
