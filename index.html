@@ -35,6 +35,14 @@
 <script src="fit-control-labels.js?v=20261018-full" defer></script>
 <link rel="stylesheet" href="workflow-simple.css?v=20261018-column-fit">
 <link rel="stylesheet" href="dark-loading-states.css?v=20261020-dark-load-v1" />
+
+<style id="shSixStageGuideStyles">
+.sh-six-stage-guide{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:12px 4px 16px;margin:0 0 12px;scrollbar-width:thin;max-width:100%;box-sizing:border-box}
+.sh-six-stage-guide .sh-stage-pill{flex:1 0 auto;text-align:center;white-space:nowrap;border-radius:999px;padding:13px 18px;font-weight:800;font-size:clamp(12px,1.3vw,17px);line-height:1.25;background:#1b3959;color:#fff;box-sizing:border-box}
+.sh-six-stage-guide .sh-stage-pill:nth-child(even){background:#dfa80e;color:#173655}
+.sh-six-stage-guide .sh-stage-pill abbr{text-decoration:none;border:0;cursor:help}
+@media(max-width:850px){.sh-six-stage-guide{gap:8px;padding:10px 2px 14px}.sh-six-stage-guide .sh-stage-pill{flex:0 0 auto;padding:10px 15px;font-size:13px}}
+</style>
 </head>
 <body class="page-outreach">
 <div class="app">
@@ -45,6 +53,14 @@
   </header>
 
 <main class="content" id="refOutreachMain">
+    <nav class="sh-six-stage-guide" aria-label="Six-step outreach conversation guide">
+      <span class="sh-stage-pill">Opener + Permission</span>
+      <span class="sh-stage-pill" title="Challenges, Goal, Plan">Discovery (<abbr title="Challenges, Goal, Plan">CGP</abbr>)</span>
+      <span class="sh-stage-pill" title="Budget, Agenda, Authority">Qualification (<abbr title="Budget, Agenda, Authority">BAA</abbr>)</span>
+      <span class="sh-stage-pill">Value &amp; Investment</span>
+      <span class="sh-stage-pill">Recap</span>
+      <span class="sh-stage-pill">Developer Handoff</span>
+    </nav>
     <nav class="call-back-nav" aria-label="Outreach conversation steps"></nav>
     <table id="workflowLayout" role="presentation" width="100%" cellpadding="8"><colgroup><col width="33%"><col width="67%"></colgroup><tbody><tr><td valign="top" id="workflowDialer">
     <div class="process-workspace"><section class="ref-lead-card" aria-label="Selected prospect">
