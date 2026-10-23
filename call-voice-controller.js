@@ -68,7 +68,7 @@
     } catch (error) {
       callResult = null;
       state(false);
-      message(error.message || 'The call could not be started.');
+      message(Number(error?.twilioError?.code ?? error?.code)===31005?'Connection interrupted. Tap Call to retry.':(error.message || 'The call could not be started.'));
     } finally {
       starting = false;
       if (button()) button().disabled = false;
@@ -103,7 +103,7 @@
     }
     if (detail.state === 'error') {
       state(false);
-      message((detail.code ? 'Calling error ' + detail.code + ': ' : '') + (detail.message || 'The call failed.'));
+      message(Number(detail.code)===31005?'Connection interrupted. Tap Call to retry.':((detail.code ? 'Calling error ' + detail.code + ': ' : '') + (detail.message || 'The call failed.')));
     }
   });
   document.getElementById('refMute')?.addEventListener('click', event => {
