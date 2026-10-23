@@ -11,6 +11,25 @@ let userMuted = false;
 let held = false;
 let preferredSpeakerDeviceId = null;
 let holdAudioProcessor = null;
+let resetNeeded = false;
+let resetPromise = null;
+const code31005 = error => Number(error?.twilioError?.code ?? error?.code) === 31005;
+const friendlyError = error => code31005(error) ? 'Connection interrupted. Tap Call to retry.' : (error?.twilioError?.message || error?.message || 'The call failed.');
+function resetFailedDevice() {
+  if (!resetNeeded || activeCall || starting) return Promise.resolve();
+  if (resetPromise) return resetPromise;
+  resetPromise = (async () => {
+    const old = device;
+    device = null; deviceUserId = ''; tokenExpiresAt = 0; resetNeeded = false;
+    try { old?.destroy(); } catch (error) { console.warn('Failed to clean up Twilio device:', error); }
+  })().finally(() => { resetPromise = null; });
+  return resetPromise;
+}
+function noteGatewayFailure(error) {
+  if (!code31005(error)) return;
+  resetNeeded = true;
+  if (!activeCall && !starting) void resetFailedDevice();
+}
 
 function emit(state, extra = {}) {
   window.dispatchEvent(new CustomEvent('steadyhands:voice-state', {
@@ -183,9 +202,10 @@ async function createOrReuseDevice() {
     if(device!==registered)return;
     console.error('Twilio Device error:', error);
     const detail = error?.twilioError || error;
+    noteGatewayFailure(error);
     emit('error', {
       code: detail?.code || error?.code || '',
-      message: detail?.message || error?.message || 'The browser phone encountered an error.',
+      message: friendlyError(error),
       description: detail?.description || '',
       explanation: detail?.explanation || '',
       causes: Array.isArray(detail?.causes) ? detail.causes : [],
@@ -224,6 +244,7 @@ function bindCall(call, metadata = {}) {
     // Never leave hold audio installed on the Twilio device after this call.
     void resetHoldAudio().catch(error => console.warn('Hold audio cleanup failed:', error));
     signal('ended', { reason, callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || '' });
+    if (resetNeeded) void resetFailedDevice();
   };
 
   call.on('ringing', () => { if (!finished) signal('ringing'); });
@@ -244,9 +265,10 @@ function bindCall(call, metadata = {}) {
     if (finished) return;
     console.error('Twilio Call error:', error);
     const detail = error?.twilioError || error;
+    noteGatewayFailure(error);
     signal('error', {
       code: detail?.code || error?.code || '',
-      message: detail?.message || error?.message || 'The call could not be completed.',
+      message: friendlyError(error),
       description: detail?.description || '',
       explanation: detail?.explanation || '',
       causes: Array.isArray(detail?.causes) ? detail.causes : [],
@@ -262,6 +284,12 @@ async function start(destination, metadata = {}) {
   starting = true;
   try {
   await resetHoldAudio();
+  if (resetPromise) await resetPromise;
+  if (resetNeeded) {
+    const old = device;
+    device = null; deviceUserId = ''; tokenExpiresAt = 0; resetNeeded = false;
+    try { old?.destroy(); } catch (error) { console.warn('Failed to clean up Twilio device:', error); }
+  }
 
   const to = cleanNumber(destination);
   if (!/^\+[1-9]\d{7,14}$/.test(to)) {
@@ -295,6 +323,7 @@ async function start(destination, metadata = {}) {
   return call;
   } finally {
     starting = false;
+    if (resetNeeded && !activeCall) void resetFailedDevice();
   }
 }
 
