@@ -12,7 +12,7 @@ async function init(){
  async function openDetail(handoffId){
   if(!uuid.test(handoffId||''))return;
   const {data,error}=await client.rpc('outreach_handoff_detail',{p_handoff_id:handoffId});
-  if(error||!data)return;
+  if(error||!data||data.kind!=='spanish')return;
   let view=document.getElementById('shHandoffDetail');
   if(!view){view=document.createElement('section');view.id='shHandoffDetail';view.className='card';view.style.padding='18px';document.querySelector('main.content')?.prepend(view);}
   view.innerHTML='<h2>Shared lead · '+esc(data.kind==='spanish'?'Spanish-speaking sales':'Development')+'</h2>'+
@@ -26,7 +26,7 @@ async function init(){
   window.scrollTo?.({top:0,behavior:'smooth'});
  }
  async function refresh(){
-  const {data,error}=await client.from('outreach_lead_handoffs').select('id,crm_id,kind,notes,status,created_at').eq('recipient_id',user.id).order('created_at',{ascending:false}).limit(100);
+  const {data,error}=await client.from('outreach_lead_handoffs').select('id,crm_id,kind,notes,status,created_at').eq('recipient_id',user.id).eq('kind','spanish').order('created_at',{ascending:false}).limit(100);
   if(error)return;rows=data||[];
   host.innerHTML='<h3>Shared leads queue</h3>'+rows.filter(r=>r.status==='pending').map(r=>
    '<article class="sh-tools-item"><div><strong>'+esc(r.kind==='spanish'?'Spanish-speaking sales transfer':'Development request')+'</strong><p>'+esc(r.notes||'A lead has been shared with you')+'</p><button type="button" data-accept-handoff="'+esc(r.id)+'">'+(r.kind==='spanish'?'Accept and open':'Acknowledge and open')+'</button></div></article>'
@@ -45,6 +45,10 @@ async function init(){
  document.addEventListener('click',async e=>{const b=e.target.closest?.('[data-accept-detail]');if(!b)return;const handoffId=b.dataset.acceptDetail;if(!uuid.test(handoffId))return;b.disabled=true;const {data,error}=await client.rpc('outreach_accept_lead_handoff',{p_handoff_id:handoffId});if(error){b.disabled=false;b.insertAdjacentText('afterend',' '+error.message);return;}const detail=await client.rpc('outreach_handoff_detail',{p_handoff_id:handoffId});if(detail.data?.kind==='spanish')location.assign('index.html?crm_id='+encodeURIComponent(data));else await openDetail(handoffId);});
  document.getElementById('shNoticesOpen')?.addEventListener('click',refresh);
  await refresh();
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh();});
+ window.addEventListener('focus',()=>void refresh());
+ window.addEventListener('steadyhands:handoff-created',()=>void refresh());
+ setInterval(()=>{if(!document.hidden)void refresh();},30000);
  const handoffId=new URLSearchParams(location.search).get('handoff_id');
  if(handoffId)await openDetail(handoffId);
 }
