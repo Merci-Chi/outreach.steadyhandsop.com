@@ -79,42 +79,25 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
  }
  if(k==='sendto'){
    const leadName=esc(l.company||l.name||'Selected prospect');
-   m=sheet('Send To',`<p class="sh-sheet-help"><strong>Sharing:</strong> ${leadName}</p><p class="sh-sheet-help">Development Team sends directly to Admin → DEVELOP without assigning anyone or changing CRM ownership. Spanish Sales requires a recipient and transfers ownership only after acceptance.</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Associate</option></select></label><div id="shHandoffRecipientWrap"><label class="sh-field-label">Recipient<select id="shHandoffRecipient" class="sh-sheet-input"></select></label></div><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the development team know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary" disabled>Send to Development Team</button>`);
-   const kind=$('#shHandoffKind',m),recipient=$('#shHandoffRecipient',m),wrap=$('#shHandoffRecipientWrap',m),button=$('#shSubmitHandoff',m);
-   let version=0,loading=false,submitting=false,sent=false;
-   const renderRecipients=async()=>{
-     const v=++version,spanish=kind.value==='spanish';
-     wrap.hidden=!spanish;wrap.style.display=spanish?'':'none';recipient.replaceChildren();loading=spanish;
-     button.textContent=spanish?'Send to Spanish Sales':'Send to Development Team';
-     button.disabled=sent||submitting||loading;
-     if(!spanish)return;
-     try{
-       const {data,error:fetchError}=await client().rpc('outreach_handoff_eligible_recipients',{p_kind:'spanish'});
-       if(fetchError)throw fetchError;
-       if(v!==version||!document.body.contains(m))return;
-       for(const row of data||[]){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name||'Associate';recipient.appendChild(opt);}
-       if(!recipient.options.length)msg(m,'No other eligible Spanish Sales recipients for this account. You cannot transfer a lead to yourself. Sign in as the sending associate, or ask an administrator to add another Spanish recipient.');
-     }catch(e){if(v===version)msg(m,'Unable to load Spanish Sales recipients: '+e.message);}
-     finally{if(v===version){loading=false;button.disabled=!recipient.options.length||sent||submitting;}}
-   };
-   kind.onchange=()=>{void renderRecipients();};
-   void renderRecipients();
+   m=sheet('Send To',`<p class="sh-sheet-help"><strong>Sharing:</strong> ${leadName}</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Team</option></select></label><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the receiving team know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary">Send to Development Team</button>`);
+   const kind=$('#shHandoffKind',m),button=$('#shSubmitHandoff',m);
+   let submitting=false,sent=false;
+   kind.onchange=()=>{button.textContent=kind.value==='development'?'Send to Development Team':'Send to Spanish Sales Team';};
    button.onclick=async()=>{
-     if(sent||submitting||loading||(kind.value==='spanish'&&!recipient.value))return;
-     submitting=true;button.disabled=true;
-     const destination=kind.value,chosenRecipient=recipient.value,notes=$('#shHandoffNotes',m).value;
-     kind.disabled=true;recipient.disabled=true;
+     if(sent||submitting)return;
+     submitting=true;button.disabled=true;kind.disabled=true;
+     const destination=kind.value,notes=$('#shHandoffNotes',m).value;
      try{
        if(String(id())!==String(l.id))throw Error('Selected prospect changed. Reopen Send To.');
        const result=destination==='development'
-        ?await client().rpc('outreach_submit_development_request',{p_crm_id:l.id,p_notes:notes})
-        :await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:chosenRecipient,p_kind:'spanish',p_notes:notes});
+         ?await client().rpc('outreach_submit_development_request',{p_crm_id:l.id,p_notes:notes})
+         :await client().rpc('outreach_send_to_spanish_team',{p_crm_id:l.id,p_notes:notes});
        if(result.error)throw result.error;
        sent=true;button.textContent='Sent successfully';
-       msg(m,destination==='development'?'Sent directly to Admin → DEVELOP. No recipient was assigned and CRM ownership is unchanged.':'Spanish transfer sent. The recipient can accept from their notification.');
+       msg(m,destination==='development'?'Sent to Admin → DEVELOP. CRM ownership is unchanged.':'Sent to Spanish Sales. An eligible associate can accept the transfer.');
        window.dispatchEvent(new CustomEvent('steadyhands:handoff-created',{detail:{id:result.data}}));
-     }catch(e){error(m,e);kind.disabled=false;recipient.disabled=false;}
-     finally{submitting=false;button.disabled=sent||loading||(kind.value==='spanish'&&!recipient.value);}
+     }catch(e){error(m,e);kind.disabled=false;}
+     finally{submitting=false;button.disabled=sent;}
    };
    return;
  }
