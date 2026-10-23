@@ -1,6 +1,6 @@
 /* Shared production sidebar — Outreach then Leads; Batch 9. */
 (() => {
- const items=[['Outreach','index.html','phone-call'],['Sales Pipeline','sales.html','workflow'],['Leads','leads.html','users'],['Queue','queue.html','list-ordered'],['Earnings','earnings.html','wallet'],['Performance','activity.html','chart-no-axes-combined'],['Training','https://training.steadyhandsop.com','graduation-cap'],['Settings','account.html','settings']];
+ const items=[['Tasks','tasks.html','list-checks'],['Outreach','index.html','phone-call'],['Sales Pipeline','sales.html','workflow'],['Leads','leads.html','users'],['Queue','queue.html','list-ordered'],['Earnings','earnings.html','wallet'],['Performance','activity.html','chart-no-axes-combined'],['Training','https://training.steadyhandsop.com','graduation-cap'],['Settings','account.html','settings']];
  const current=location.pathname.split('/').pop()||'index.html';
  const isSettings=current==='admin.html'||current==='account.html';
  const active=isSettings?'account.html':current==='call.html'?'index.html':current;
