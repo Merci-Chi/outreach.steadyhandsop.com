@@ -12,7 +12,33 @@ function paint(){
  $('tasksList').innerHTML=shown.map(t=>'<article class="task-card '+(t.status==='done'?'task-completed':'')+'"><input type="checkbox" data-done="'+esc(t.id)+'" aria-label="Complete '+esc(t.title)+'" '+(t.status==='done'?'checked':'')+'><div class="task-info"><strong>'+esc(t.title)+'</strong>'+(t.notes?'<p>'+esc(t.notes)+'</p>':'')+'<div class="task-metadata"><span>'+esc(date(t.due_at))+'</span><span class="task-tag '+(t.priority==='high'?'high':'')+'">'+esc(t.priority||'normal')+'</span>'+(t.lead_id?'<a href="index.html?crm_id='+encodeURIComponent(t.lead_id)+'">Open prospect →</a>':'')+'</div></div></article>').join('')||'<p class="tasks-empty">No tasks in this view. Use New Task to add one.</p>';
 }
 async function refresh(){if(!client||!userId)return;const {data,error}=await client.from('outreach_tasks').select('*').eq('assigned_to',userId).order('created_at',{ascending:false}).limit(250);if(error){message('Unable to load tasks: '+error.message);return;}rows=data||[];message('');paint()}
-function modal(open){$('taskModal').hidden=!open;if(open)$('newTaskForm').querySelector('[name=title]').focus();}
+let leadRequest=0,leadTimer;
+function leadHint(value){$('taskLeadHint').textContent=value;}
+async function loadLeads(){
+ if(!client||!userId)return;
+ const request=++leadRequest,term=$('taskLeadSearch').value.trim(),sort=$('taskLeadSort').value,select=$('taskLeadSelect'),previous=select.value;
+ select.disabled=true;leadHint('Loading your assigned leads…');
+ let query=client.from('crm').select('id,company,name,phone,updated,created')
+   .eq('assigned_user_id',userId).eq('admin_archived',false);
+ if(term){
+   const needle=term.replace(/[,%()]/g,' ').trim();
+   if(needle)query=query.or('company.ilike.%'+needle+'%,name.ilike.%'+needle+'%,phone.ilike.%'+needle+'%');
+ }
+ const order=sort==='company'?'company':sort==='contact'?'name':'updated';
+ const {data,error}=await query.order(order,{ascending:sort!=='recent',nullsFirst:false}).limit(100);
+ if(request!==leadRequest)return;
+ select.replaceChildren(new Option('No linked lead',''));
+ if(error){leadHint('Unable to load leads: '+error.message);select.disabled=false;return;}
+ for(const lead of data||[]){
+   const label=[lead.company||lead.name||'Unnamed business',lead.company&&lead.name?lead.name:'',lead.phone||''].filter(Boolean).join(' · ');
+   select.add(new Option(label,String(lead.id)));
+ }
+ if([...select.options].some(option=>option.value===previous))select.value=previous;
+ select.disabled=false;leadHint((data||[]).length===100?'Showing first 100 matches. Search to narrow results.':(data||[]).length+' assigned leads found.');
+}
+function modal(open){$('taskModal').hidden=!open;if(open){$('newTaskForm').querySelector('[name=title]').focus();void loadLeads();}}
+$('taskLeadSearch').addEventListener('input',()=>{clearTimeout(leadTimer);leadTimer=setTimeout(loadLeads,250);});
+$('taskLeadSort').addEventListener('change',loadLeads);
 async function init(){for(let i=0;i<40&&!window.steadyHandsCRMClient;i++)await new Promise(r=>setTimeout(r,250));client=window.steadyHandsCRMClient;if(!client){message('Could not initialize tasks. Reload the page.');return;}const {data:{session},error}=await client.auth.getSession();if(error||!session){message('Please sign in to see your tasks.');return;}userId=session.user.id;await refresh();window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});setInterval(()=>{if(!document.hidden)refresh()},60000);}
 document.addEventListener('click',e=>{if(e.target.closest('#addTask'))modal(true);if(e.target.closest('#closeTask'))modal(false);const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;paint()}if(e.target===$('taskModal'))modal(false)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')modal(false)});
