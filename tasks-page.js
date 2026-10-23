@@ -16,25 +16,43 @@ let leadRequest=0,leadTimer;
 function leadHint(value){$('taskLeadHint').textContent=value;}
 async function loadLeads(){
  if(!client||!userId)return;
- const request=++leadRequest,term=$('taskLeadSearch').value.trim(),sort=$('taskLeadSort').value,select=$('taskLeadSelect'),previous=select.value;
+ const request=++leadRequest,term=$('taskLeadSearch').value.trim().toLowerCase(),sort=$('taskLeadSort').value,select=$('taskLeadSelect'),previous=select.value;
  select.disabled=true;leadHint('Loading your assigned leads…');
- let query=client.from('crm').select('id,company,name,phone,updated,created')
-   .eq('assigned_user_id',userId).eq('admin_archived',false);
- if(term){
-   const needle=term.replace(/[,%()]/g,' ').trim();
-   if(needle)query=query.or('company.ilike.%'+needle+'%,name.ilike.%'+needle+'%,phone.ilike.%'+needle+'%');
- }
- const order=sort==='company'?'company':sort==='contact'?'name':'updated';
- const {data,error}=await query.order(order,{ascending:sort!=='recent',nullsFirst:false}).limit(100);
+ const [leadsResult,callsResult]=await Promise.all([
+  client.from('crm').select('id,company,name,phone,updated,created,lastcalled,call_status,outcome,stage,tags')
+    .eq('assigned_user_id',userId).eq('admin_archived',false).limit(5000),
+  client.from('callcenter_call_activity').select('crm_id,outcome,created_at')
+    .eq('user_id',userId).not('crm_id','is',null).order('created_at',{ascending:false}).limit(5000)
+ ]);
  if(request!==leadRequest)return;
  select.replaceChildren(new Option('No linked lead',''));
- if(error){leadHint('Unable to load leads: '+error.message);select.disabled=false;return;}
- for(const lead of data||[]){
+ if(leadsResult.error||callsResult.error){leadHint('Unable to load leads: '+(leadsResult.error||callsResult.error).message);select.disabled=false;return;}
+ const normalize=v=>String(v||'').toLowerCase().replace(/[^a-z]/g,'');
+ const calls=new Map();
+ for(const c of callsResult.data||[]){const id=String(c.crm_id);if(!calls.has(id))calls.set(id,[]);calls.get(id).push(c);}
+ let history=[];try{history=JSON.parse(localStorage.getItem('sh-recent-opened-leads')||'[]');if(!Array.isArray(history))history=[];}catch{}
+ const recentPosition=new Map(history.map((id,i)=>[String(id),i]));
+ const status=l=>{
+  const records=calls.get(String(l.id))||[];
+  const outcome=normalize(l.outcome),stage=normalize(l.stage),tags=(Array.isArray(l.tags)?l.tags:[]).map(normalize);
+  const all=[outcome,stage,...tags,...records.map(c=>normalize(c.outcome))];
+  const gatekeeper=all.some(v=>v.includes('gatekeeper'));
+  const voicemail=all.some(v=>v.includes('voicemail'));
+  const called=Boolean(l.lastcalled||normalize(l.call_status)==='called'||records.some(c=>normalize(c.outcome)!=='didnotcall')||voicemail||gatekeeper);
+  return {called,voicemail,gatekeeper,lastCall:records[0]?.created_at||l.lastcalled||''};
+ };
+ let matches=(leadsResult.data||[]).filter(l=>!term||[l.company,l.name,l.phone].some(v=>String(v||'').toLowerCase().includes(term)));
+ if(sort==='called')matches=matches.filter(l=>status(l).called).sort((a,b)=>String(status(b).lastCall).localeCompare(String(status(a).lastCall)));
+ else if(sort==='notcalled')matches=matches.filter(l=>!status(l).called).sort((a,b)=>String(a.company||a.name||'').localeCompare(String(b.company||b.name||'')));
+ else if(sort==='voicemail'||sort==='gatekeeper')matches=matches.filter(l=>status(l)[sort]).sort((a,b)=>String(status(b).lastCall).localeCompare(String(status(a).lastCall)));
+ else matches.sort((a,b)=>(recentPosition.get(String(a.id))??999999)-(recentPosition.get(String(b.id))??999999));
+ for(const lead of matches.slice(0,100)){
    const label=[lead.company||lead.name||'Unnamed business',lead.company&&lead.name?lead.name:'',lead.phone||''].filter(Boolean).join(' · ');
    select.add(new Option(label,String(lead.id)));
  }
  if([...select.options].some(option=>option.value===previous))select.value=previous;
- select.disabled=false;leadHint((data||[]).length===100?'Showing first 100 matches. Search to narrow results.':(data||[]).length+' assigned leads found.');
+ select.disabled=false;
+ leadHint(matches.length>100?'Showing first 100 of '+matches.length+' leads. Search to narrow results.':matches.length+' matching leads. Recently opened tracks visits in this browser.');
 }
 function modal(open){$('taskModal').hidden=!open;if(open){$('newTaskForm').querySelector('[name=title]').focus();void loadLeads();}}
 $('taskLeadSearch').addEventListener('input',()=>{clearTimeout(leadTimer);leadTimer=setTimeout(loadLeads,250);});
