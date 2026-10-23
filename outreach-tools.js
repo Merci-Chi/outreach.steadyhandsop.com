@@ -84,7 +84,7 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
    let version=0,loading=false,submitting=false,sent=false;
    const renderRecipients=async()=>{
      const v=++version,spanish=kind.value==='spanish';
-     wrap.hidden=!spanish;recipient.replaceChildren();loading=spanish;
+     wrap.hidden=!spanish;wrap.style.display=spanish?'':'none';recipient.replaceChildren();loading=spanish;
      button.textContent=spanish?'Send to Spanish Sales':'Send to Development Team';
      button.disabled=sent||submitting||loading;
      if(!spanish)return;
@@ -93,7 +93,7 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
        if(fetchError)throw fetchError;
        if(v!==version||!document.body.contains(m))return;
        for(const row of data||[]){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name||'Associate';recipient.appendChild(opt);}
-       if(!recipient.options.length)msg(m,'No eligible Spanish Sales recipients. Ask an administrator to configure them.');
+       if(!recipient.options.length)msg(m,'No other eligible Spanish Sales recipients for this account. You cannot transfer a lead to yourself. Sign in as the sending associate, or ask an administrator to add another Spanish recipient.');
      }catch(e){if(v===version)msg(m,'Unable to load Spanish Sales recipients: '+e.message);}
      finally{if(v===version){loading=false;button.disabled=!recipient.options.length||sent||submitting;}}
    };
