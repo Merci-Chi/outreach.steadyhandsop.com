@@ -3,7 +3,7 @@
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uuid=/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 async function init(){
- const client=window.steadyHandsCRMClient;if(!client)return;
+ let client=window.steadyHandsCRMClient;if(!client){for(let i=0;i<40&&!client;i++){await new Promise(resolve=>setTimeout(resolve,250));client=window.steadyHandsCRMClient;}}if(!client)return;
  const auth=await client.auth.getUser();const user=auth.data?.user;if(!user)return;
  let rows=[];
  const host=document.createElement('section');host.id='shHandoffQueue';host.style.padding='12px';
@@ -21,6 +21,7 @@ async function init(){
   '<p>Email: '+esc(data.email||'Not provided')+'</p>'+
   '<p>Handoff notes: '+esc(data.handoff_notes||'None')+'</p>'+
   '<p>CRM notes: '+esc(data.notes||'None')+'</p>'+
+  (data.status==='pending'?'<p><button type="button" data-accept-detail="'+esc(data.handoff_id)+'">'+(data.kind==='spanish'?'Accept transfer':'Acknowledge request')+'</button></p>':'')+
   (data.kind==='spanish'&&data.status==='accepted'?'<a href="index.html?crm_id='+encodeURIComponent(data.lead_id)+'">Open assigned prospect in Outreach</a>':'');
   window.scrollTo?.({top:0,behavior:'smooth'});
  }
@@ -41,17 +42,7 @@ async function init(){
   if(item.kind==='spanish')location.assign('index.html?crm_id='+encodeURIComponent(data));
   else location.assign('index.html?handoff_id='+encodeURIComponent(item.id));
  });
- // Notification View lead link targets an unassigned CRM row before acceptance.
- // Redirect it to the correct protected handoff instead of an inaccessible prospect.
- document.addEventListener('click',e=>{
-  const lead=e.target.closest?.('[data-task-lead]');if(!lead)return;
-  const item=rows.find(r=>String(r.crm_id)===lead.dataset.taskLead);
-  if(!item)return;
-  e.preventDefault();e.stopImmediatePropagation();
-  if(item.kind==='spanish'&&item.status==='accepted')location.assign('index.html?crm_id='+encodeURIComponent(item.crm_id));
-  else if(item.status==='accepted')location.assign('index.html?handoff_id='+encodeURIComponent(item.id));
-  else {document.getElementById('shNoticesOpen')?.click();host.querySelector('[data-accept-handoff="'+item.id+'"]')?.focus();}
- },true);
+ document.addEventListener('click',async e=>{const b=e.target.closest?.('[data-accept-detail]');if(!b)return;const handoffId=b.dataset.acceptDetail;if(!uuid.test(handoffId))return;b.disabled=true;const {data,error}=await client.rpc('outreach_accept_lead_handoff',{p_handoff_id:handoffId});if(error){b.disabled=false;b.insertAdjacentText('afterend',' '+error.message);return;}const detail=await client.rpc('outreach_handoff_detail',{p_handoff_id:handoffId});if(detail.data?.kind==='spanish')location.assign('index.html?crm_id='+encodeURIComponent(data));else await openDetail(handoffId);});
  document.getElementById('shNoticesOpen')?.addEventListener('click',refresh);
  await refresh();
  const handoffId=new URLSearchParams(location.search).get('handoff_id');
