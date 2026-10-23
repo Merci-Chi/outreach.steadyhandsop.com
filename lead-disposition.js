@@ -50,7 +50,7 @@
     if (action === 'development' && !note.trim()) throw new Error('Add a short handoff note for the development team.');
     const tags = [...new Set([...(Array.isArray(row.tags)?row.tags:[]), ...(action==='dnc'?['Do Not Call']:action==='wrong_number'?['Wrong Number']:['Warm Lead','Development Team'])])];
     const entry = '[' + new Date().toISOString() + '] ' + (action==='dnc'?'DO NOT CALL confirmed':action==='wrong_number'?'Wrong Number reported':'Sent to Development Team as a warm lead') + ' by ' + (user.email||user.id) + (note.trim()?': '+note.trim():'');
-    const patch = {...(action==='dnc'?{do_not_call:true}:{}),stage:action==='dnc'?'donotcall':action==='wrong_number'?'wrongnumber':'review',outcome:action==='dnc'?'Do Not Call':action==='wrong_number'?'Wrong Number':'Warm Lead — Development Team',tags,notes:[row.notes,entry].filter(Boolean).join('\n'),callbackdate:null,callbackat:null};
+    const patch = {...(action==='dnc'?{do_not_call:true}:{}),stage:action==='dnc'?'donotcall':action==='wrong_number'?'outreach':'review',outcome:action==='dnc'?'Do Not Call':action==='wrong_number'?'Wrong Number':'Warm Lead — Development Team',tags,notes:[row.notes,entry].filter(Boolean).join('\n'),callbackdate:null,callbackat:null};
     const {data,error} = await client.from('crm').update(patch).eq('id',id).eq('assigned_user_id',user.id).select('id').single();
     if (error || !data) throw new Error(error?.message || 'The change was not saved. Refresh and try again.');
     window.dispatchEvent(new CustomEvent('steadyhands:lead-disposition',{detail:{id,action}}));
