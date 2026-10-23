@@ -30,7 +30,7 @@ window.steadyHandsResumePostCallQuestionnaire=id=>{
  captureAnswers();pending=draft;view();return true;
 };
 const client=()=>window.steadyHandsCRMClient;
-const choices=[['good','thumbs-up','Good'],['bad','thumbs-down','Bad'],['left_voicemail','voicemail','Voicemail'],['follow_up','calendar-clock','Follow Up'],['no_answer','phone-off','No Answer'],['did_not_call','skip-forward','Did not Call'],['has_website','globe','Has a website'],['gatekeeper','shield','Gatekeeper'],['not_interested','thumbs-down','Not interested'],['do_not_call','ban','Do not call']];
+const choices=[['good','thumbs-up','Good'],['bad','thumbs-down','Bad'],['left_voicemail','voicemail','Voicemail'],['follow_up','calendar-clock','Follow Up'],['no_answer','phone-off','No Answer'],['did_not_call','skip-forward','Did not Call'],['has_website','globe','Has a website'],['gatekeeper','shield','Gatekeeper'],['not_interested','thumbs-down','Not interested'],['do_not_call','ban','Do not call'],['wrong_number','phone-x','Wrong Number']];
 function addOutcomeStyle(){
  if(q('#shOutcomeStyle'))return;
  const style=document.createElement('style');style.id='shOutcomeStyle';
@@ -53,8 +53,8 @@ function view(){
 async function save(e){e.preventDefault();if(!pending||submitting)return;const result=pending,overlay=q('#shFeedbackOverlay'),c=client(),f=e.currentTarget,btn=q('#shFeedbackSave'),message=q('#shFeedbackStatus');captureAnswers();if(!c){message.textContent='Sign in before saving.';return;}submitting=true;btn.disabled=true;
  try{const d=new FormData(f);const selected=String(d.get('outcome')||'');
  if(!choices.some(x=>x[0]===selected))throw new Error('Choose an outcome.');
- const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call',has_website:'called',gatekeeper:'called',not_interested:'not_interested',do_not_call:'not_interested'};
- const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.',has_website:'Prospect has a website.',gatekeeper:'Spoke with gatekeeper.',not_interested:'Prospect is not interested.',do_not_call:'Prospect requested Do Not Call.'}[selected]||'';
+ const mapped={good:'called',bad:'not_interested',left_voicemail:'called',follow_up:'follow_up',no_answer:'called',did_not_call:'did_not_call',has_website:'called',gatekeeper:'called',not_interested:'not_interested',do_not_call:'not_interested',wrong_number:'called'};
+ const prefix={good:'Good call.',bad:'Bad call / not interested.',left_voicemail:'Left a voicemail.',no_answer:'No answer.',has_website:'Prospect has a website.',gatekeeper:'Spoke with gatekeeper.',not_interested:'Prospect is not interested.',do_not_call:'Prospect requested Do Not Call.',wrong_number:'Incorrect phone number.'}[selected]||'';
  const args={p_crm_id:result.crm_id,p_client_event_id:result.event_id,p_outcome:mapped[selected],p_elapsed_seconds:Math.max(0,Math.min(86400,Number(result.elapsed_seconds)||0)),p_interest_stages:d.getAll('interest'),p_notes:[prefix,String(d.get('notes')||'').trim()].filter(Boolean).join('\n'),p_portal_link_sent:d.has('portal_link_sent'),p_registered:d.has('registered'),p_site_reviewed:d.has('site_reviewed'),p_ready_to_buy:d.has('ready_to_buy')};const isVoicemail=selected==='left_voicemail';
  if(result.call_method==='outreach'){
    const {data:auth,error:authError}=await c.auth.getUser();if(authError)throw authError;
@@ -84,7 +84,10 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
  // Save the lead-specific outcome through existing CRM fields/workflows.
  // Keep the questionnaire draft until both writes succeed so a failed second
  // write remains retryable and never presents a false success.
- if(selected==='do_not_call'){
+ if(selected==='wrong_number'){
+   if(!window.SteadyHandsLeadDisposition?.save)throw new Error('Call recorded, but Wrong Number protection is unavailable. Retry before dialing again.');
+   await window.SteadyHandsLeadDisposition.save(result.crm_id,'wrong_number',String(d.get('notes')||''));
+ }else if(selected==='do_not_call'){
    if(!window.SteadyHandsLeadDisposition?.save)throw new Error('Call recorded, but Do Not Call protection is unavailable. Retry before dialing again.');
    await window.SteadyHandsLeadDisposition.save(result.crm_id,'dnc',String(d.get('notes')||''));
  }else if(selected==='has_website'||selected==='not_interested'||selected==='bad'){
