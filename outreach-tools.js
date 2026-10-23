@@ -78,18 +78,38 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
  };return;
  }
  if(k==='sendto'){
-   const fetchRecipients=async kind=>{const {data,error}=await client().rpc('outreach_handoff_eligible_recipients',{p_kind:kind});if(error)throw error;return data||[];};
-   m=sheet('Send To',`<p class="sh-sheet-help">Choose the receiving associate. Spanish transfers change ownership only when accepted. Development requests keep the existing salesperson.</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Associate</option></select></label><label class="sh-field-label">Recipient<select id="shHandoffRecipient" class="sh-sheet-input"></select></label><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the recipient know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary">Share Lead</button>`);
+   const leadName=esc(l.company||l.name||'Selected prospect');
+   m=sheet('Send To',`<p class="sh-sheet-help"><strong>Sharing:</strong> ${leadName}</p><p class="sh-sheet-help">Spanish sales transfers change ownership only after acceptance. Development handoffs leave ownership unchanged.</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Associate</option></select></label><label class="sh-field-label">Recipient<select id="shHandoffRecipient" class="sh-sheet-input"></select></label><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the recipient know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary" disabled>Share Lead</button>`);
    const kind=$('#shHandoffKind',m),recipient=$('#shHandoffRecipient',m),button=$('#shSubmitHandoff',m);
-   const renderRecipients=async()=>{button.disabled=true;recipient.replaceChildren();try{const rows=await fetchRecipients(kind.value);for(const row of rows){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name;recipient.appendChild(opt);}if(!rows.length)msg(m,'No eligible recipients are configured for this destination.');button.disabled=!rows.length;}catch(e){msg(m,'Could not load recipients: '+e.message);}};
-   kind.onchange=()=>{void renderRecipients()};void renderRecipients();
-   button.onclick=async()=>{button.disabled=true;try{
-     if(String(id())!==String(l.id))throw Error('Selected lead changed. Reopen Send To.');
-     const {data,error:sendError}=await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:recipient.value,p_kind:kind.value,p_notes:$('#shHandoffNotes',m).value});
-     if(sendError)throw sendError;
-     msg(m,'Lead shared. The recipient will see it in Notifications and their handoff queue.');
-     window.dispatchEvent(new CustomEvent('steadyhands:handoff-created',{detail:{id:data}}));
-   }catch(e){error(m,e);button.disabled=false;}};
+   let version=0,loading=true,submitting=false,sent=false;
+   const renderRecipients=async()=>{
+     const v=++version;loading=true;button.disabled=true;recipient.replaceChildren();
+     try{
+       const {data,error:fetchError}=await client().rpc('outreach_handoff_eligible_recipients',{p_kind:kind.value});
+       if(fetchError)throw fetchError;
+       if(v!==version||!document.body.contains(m))return;
+       for(const row of data||[]){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name||'Associate';recipient.appendChild(opt);}
+       if(!recipient.options.length)msg(m,'No eligible recipients for this destination. Ask an administrator to configure them.');
+     }catch(e){if(v===version)msg(m,'Unable to load recipients: '+e.message);}
+     finally{if(v===version){loading=false;button.disabled=!recipient.options.length||sent||submitting;}}
+   };
+   kind.onchange=()=>{void renderRecipients();};
+   void renderRecipients();
+   button.onclick=async()=>{
+     if(sent||submitting||loading||!recipient.value)return;
+     submitting=true;button.disabled=true;
+     const destination=kind.value,chosenRecipient=recipient.value,notes=$('#shHandoffNotes',m).value;
+     kind.disabled=true;recipient.disabled=true;
+     try{
+       if(String(id())!==String(l.id))throw Error('Selected prospect changed. Reopen Send To.');
+       const {data,error:sendError}=await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:chosenRecipient,p_kind:destination,p_notes:notes});
+       if(sendError)throw sendError;
+       sent=true;button.textContent='Shared successfully';
+       msg(m,'Shared with the selected recipient. The request will appear in their handoff queue and notifications.');
+       window.dispatchEvent(new CustomEvent('steadyhands:handoff-created',{detail:{id:data}}));
+     }catch(e){error(m,e);kind.disabled=false;recipient.disabled=false;}
+     finally{submitting=false;button.disabled=sent||loading||!recipient.value;}
+   };
    return;
  }
  if(k==='preview'){
