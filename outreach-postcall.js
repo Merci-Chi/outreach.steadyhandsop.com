@@ -106,11 +106,10 @@ async function save(e){e.preventDefault();if(!pending||submitting)return;const r
    const {data:lead,error:readError}=await c.from('crm').select('tags').eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).single();
    if(readError||!lead)throw new Error('Call recorded, but Gatekeeper tag could not be loaded: '+(readError?.message||'Lead not assigned to you.'));
    const tags=Array.isArray(lead.tags)?lead.tags.filter(x=>typeof x==='string'):[];
-   if(!tags.some(tag=>tag.trim().toLowerCase()==='gatekeeper')){
-     const {data:updated,error:tagError}=await c.from('crm')
-       .update({tags:[...tags,'Gatekeeper']}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
-     if(tagError||!updated)throw new Error('Call recorded, but Gatekeeper tag could not be saved: '+(tagError?.message||'No assigned lead updated.'));
-   }
+   const savedTags=tags.some(tag=>tag.trim().toLowerCase()==='gatekeeper')?tags:[...tags,'Gatekeeper'];
+   const {data:updated,error:tagError}=await c.from('crm')
+     .update({tags:savedTags,outcome:'Gatekeeper'}).eq('id',result.crm_id).eq('assigned_user_id',auth.user.id).select('id').single();
+   if(tagError||!updated)throw new Error('Call recorded, but Gatekeeper tag could not be saved: '+(tagError?.message||'No assigned lead updated.'));
  }
  if(isVoicemail || selected==='no_answer'){
    const contactOutcome=isVoicemail?'Left Voicemail':'No Answer';
