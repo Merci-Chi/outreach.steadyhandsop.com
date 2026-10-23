@@ -78,13 +78,11 @@ async function openTool(k){let m=sheet(k==='quick'?'Quick Info':k==='sendto'?'Se
  };return;
  }
  if(k==='sendto'){
-   const {data:people,error:peopleError}=await client().from('outreach_handoff_recipients').select('user_id,kind').eq('active',true);
-   if(peopleError)throw new Error('Handoff destinations unavailable. Apply the handoff SQL migration first: '+peopleError.message);
-   const options=(people||[]).filter(row=>row.user_id!==window.steadyHandsToolUserId);
+   const fetchRecipients=async kind=>{const {data,error}=await client().rpc('outreach_handoff_eligible_recipients',{p_kind:kind});if(error)throw error;return data||[];};
    m=sheet('Send To',`<p class="sh-sheet-help">Choose the receiving associate. Spanish transfers change ownership only when accepted. Development requests keep the existing salesperson.</p><label class="sh-field-label">Destination<select id="shHandoffKind" class="sh-sheet-input"><option value="development">Development Team</option><option value="spanish">Spanish-Speaking Sales Associate</option></select></label><label class="sh-field-label">Recipient<select id="shHandoffRecipient" class="sh-sheet-input"></select></label><label class="sh-field-label">Handoff notes<textarea id="shHandoffNotes" class="sh-note-input" maxlength="2000" placeholder="What should the recipient know?"></textarea></label><button id="shSubmitHandoff" class="sh-sheet-primary">Share Lead</button>`);
    const kind=$('#shHandoffKind',m),recipient=$('#shHandoffRecipient',m),button=$('#shSubmitHandoff',m);
-   const renderRecipients=()=>{recipient.replaceChildren();for(const row of options.filter(x=>x.kind===kind.value)){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent='Eligible associate · '+row.user_id.slice(0,8);recipient.appendChild(opt);}button.disabled=!recipient.options.length;};
-   kind.onchange=renderRecipients;renderRecipients();
+   const renderRecipients=async()=>{button.disabled=true;recipient.replaceChildren();try{const rows=await fetchRecipients(kind.value);for(const row of rows){const opt=document.createElement('option');opt.value=row.user_id;opt.textContent=row.display_name;recipient.appendChild(opt);}if(!rows.length)msg(m,'No eligible recipients are configured for this destination.');button.disabled=!rows.length;}catch(e){msg(m,'Could not load recipients: '+e.message);}};
+   kind.onchange=()=>{void renderRecipients()};void renderRecipients();
    button.onclick=async()=>{button.disabled=true;try{
      if(String(id())!==String(l.id))throw Error('Selected lead changed. Reopen Send To.');
      const {data,error:sendError}=await client().rpc('outreach_send_lead',{p_crm_id:l.id,p_recipient_id:recipient.value,p_kind:kind.value,p_notes:$('#shHandoffNotes',m).value});
