@@ -44,6 +44,12 @@ async function showCaller(incoming,parent){
   if(version!==callerLookupVersion||(incoming!==pending&&incoming!==call))return;
   const person=result.caller;
   if(!person)$('inboundCaller').textContent='Unknown business';
+  const names=result.match_status==='matched'&&person?[person.company||person.name].filter(Boolean):result.match_status==='ambiguous'?(result.matches||[]).map(x=>x.company||x.name).filter(Boolean):[];
+  if(names.length&&'Notification' in window&&Notification.permission==='granted'&&(incoming===pending||incoming===call)){
+   const title=[...new Set(names)].join(' · ')+' is calling';
+   const notice=new Notification(title,{body:'From '+(result.from_number||'Unknown number'),tag:'identified-caller-'+parent,icon:'images/icon-192.png'});
+   notice.onclick=()=>{window.focus();open();notice.close();};
+  }
   if(result.match_status==='matched'&&person){
    callerOptions=[person];chosenCallerId=String(person.id);openCallerButton.hidden=false;
    $('inboundCaller').textContent=person.company||person.name||result.from_number||'Unknown business';
