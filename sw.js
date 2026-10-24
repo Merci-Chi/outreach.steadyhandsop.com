@@ -87,7 +87,7 @@ self.addEventListener('notificationclick', event => {
       let client=data.clientId?await self.clients.get(data.clientId):null;
       if(!client){
        const list=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-       client=list.find(item=>{try{return new URL(item.url).origin===self.location.origin}catch{return false}});
+       client=list.find(item=>{try{const u=new URL(item.url);return u.origin===self.location.origin&&/\/(index|call)\.html$/.test(u.pathname)}catch{return false}});
       }
       if(client){client.postMessage({type:'steadyhands:open-incoming',callSid:data.callSid});return client.focus();}
       const sid=/^CA[0-9a-fA-F]{32}$/.test(data.callSid||'')?data.callSid:'';
