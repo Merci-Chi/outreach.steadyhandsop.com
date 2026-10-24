@@ -31,7 +31,8 @@ async function publishPresence(ready){
 // Caller identity must come from the server-owned PSTN parent Call SID, not the open lead.
 let callerLookupVersion=0,callerOptions=[],chosenCallerId='';
 const callerChooser=document.createElement('select');callerChooser.id='inboundCallerAccount';callerChooser.setAttribute('aria-label','Choose matching caller account');callerChooser.hidden=true;$('inboundCallerDetails').after(callerChooser);
-callerChooser.addEventListener('change',()=>{chosenCallerId=callerChooser.value;});
+callerChooser.addEventListener('change',()=>{chosenCallerId=callerChooser.value;if(call&&chosenCallerId)openCallerAccount();});
+function openCallerAccount(){const link=callerAccountLink();if(!link)return;const tab=window.open(link,'_blank');if(!tab)status('Open this account in a new tab: '+link);}
 function callerAccountLink(){const match=callerOptions.find(row=>String(row.id)===String(chosenCallerId));if(!match)return null;const params=new URLSearchParams({crm_id:String(match.id),company:match.company||match.name||'',number:match.phone||'',contact:match.name||'',timezone:match.timezone||''});return 'call.html?'+params.toString();}
 async function showCaller(incoming,parent){
  const version=++callerLookupVersion;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;callerChooser.replaceChildren();
@@ -285,8 +286,7 @@ $('inboundAnswer').onclick=async()=>{
   // Open account in a separate tab so the live Twilio call stays on this page.
   const link=callerAccountLink();
   if(link){
-   const tab=window.open(link,'_blank','noopener');
-   if(!tab)status('Call connected. Allow pop-ups to open the caller account in call.html.');
+   openCallerAccount();
   }else if(callerOptions.length>1){
    status('Call connected. Choose the correct matching account in the incoming call panel.');
   }
