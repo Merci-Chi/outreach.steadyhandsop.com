@@ -22,3 +22,5 @@
  #shInbound.is-ringing #inboundActive{position:sticky;top:0;right:auto;left:auto;width:100%;max-height:70dvh;overflow-y:auto;z-index:200003;box-shadow:0 12px 32px #10294533}
  #shInbound.is-ringing #inboundAnswer,#shInbound.is-ringing #inboundDecline{min-height:52px;font-size:16px}
 }
+
+@media(max-width:899px){#shInbound #inboundPanel{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}#shInbound.is-ringing #inboundActive{max-height:calc(100dvh - 110px);overflow:auto}#shInbound #inboundCallerAccount{width:100%;font-size:16px;min-height:44px;margin:8px 0}#shInbound #inboundCallerAccount+button{min-height:48px}}
