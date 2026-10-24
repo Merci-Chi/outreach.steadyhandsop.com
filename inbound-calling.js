@@ -273,6 +273,7 @@ async function enable({automatic=false}={}){
   const next=new Device(data.token,{logLevel:'warn',closeProtection:true});
   device=next;
   next.on('incoming',incoming=>{
+    window.dispatchEvent(new Event('steadyhands:incoming-priority'));
    const parent=incoming.customParameters?.get('parentCallSid');alertedCallSid=parent||'';
    if(/^CA[0-9a-fA-F]{32}$/.test(parent||''))void invoke('call_received',{call_sid:parent}).catch(()=>{});
    if(call||pending||window.SteadyHandsTwilioVoice?.isActive()){incoming.reject();if(!call&&!pending){$('inboundToggle').textContent='Missed call · Busy';void notifyCall(incoming,true);}return;}

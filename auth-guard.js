@@ -102,7 +102,12 @@
     saveResumeLocation(location.href, label);
   }
 
+  function incomingCallPriority(){
+    return /(?:^|[?&])incoming=CA[0-9a-f]{32}(?:&|$)/i.test(location.search) ||
+      window.SteadyHandsInboundVoice?.isActive?.()===true;
+  }
   function showResumePrompt(resume) {
+    if(incomingCallPriority())return Promise.resolve('deferred');
     return new Promise(resolve => {
       const overlay = document.createElement('div');
       overlay.className = 'resume-overlay';
@@ -142,17 +147,22 @@
       document.head.appendChild(style);
       document.body.appendChild(overlay);
       window.lucide?.createIcons();
+      let settled=false;
+      const finish=choice=>{
+        if(settled)return;settled=true;
+        window.removeEventListener('steadyhands:incoming-priority',onIncoming);
+        overlay.remove();style.remove();resolve(choice);
+      };
+      const onIncoming=()=>finish('deferred');
+      window.addEventListener('steadyhands:incoming-priority',onIncoming);
+      if(incomingCallPriority()){finish('deferred');return;}
 
       overlay.querySelector('.resume-continue').addEventListener('click', () => {
-        overlay.remove();
-        style.remove();
-        resolve('continue');
+        finish('continue');
       });
 
       overlay.querySelector('.resume-start-fresh').addEventListener('click', () => {
-        overlay.remove();
-        style.remove();
-        resolve('fresh');
+        finish('fresh');
       });
     });
   }
@@ -320,7 +330,9 @@
         if (resume) {
           const choice = await showResumePrompt(resume);
 
-          if (choice === 'continue') {
+          if (choice === 'deferred') {
+            // Preserve saved location until a future session.
+          } else if (choice === 'continue') {
             const current = currentPageName() + location.search + location.hash;
             if (current !== resume.href) {
               location.href = resume.href;
