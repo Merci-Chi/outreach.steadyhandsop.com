@@ -31,11 +31,12 @@ async function publishPresence(ready){
 // Caller identity must come from the server-owned PSTN parent Call SID, not the open lead.
 let callerLookupVersion=0,callerOptions=[],chosenCallerId='';
 const callerChooser=document.createElement('select');callerChooser.id='inboundCallerAccount';callerChooser.setAttribute('aria-label','Choose matching caller account');callerChooser.hidden=true;$('inboundCallerDetails').after(callerChooser);
+const openCallerButton=document.createElement('button');openCallerButton.type='button';openCallerButton.textContent='Open caller account';openCallerButton.hidden=true;callerChooser.after(openCallerButton);openCallerButton.addEventListener('click',openCallerAccount);
 callerChooser.addEventListener('change',()=>{chosenCallerId=callerChooser.value;if(call&&chosenCallerId)openCallerAccount();});
 function openCallerAccount(){const link=callerAccountLink();if(!link)return;const tab=window.open(link,'_blank');if(!tab)status('Open this account in a new tab: '+link);}
 function callerAccountLink(){const match=callerOptions.find(row=>String(row.id)===String(chosenCallerId));if(!match)return null;const params=new URLSearchParams({crm_id:String(match.id),company:match.company||match.name||'',number:match.phone||'',contact:match.name||'',timezone:match.timezone||''});return 'call.html?'+params.toString();}
 async function showCaller(incoming,parent){
- const version=++callerLookupVersion;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;callerChooser.replaceChildren();
+ const version=++callerLookupVersion;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;openCallerButton.hidden=true;openCallerButton.hidden=true;callerChooser.replaceChildren();
  $('inboundCallerDetails').textContent='Looking up caller…';
  if(!/^CA[0-9a-fA-F]{32}$/.test(parent||'')){$('inboundCallerDetails').textContent='Caller record unavailable';return;}
  try{
@@ -44,14 +45,14 @@ async function showCaller(incoming,parent){
   const person=result.caller;
   if(!person)$('inboundCaller').textContent='Unknown business';
   if(result.match_status==='matched'&&person){
-   callerOptions=[person];chosenCallerId=String(person.id);
+   callerOptions=[person];chosenCallerId=String(person.id);openCallerButton.hidden=false;
    $('inboundCaller').textContent=person.company||person.name||result.from_number||'Unknown business';
    $('inboundCallerDetails').textContent=[result.from_number,person.company&&person.name&&'Contact: '+person.name,person.stage&&'Stage: '+person.stage,person.outcome&&'Outcome: '+person.outcome,person.notes&&'Notes: '+person.notes].filter(Boolean).join(' | ');
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:person.id,callSid:parent,matchStatus:'matched'}}));
    window.dispatchEvent(new CustomEvent('steadyhands:open-inbound-caller',{detail:{crmId:person.id,callSid:parent}}));
   }else if(result.match_status==='ambiguous'&&Array.isArray(result.matches)&&result.matches.length){
    callerOptions=result.matches;const names=[...new Set(result.matches.map(item=>item.company||item.name).filter(Boolean))];
-   callerChooser.replaceChildren(new Option('Select account to open',''),...result.matches.map(item=>new Option(item.company||item.name||'Unnamed account',String(item.id))));callerChooser.hidden=false;
+   callerChooser.replaceChildren(new Option('Select account to open',''),...result.matches.map(item=>new Option(item.company||item.name||'Unnamed account',String(item.id))));callerChooser.hidden=false;openCallerButton.hidden=false;
    $('inboundCaller').textContent=names.join(' · ')||'Multiple matching businesses';
    $('inboundCallerDetails').textContent='Number: '+(result.from_number||'Unknown')+' | Multiple assigned CRM records';
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:null,callSid:parent,matchStatus:'ambiguous'}}));
