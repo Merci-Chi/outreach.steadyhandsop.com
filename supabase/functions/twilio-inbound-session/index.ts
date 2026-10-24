@@ -105,8 +105,31 @@ Deno.serve(async req=>{
       .select('id,name,company,phone,altphone,notes,stage,outcome,callbackat,timezone')
       .eq('id',incoming.crm_id).eq('assigned_user_id',userId).maybeSingle());
    }
+   let matches=[];
+   if(incoming.caller_match_status==='ambiguous'){
+    const digits=String(incoming.from_number||'').replace(/[^0-9]/g,'');
+    const target=digits.length===11&&digits.startsWith('1')?digits.slice(1):digits;
+    if(target.length>=10){
+     // The existing resolver already established multiple matches. Look up names
+     // only within the authenticated recipient's assigned CRM records.
+     let offset=0;
+     for(;;){
+      const page=await checked(await db.from('crm').select('id,name,company,phone,altphone')
+        .eq('assigned_user_id',userId).order('id').range(offset,offset+999));
+      for(const record of page||[]){
+       const hit=[record.phone,record.altphone].some(raw=>{
+        const n=String(raw||'').replace(/[^0-9]/g,'');
+        return n===target||(target.length===10&&n==='1'+target);
+       });
+       if(hit)matches.push({id:record.id,name:record.name,company:record.company});
+      }
+      if(!page||page.length<1000)break;
+      offset+=1000;
+     }
+    }
+   }
    return json({call_sid:callSid,from_number:incoming.from_number,
-     match_status:caller?'matched':incoming.caller_match_status==='matched'?'unknown':incoming.caller_match_status||'unresolved',caller});
+     match_status:caller?'matched':incoming.caller_match_status==='matched'?'unknown':incoming.caller_match_status||'unresolved',caller,matches});
   }
   if(action==='transcript'){
    const callSid=String(body.call_sid||'');
