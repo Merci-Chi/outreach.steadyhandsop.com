@@ -14,3 +14,11 @@
 @media(max-width:899px){#shInbound{right:12px;bottom:88px;}#shInbound #inboundPanel{max-height:65vh;}}
 
 #shInbound.is-ringing #inboundToggle{background:#138647;animation:inboundPulse 1.3s infinite}#shInbound.is-ringing #inboundActive{position:fixed;right:24px;top:24px;width:min(390px,calc(100vw - 48px));box-sizing:border-box;z-index:12000;background:#fff;box-shadow:0 10px 40px #10294566;border:3px solid #16844e}#shInbound #inboundActive strong{display:block;font-size:20px}#shInbound #inboundAnswer,#shInbound #inboundDecline{min-height:44px} @keyframes inboundPulse{50%{box-shadow:0 0 0 8px #13864722}}@media(prefers-reduced-motion:reduce){#shInbound.is-ringing #inboundToggle{animation:none}}
+
+/* iPhone/PWA: the answer controls must be above all app overlays and safe-area bars. */
+#shInbound.is-ringing{z-index:200001!important}
+@media(max-width:899px){
+ #shInbound.is-ringing #inboundPanel{position:fixed;inset:0;width:100vw;height:100dvh;max-height:none;border:0;border-radius:0;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(env(safe-area-inset-bottom,0px) + 12px);overflow-y:auto;z-index:200002}
+ #shInbound.is-ringing #inboundActive{position:sticky;top:0;right:auto;left:auto;width:100%;max-height:70dvh;overflow-y:auto;z-index:200003;box-shadow:0 12px 32px #10294533}
+ #shInbound.is-ringing #inboundAnswer,#shInbound.is-ringing #inboundDecline{min-height:52px;font-size:16px}
+}
