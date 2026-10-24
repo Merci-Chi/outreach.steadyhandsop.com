@@ -223,8 +223,34 @@ function holdMusicResponse() {
  }
  return new Response(bytes,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=86400','Content-Length':String(bytes.length)}});
 }
+async function inboundPushCallerNames(db,call) {
+ if(!call.user_id)return [];
+ const digits=String(call.from_number||'').replace(/[^0-9]/g,'');
+ const target=digits.length===11&&digits.startsWith('1')?digits.slice(1):digits;
+ if(target.length<10)return [];
+ const names=new Set();
+ for(let offset=0;offset<10000;offset+=1000){
+  const {data,error}=await db.from('crm').select('name,company,phone,altphone')
+   .eq('assigned_user_id',call.user_id).range(offset,offset+999);
+  if(error)throw error;
+  for(const lead of data||[]){
+   const matched=[lead.phone,lead.altphone].some(raw=>{
+    const n=String(raw||'').replace(/[^0-9]/g,'');
+    return n===target||(target.length===10&&n==='1'+target);
+   });
+   if(matched&&String(lead.company||lead.name||'').trim())names.add(String(lead.company||lead.name).trim());
+  }
+  if(!data||data.length<1000)break;
+ }
+ return [...names];
+}
 async function sendIncomingPush(db,subscriptions,call,deadline,vapidDetails) {
- const payload=JSON.stringify({kind:'incoming-call',call_sid:call.call_sid,title:'Incoming Steady Hands call',body:'Tap to open Outreach and answer. The caller is waiting.',tag:'steadyhands-incoming-'+call.call_sid,url:'/index.html?incoming='+encodeURIComponent(call.call_sid),expires_at:deadline});
+ let names=[];
+ try{names=await inboundPushCallerNames(db,call);}
+ catch(error){console.error('Incoming caller-name lookup failed:',error);}
+ const title=names.length?'Incoming call: '+names.join(' · '):'Incoming Steady Hands call';
+ const body=names.length?'From '+(call.from_number||'Unknown number')+' — tap to answer.':'Tap to open Outreach and answer. The caller is waiting.';
+ const payload=JSON.stringify({kind:'incoming-call',call_sid:call.call_sid,title,body,tag:'steadyhands-incoming-'+call.call_sid,url:'/index.html?incoming='+encodeURIComponent(call.call_sid),expires_at:deadline});
  await Promise.all(subscriptions.map(async subscription=>{
   try {
    await recordPushDelivery(db,call.user_id,subscription.endpoint,{last_attempt_at:new Date().toISOString()});
