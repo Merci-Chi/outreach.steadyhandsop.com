@@ -81,6 +81,26 @@ async function showCaller(incoming,parent){
   if(version===callerLookupVersion)$('inboundCallerDetails').textContent='Caller lookup unavailable: '+error.message;
  }
 }
+// A push alert may reach a cold iPhone before Twilio has delivered the browser invite.
+function showNotificationCall(){
+ sessionStorage.setItem('steadyhands-incoming-priority',String(Date.now()));
+ window.dispatchEvent(new Event('steadyhands:incoming-priority'));
+ open();
+ if(pending){
+  root.classList.add('is-ringing');
+  $('inboundActive').hidden=false;
+  $('inboundAnswer').hidden=false;
+  $('inboundDecline').hidden=false;
+  $('inboundAnswer').focus();
+ }else if(call){
+  $('inboundActive').hidden=false;
+ }else{
+  status('Connecting to the incoming call… Keep Outreach open. Answer will appear as soon as the call reaches this device.');
+  $('inboundToggle').textContent='Connecting incoming call…';
+ }
+ if(device)void publishPresence(true);
+ else if(!starting&&readPref(offKey())!=='true')void bootstrap();
+}
 function stopPresence(){clearInterval(presenceTimer);presenceTimer=null;}
 function startPresence(){
  stopPresence();if(!incomingDeviceId)return;void publishPresence(true);
@@ -145,7 +165,7 @@ function closeNotice(){
  desktopNotice?.close();desktopNotice=null;
  navigator.serviceWorker?.controller?.postMessage({type:'steadyhands:close-incoming-alert'});
 }
-function resetCall(){sessionStorage.removeItem('steadyhands-incoming-priority');callerLookupVersion++;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
+function resetCall(){sessionStorage.removeItem('steadyhands-incoming-priority');callerLookupVersion++;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;openCallerButton.hidden=true;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
  // Enrollment does not guarantee delivery; preserve the foreground fallback.
  if(!missed&&readPref(callPushKey())==='true'){
@@ -304,7 +324,10 @@ $('inboundAnswer').onclick=async()=>{
   // Open account in a separate tab so the live Twilio call stays on this page.
   const link=callerAccountLink();
   if(link){
-   openCallerAccount();
+   if(window.matchMedia('(max-width:899px)').matches){
+    openCallerButton.hidden=false;
+    status('Call connected. Tap Open caller account to view the client on call.html without navigating away automatically.');
+   }else openCallerAccount();
   }else if(callerOptions.length>1){
    status('Call connected. Choose the correct matching account in the incoming call panel.');
   }
@@ -375,8 +398,10 @@ async function bootstrap(attempt=0){
 }
 window.addEventListener('online',()=>bootstrap());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(device)startPresence();else if(!starting)void bootstrap();}});
-navigator.serviceWorker?.addEventListener('message',event=>{if(event.data?.type==='steadyhands:incoming-wake'){sessionStorage.setItem('steadyhands-incoming-priority',String(Date.now()));window.dispatchEvent(new Event('steadyhands:incoming-priority'));if(device)void publishPresence(true);return;}if(event.data?.type==='steadyhands:open-incoming'){sessionStorage.setItem('steadyhands-incoming-priority',String(Date.now()));window.dispatchEvent(new Event('steadyhands:incoming-priority'));open();if(device)void publishPresence(true);if(readPref(offKey())==='true'){$('inboundStatus').textContent='This device is offline. Connect incoming calls to answer.';}else if(!device)void bootstrap();if(pending)$('inboundAnswer').focus();else void refresh().catch(()=>{});}});
-if(window.location&&/^CA[0-9a-fA-F]{32}$/.test(new URLSearchParams(window.location.search).get('incoming')||''))open();
+navigator.serviceWorker?.addEventListener('message',event=>{
+ if(['steadyhands:incoming-wake','steadyhands:open-incoming'].includes(event.data?.type))showNotificationCall();
+});
+if(window.location&&/^CA[0-9a-fA-F]{32}$/.test(new URLSearchParams(window.location.search).get('incoming')||''))showNotificationCall();
 window.addEventListener('pageshow',()=>{if(device)startPresence();});
 window.addEventListener('pagehide',()=>{stopPresence();void publishPresence(false);});
 void bootstrap();
