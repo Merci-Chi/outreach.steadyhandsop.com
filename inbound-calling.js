@@ -29,9 +29,12 @@ async function publishPresence(ready){
  catch(error){console.warn('Incoming device readiness unavailable:',error.message);}
 }
 // Caller identity must come from the server-owned PSTN parent Call SID, not the open lead.
-let callerLookupVersion=0;
+let callerLookupVersion=0,callerOptions=[],chosenCallerId='';
+const callerChooser=document.createElement('select');callerChooser.id='inboundCallerAccount';callerChooser.setAttribute('aria-label','Choose matching caller account');callerChooser.hidden=true;$('inboundCallerDetails').after(callerChooser);
+callerChooser.addEventListener('change',()=>{chosenCallerId=callerChooser.value;});
+function callerAccountLink(){const match=callerOptions.find(row=>String(row.id)===String(chosenCallerId));if(!match)return null;const params=new URLSearchParams({crm_id:String(match.id),company:match.company||match.name||'',number:match.phone||'',contact:match.name||'',timezone:match.timezone||''});return 'call.html?'+params.toString();}
 async function showCaller(incoming,parent){
- const version=++callerLookupVersion;
+ const version=++callerLookupVersion;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;callerChooser.replaceChildren();
  $('inboundCallerDetails').textContent='Looking up caller…';
  if(!/^CA[0-9a-fA-F]{32}$/.test(parent||'')){$('inboundCallerDetails').textContent='Caller record unavailable';return;}
  try{
@@ -40,12 +43,14 @@ async function showCaller(incoming,parent){
   const person=result.caller;
   if(!person)$('inboundCaller').textContent='Unknown business';
   if(result.match_status==='matched'&&person){
+   callerOptions=[person];chosenCallerId=String(person.id);
    $('inboundCaller').textContent=person.company||person.name||result.from_number||'Unknown business';
    $('inboundCallerDetails').textContent=[result.from_number,person.company&&person.name&&'Contact: '+person.name,person.stage&&'Stage: '+person.stage,person.outcome&&'Outcome: '+person.outcome,person.notes&&'Notes: '+person.notes].filter(Boolean).join(' | ');
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:person.id,callSid:parent,matchStatus:'matched'}}));
    window.dispatchEvent(new CustomEvent('steadyhands:open-inbound-caller',{detail:{crmId:person.id,callSid:parent}}));
   }else if(result.match_status==='ambiguous'&&Array.isArray(result.matches)&&result.matches.length){
-   const names=[...new Set(result.matches.map(item=>item.company||item.name).filter(Boolean))];
+   callerOptions=result.matches;const names=[...new Set(result.matches.map(item=>item.company||item.name).filter(Boolean))];
+   callerChooser.replaceChildren(new Option('Select account to open',''),...result.matches.map(item=>new Option(item.company||item.name||'Unnamed account',String(item.id))));callerChooser.hidden=false;
    $('inboundCaller').textContent=names.join(' · ')||'Multiple matching businesses';
    $('inboundCallerDetails').textContent='Number: '+(result.from_number||'Unknown')+' | Multiple assigned CRM records';
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:null,callSid:parent,matchStatus:'ambiguous'}}));
@@ -123,7 +128,7 @@ function closeNotice(){
  desktopNotice?.close();desktopNotice=null;
  navigator.serviceWorker?.controller?.postMessage({type:'steadyhands:close-incoming-alert'});
 }
-function resetCall(){callerLookupVersion++;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
+function resetCall(){callerLookupVersion++;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
  // Enrollment does not guarantee delivery; preserve the foreground fallback.
  if(!missed&&readPref(callPushKey())==='true'){
@@ -277,6 +282,14 @@ $('inboundAnswer').onclick=async()=>{
   if(pending!==incoming)return;
   if(window.SteadyHandsTwilioVoice?.isActive()){incoming.reject();resetCall();return;}
   await incoming.accept();
+  // Open account in a separate tab so the live Twilio call stays on this page.
+  const link=callerAccountLink();
+  if(link){
+   const tab=window.open(link,'_blank','noopener');
+   if(!tab)status('Call connected. Allow pop-ups to open the caller account in call.html.');
+  }else if(callerOptions.length>1){
+   status('Call connected. Choose the correct matching account in the incoming call panel.');
+  }
  }catch(error){status(error.message||'Microphone access is required to answer this call.');}
  finally{$('inboundAnswer').disabled=false;}
 };
