@@ -145,7 +145,7 @@ function closeNotice(){
  desktopNotice?.close();desktopNotice=null;
  navigator.serviceWorker?.controller?.postMessage({type:'steadyhands:close-incoming-alert'});
 }
-function resetCall(){callerLookupVersion++;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
+function resetCall(){sessionStorage.removeItem('steadyhands-incoming-priority');callerLookupVersion++;callerOptions=[];chosenCallerId='';callerChooser.hidden=true;if(call)drainTranscript();call=null;pending=null;closeNotice();alertedCallSid='';document.title=originalTitle;root.classList.remove('is-ringing');$('inboundToggle').textContent='Incoming calls';$('inboundActive').hidden=true;$('inboundMute').textContent='Mute';$('inboundMute').dataset.muted='false';}
 async function notifyCall(incoming,missed=false){
  // Enrollment does not guarantee delivery; preserve the foreground fallback.
  if(!missed&&readPref(callPushKey())==='true'){
@@ -273,6 +273,7 @@ async function enable({automatic=false}={}){
   const next=new Device(data.token,{logLevel:'warn',closeProtection:true});
   device=next;
   next.on('incoming',incoming=>{
+    sessionStorage.setItem('steadyhands-incoming-priority','1');
     window.dispatchEvent(new Event('steadyhands:incoming-priority'));
    const parent=incoming.customParameters?.get('parentCallSid');alertedCallSid=parent||'';
    if(/^CA[0-9a-fA-F]{32}$/.test(parent||''))void invoke('call_received',{call_sid:parent}).catch(()=>{});
@@ -374,7 +375,7 @@ async function bootstrap(attempt=0){
 }
 window.addEventListener('online',()=>bootstrap());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(device)startPresence();else if(!starting)void bootstrap();}});
-navigator.serviceWorker?.addEventListener('message',event=>{if(event.data?.type==='steadyhands:incoming-wake'){if(device)void publishPresence(true);return;}if(event.data?.type==='steadyhands:open-incoming'){open();if(device)void publishPresence(true);if(readPref(offKey())==='true'){$('inboundStatus').textContent='This device is offline. Connect incoming calls to answer.';}else if(!device)void bootstrap();if(pending)$('inboundAnswer').focus();else void refresh().catch(()=>{});}});
+navigator.serviceWorker?.addEventListener('message',event=>{if(event.data?.type==='steadyhands:incoming-wake'){sessionStorage.setItem('steadyhands-incoming-priority','1');window.dispatchEvent(new Event('steadyhands:incoming-priority'));if(device)void publishPresence(true);return;}if(event.data?.type==='steadyhands:open-incoming'){sessionStorage.setItem('steadyhands-incoming-priority','1');window.dispatchEvent(new Event('steadyhands:incoming-priority'));open();if(device)void publishPresence(true);if(readPref(offKey())==='true'){$('inboundStatus').textContent='This device is offline. Connect incoming calls to answer.';}else if(!device)void bootstrap();if(pending)$('inboundAnswer').focus();else void refresh().catch(()=>{});}});
 if(window.location&&/^CA[0-9a-fA-F]{32}$/.test(new URLSearchParams(window.location.search).get('incoming')||''))open();
 window.addEventListener('pageshow',()=>{if(device)startPresence();});
 window.addEventListener('pagehide',()=>{stopPresence();void publishPresence(false);});
