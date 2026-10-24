@@ -104,7 +104,8 @@
 
   function incomingCallPriority(){
     return /(?:^|[?&])incoming=CA[0-9a-f]{32}(?:&|$)/i.test(location.search) ||
-      window.SteadyHandsInboundVoice?.isActive?.()===true;
+      window.SteadyHandsInboundVoice?.isActive?.()===true ||
+      sessionStorage.getItem('steadyhands-incoming-priority')==='1';
   }
   function showResumePrompt(resume) {
     if(incomingCallPriority())return Promise.resolve('deferred');
