@@ -44,6 +44,11 @@ async function showCaller(incoming,parent){
    $('inboundCallerDetails').textContent=[result.from_number,person.company&&person.name&&'Contact: '+person.name,person.stage&&'Stage: '+person.stage,person.outcome&&'Outcome: '+person.outcome,person.notes&&'Notes: '+person.notes].filter(Boolean).join(' | ');
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:person.id,callSid:parent,matchStatus:'matched'}}));
    window.dispatchEvent(new CustomEvent('steadyhands:open-inbound-caller',{detail:{crmId:person.id,callSid:parent}}));
+  }else if(result.match_status==='ambiguous'&&Array.isArray(result.matches)&&result.matches.length){
+   const names=[...new Set(result.matches.map(item=>item.company||item.name).filter(Boolean))];
+   $('inboundCaller').textContent=names.join(' · ')||'Multiple matching businesses';
+   $('inboundCallerDetails').textContent='Number: '+(result.from_number||'Unknown')+' | Multiple assigned CRM records';
+   window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:null,callSid:parent,matchStatus:'ambiguous'}}));
   }else{
    window.dispatchEvent(new CustomEvent('steadyhands:inbound-caller-identity',{detail:{crmId:null,callSid:parent,matchStatus:result.match_status}}));
    $('inboundCallerDetails').textContent=result.match_status==='ambiguous'
