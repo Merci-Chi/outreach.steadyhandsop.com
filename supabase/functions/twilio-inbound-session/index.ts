@@ -121,7 +121,7 @@ Deno.serve(async req=>{
         const n=String(raw||'').replace(/[^0-9]/g,'');
         return n===target||(target.length===10&&n==='1'+target);
        });
-       if(hit)matches.push({id:record.id,name:record.name,company:record.company});
+       if(hit)matches.push({id:record.id,name:record.name,company:record.company,phone:record.phone||record.altphone});
       }
       if(!page||page.length<1000)break;
       offset+=1000;
