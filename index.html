@@ -294,17 +294,7 @@ body.page-outreach #refOutreachMain .ref-tools>button svg{width:clamp(30px,3.5vw
 <script src="outreach-opened-history.js?v=20261023" defer></script><script src="lead-navigation.js?v=20261022-queue-active" defer></script>
 <script src="call-pipeline-stage.js?v=20261021-track-customer-main-fix" defer></script>
 
-<script>
-/* Keep the Dialer tile connected to the current workspace and selected CRM lead. */
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('refOpenDialer')?.addEventListener('click',()=>{
-    const id=window.steadyHandsCallLead?.id||document.querySelector('#selectedLeadTop .lead-card')?.dataset.crmId||new URLSearchParams(location.search).get('crm_id');
-    const url=new URL('call.html',location.href);if(id)url.searchParams.set('crm_id',id);
-    location.href=url.href;
-  });
-});
-</script>
-<script src="manual-dialer.js?v=20261029" defer></script>
+<script src="manual-dialer.js?v=20261029-open-outreach-v2" defer></script>
 </body>
 </html>
 
