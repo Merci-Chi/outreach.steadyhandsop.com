@@ -84,9 +84,14 @@
     }
     // A late event from an earlier call cannot finish the new attempt.
     if(detail.attemptId && (!callResult || detail.attemptId!==callResult.attempt_id))return;
-    if(callResult && ['dialed','ringing','connected'].includes(detail.state)){callResult.dialed=true;callResult.called=true;}
+    if(callResult && ['dialed','ringing','early-media','connected'].includes(detail.state)){callResult.dialed=true;callResult.called=true;}
     if (callResult && detail.callSid) callResult.call_sid = detail.callSid;
-    if (['calling','dialed','ringing','connected'].includes(detail.state)) state(true,detail.callSid);
+    if (['calling','dialed','ringing','early-media','connected'].includes(detail.state)) state(true,detail.callSid);
+    const statusLabel = document.getElementById('refStatus');
+    const labels = {calling:'Dialing…',dialed:'Dialing…',ringing:'Ringing…',
+      'early-media':'Call audio active · keypad ready',connected:'On call',ended:'Call ended',error:'Call interrupted'};
+    if (statusLabel && labels[detail.state]) statusLabel.textContent = labels[detail.state];
+    if (detail.state === 'early-media') message('Call audio is active. Use the keypad to respond to the automated prompt.');
     if (detail.state === 'connected') message('Call connected.');
     if (detail.state === 'preparing') message(detail.message || 'Preparing browser calling…');
     if (detail.state === 'ended') {

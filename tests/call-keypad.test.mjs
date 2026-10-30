@@ -70,3 +70,26 @@ test('keypad sends to an accepted incoming call',()=>{
  p.keys[0].handlers.click();assert.deepEqual(p.sent,['1']);
  p.connect(false);p.keys[0].handlers.click();assert.deepEqual(p.sent,['1']);
 });
+
+function sdkCall(initialState='ringing') {
+ let state=initialState;
+ const sent=[],events={},signals=[];
+ const call={status:()=>state,on(n,f){events[n]=f;},sendDigits(d){sent.push(d);}};
+ class Device{on(){}async connect(){return call;}}
+ const window={dispatchEvent(e){signals.push(e.detail);},isSecureContext:true,SteadyHandsLeadDisposition:{ensureCallable:async()=>{}},steadyHandsCRMClient:{functions:{invoke:async()=>({data:{token:'test'}})},auth:{getSession:async()=>({data:{session:{user:{id:'agent'}}}})}}};
+ vm.runInNewContext(phoneSource,{window,Device,console,CustomEvent:class{constructor(name,options){this.detail=options.detail;}},navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[]})}}});
+ return {voice:window.SteadyHandsTwilioVoice,sent,events,signals,state(value){state=value;}};
+}
+test('automated prompt during early media allows press 1 before answer',async()=>{
+ const p=sdkCall();await p.voice.start('+17025550101',{crmId:'test'});
+ p.events.ringing(false);assert.equal(p.voice.sendDigits('1'),false);
+ p.events.ringing(true);assert.equal(p.signals.at(-1).state,'early-media');
+ assert.equal(p.voice.sendDigits('1'),true);assert.deepEqual(p.sent,['1']);
+ p.state('reconnecting');assert.equal(p.voice.sendDigits('2'),false);
+ p.state('closed');p.events.disconnect();assert.equal(p.voice.sendDigits('2'),false);
+});
+test('already accepted SDK call is reconciled after connect resolves',async()=>{
+ const p=sdkCall('open');await p.voice.start('+17025550101',{crmId:'test'});
+ assert.deepEqual(p.signals.slice(-2).map(s=>s.state),['dialed','connected']);
+ assert.equal(p.voice.sendDigits('1'),true);
+});

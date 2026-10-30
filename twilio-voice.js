@@ -2,6 +2,7 @@ import { Device } from './twilio-sdk.js?v=2.18.5-browser';
 
 let device = null;
 let activeCall = null;
+const earlyMediaCalls = new WeakSet();
 let starting = false;
 let attemptSequence = 0;
 let tokenRefreshPromise = null;
@@ -240,6 +241,7 @@ function bindCall(call, metadata = {}) {
   const finish = (reason = 'ended') => {
     if (finished) return;
     finished = true;
+    earlyMediaCalls.delete(call);
     if (activeCall === call) activeCall = null;
     // Never leave hold audio installed on the Twilio device after this call.
     void resetHoldAudio().catch(error => console.warn('Hold audio cleanup failed:', error));
@@ -247,15 +249,22 @@ function bindCall(call, metadata = {}) {
     if (resetNeeded) void resetFailedDevice();
   };
 
-  call.on('ringing', () => { if (!finished) signal('ringing'); });
-  call.on('accept', () => {
+  call.on('ringing', hasEarlyMedia => {
+    if (finished) return;
+    if (hasEarlyMedia) earlyMediaCalls.add(call);
+    signal(hasEarlyMedia ? 'early-media' : 'ringing', {
+      callSid: call?.parameters?.CallSid || call?.parameters?.CallSID || ''
+    });
+  });
+  const connected = () => {
     if (finished) return;
     const callSid =
       call?.parameters?.CallSid ||
       call?.parameters?.CallSID ||
       '';
     signal('connected', { callSid });
-  });
+  };
+  call.on('accept', connected);
 
   call.on('disconnect', () => finish('disconnect'));
   call.on('cancel', () => finish('cancel'));
@@ -276,6 +285,8 @@ function bindCall(call, metadata = {}) {
     });
     finish('error');
   });
+  // Device.connect can resolve after accept; reconcile the public SDK state.
+  if (call.status?.() === 'open') connected();
 }
 
 async function start(destination, metadata = {}) {
@@ -318,8 +329,8 @@ async function start(destination, metadata = {}) {
 
   const call = await readyDevice.connect({ params });
   activeCall = call;
-  bindCall(call, attempt);
   emit('dialed', {...attempt,callSid:call?.parameters?.CallSid || call?.parameters?.CallSID || ''});
+  bindCall(call, attempt);
   return call;
   } finally {
     starting = false;
@@ -507,7 +518,8 @@ async function toggleSpeakerOutput() {
 }
 
 function canSendDigits() {
-  return activeCall?.status() === 'open';
+  const state = activeCall?.status();
+  return state === 'open' || (state === 'ringing' && earlyMediaCalls.has(activeCall));
 }
 
 function sendDigits(digits) {

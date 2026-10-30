@@ -45,7 +45,7 @@
     if (name) name.textContent = lead.company || (incomingId ? 'Prospect' : 'No prospect selected');
     if (phone) phone.textContent = valid ? lead.number : 'No phone number on file';
     const hours = valid ? callingWindow() : null;
-    if (status) status.textContent = !valid ? 'No phone number on file' : hours === true ? 'Ready to call' : hours === false ? 'Outside of recommended calling hours' : 'Calling hours unavailable';
+    if (status && !window.SteadyHandsTwilioVoice?.isActive()) status.textContent = !valid ? 'No phone number on file' : hours === true ? 'Ready to call' : hours === false ? 'Outside of recommended calling hours' : 'Calling hours unavailable';
     const dot = document.querySelector('.ref-lead-card .ref-green-dot');
     if (dot) {
       dot.classList.toggle('ref-status-outside', valid && hours === false);
