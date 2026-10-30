@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../call-keypad.js',import.meta.url),'utf8');
 const phoneSource=(await readFile(new URL('../twilio-voice.js',import.meta.url),'utf8')).replace(/^import .*;\n/,'');
-function setup(){
+function setup(inbound=false){
  const handlers={},sent=[];
  const element=()=>({textContent:'',handlers:{},dataset:{},addEventListener(n,f){this.handlers[n]=f;},focus(){this.focused=true;}});
  const ids=Object.fromEntries(['refKeypad','callKeypad','callKeypadClose','callKeypadStatus','callKeypadDisplay'].map(id=>[id,element()]));
@@ -13,8 +13,10 @@ function setup(){
  Object.assign(dialog,{querySelectorAll:()=>keys,showModal(){this.open=true;},close(){this.open=false;this.handlers.close();}});
  let connected=false,fail=false;
  const window={addEventListener(n,f){handlers[n]=f;},SteadyHandsTwilioVoice:{canSendDigits:()=>connected,sendDigits(d){if(fail)throw Error('Tone failed');sent.push(d);return true;}}};
- vm.runInNewContext(source,{window,document:{getElementById:id=>ids[id]}});
- return {ids,keys,handlers,sent,dialog,connect(value){connected=value;handlers['steadyhands:voice-state']();},fail(){fail=true;}};
+ if(inbound){window.SteadyHandsInboundVoice=window.SteadyHandsTwilioVoice;delete window.SteadyHandsTwilioVoice;}
+ let refresh;
+ vm.runInNewContext(source,{window,setInterval:f=>{refresh=f;return 1;},clearInterval(){refresh=null;},document:{getElementById:id=>ids[id]}});
+ return {ids,keys,handlers,sent,dialog,settle(value){connected=value;refresh?.();},connect(value){connected=value;handlers['steadyhands:voice-state']();},fail(){fail=true;}};
 }
 test('keypad opens before a call with disabled keys and instructions',()=>{
  const p=setup();p.ids.refKeypad.handlers.click();assert.equal(p.dialog.open,true);
@@ -54,4 +56,17 @@ test('phone sends DTMF to the connected SDK call only',async()=>{
  assert.throws(()=>voice.sendDigits('invalid'),/Invalid keypad/);
  state='reconnecting';assert.equal(voice.sendDigits('1'),false);
  state='closed';events.disconnect();assert.equal(voice.canSendDigits(),false);assert.equal(voice.sendDigits('1'),false);
+});
+
+
+test('open keypad recovers when SDK becomes connected after its event',()=>{
+ const p=setup();p.ids.refKeypad.handlers.click();
+ p.connect(false);p.settle(true);assert.ok(p.keys.every(k=>!k.disabled));
+ p.keys[0].handlers.click();assert.deepEqual(p.sent,['1']);
+ p.settle(false);assert.ok(p.keys.every(k=>k.disabled));
+});
+test('keypad sends to an accepted incoming call',()=>{
+ const p=setup(true);p.connect(true);p.ids.refKeypad.handlers.click();
+ p.keys[0].handlers.click();assert.deepEqual(p.sent,['1']);
+ p.connect(false);p.keys[0].handlers.click();assert.deepEqual(p.sent,['1']);
 });

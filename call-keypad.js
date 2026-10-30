@@ -6,8 +6,10 @@
   const status = document.getElementById('callKeypadStatus');
   const display = document.getElementById('callKeypadDisplay');
   const keys = [...dialog.querySelectorAll('[data-digit]')];
-  const voice = () => window.SteadyHandsTwilioVoice;
-  const ready = () => Boolean(voice()?.canSendDigits());
+  const voice = () => [window.SteadyHandsTwilioVoice, window.SteadyHandsInboundVoice]
+    .find(phone => phone?.canSendDigits?.());
+  let refreshTimer = null;
+  const ready = () => Boolean(voice());
 
   function sync() {
     const connected = ready();
@@ -32,10 +34,17 @@
   trigger.addEventListener('click', () => {
     sync();
     if (!dialog.open) dialog.showModal();
+    clearInterval(refreshTimer);
+    // SDK status may settle after its accept event; keep an open keypad current.
+    refreshTimer = setInterval(sync, 250);
   });
   keys.forEach(key => key.addEventListener('click', () => send(key.dataset.digit)));
   document.getElementById('callKeypadClose').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => trigger.focus());
+  dialog.addEventListener('close', () => {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+    trigger.focus();
+  });
   dialog.addEventListener('click', event => {
     if (event.target !== dialog) return;
     const bounds = dialog.getBoundingClientRect();

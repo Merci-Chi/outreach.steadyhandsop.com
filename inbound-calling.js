@@ -338,7 +338,15 @@ $('inboundDecline').onclick=()=>{pending?.reject();resetCall();};
 $('inboundEnd').onclick=()=>call?.disconnect();
 $('inboundMute').onclick=()=>{if(!call)return;const muted=$('inboundMute').dataset.muted!=='true';call.mute(muted);$('inboundMute').dataset.muted=String(muted);$('inboundMute').textContent=muted?'Unmute':'Mute';};
 $('inboundRefresh').onclick=()=>refresh().catch(error=>status(error.message));
-window.SteadyHandsInboundVoice={isActive:()=>Boolean(call||pending),isBusyForUpdate:()=>Boolean(call||pending||starting||transcriptSid)};
+function canSendDigits(){return call?.status() === 'open';}
+function sendDigits(digits){
+ if(!canSendDigits())return false;
+ const value=String(digits||'');
+ if(!/^[0-9A-D*#wW]+$/.test(value))throw new Error('Invalid keypad digits.');
+ call.sendDigits(value);
+ return true;
+}
+window.SteadyHandsInboundVoice={canSendDigits,sendDigits,isActive:()=>Boolean(call||pending),isBusyForUpdate:()=>Boolean(call||pending||starting||transcriptSid)};
 
 $('inboundAlerts').onclick=async()=>{
  const alertStatus=text=>$('inboundAlertStatus').textContent=text;
