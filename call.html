@@ -344,16 +344,7 @@ try {
 <script src="queue-outreach.js?v=20261022-queue-active" defer></script>
 <script src="lead-navigation.js?v=20261022-queue-active" defer></script>
 
-<script>
-/* Keep the Dialer tile connected to the current workspace and selected CRM lead. */
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('refOpenDialer')?.addEventListener('click',()=>{
-    const panel=document.querySelector('.ref-active-panel')||document.querySelector('.ref-call-methods')||document.getElementById('refEndCall');
-    if(panel){panel.scrollIntoView({behavior:'smooth',block:'center'});const target=document.getElementById('refEndCall')||document.getElementById('refAppPhone');target?.focus({preventScroll:true});}
-  });
-});
-</script>
-<script src="manual-dialer.js?v=20261029" defer></script>
+<script src="manual-dialer.js?v=20261029-open-outreach-v2" defer></script>
 </body>
 </html>
 
